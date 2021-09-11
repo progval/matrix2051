@@ -1,4 +1,4 @@
-defmodule Matrix2051.IrcConnReader do
+defmodule Matrix2051.IrcConn.Reader do
   @moduledoc """
     Reads from a client, and dispatches lines.
   """
@@ -16,7 +16,7 @@ defmodule Matrix2051.IrcConnReader do
 
   defp loop_serve(supervisor, sock) do
     {:ok, line} = :gen_tcp.recv(sock, 0)
-    writer = Matrix2051.IrcConnSupervisor.writer(supervisor)
+    writer = Matrix2051.IrcConn.Supervisor.writer(supervisor)
     Matrix2051.IrcConnWriter.write_line(writer, line)
     loop_serve(supervisor, sock)
   end

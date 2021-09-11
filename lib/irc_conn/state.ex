@@ -1,4 +1,4 @@
-defmodule Matrix2051.IrcConnState do
+defmodule Matrix2051.IrcConn.State do
   @moduledoc """
     Stores the state of an open IRC connection.
   """

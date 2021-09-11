@@ -1,4 +1,4 @@
-defmodule Matrix2051.IrcConnWriter do
+defmodule Matrix2051.IrcConn.Writer do
   @moduledoc """
     Writes lines to a client.
   """

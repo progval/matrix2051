@@ -5,15 +5,15 @@ connects to Matrix homeservers instead of IRC servers.
 
 ## Supervision tree and module description
 
-* matrix2051.exc starts Matrix2051, which starts Matrix2051.Supervisor, which
+* `matrix2051.exs` starts Matrix2051, which starts Matrix2051.Supervisor, which
   supervises:
-  * Matrix2051.Config: global config agent
-  * Matrix2051.MatrixClient: handles connections to the Matrix homeserver
+  * `config.ex`: global config agent
+  * `matrix_client.ex`: handles connections to the Matrix homeserver
     (only one, for now)
-  * Matrix2051.IrcServer: handles connections from IRC clients.
-    * Matrix2051.IrcConnSupervisor: spawned for each client connection
-      * Matrix2051.IrcConnState: stores the state of the connection
-      * Matrix2051.IrcConnWriter: genserver holding the socket and allowing
+  * `irc_server.ex`: handles connections from IRC clients.
+    * `irc_conn/supervisor.ex`: spawned for each client connection
+      * `irc_conn/state.ex`: stores the state of the connection
+      * `irc_conn/writer.ex`: genserver holding the socket and allowing
         to write lines to it (and batches of lines in the future)
-      * Matrix2051.IrcConnReader: task busy-waiting on the incoming lines,
+      * `irc_conn/reader.ex`: task busy-waiting on the incoming lines,
         and dispatches them
