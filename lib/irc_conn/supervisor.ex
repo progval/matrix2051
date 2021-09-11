@@ -14,10 +14,11 @@ defmodule Matrix2051.IrcConn.Supervisor do
   @impl true
   def init(args) do
     {sock} = args
+
     children = [
       {Matrix2051.IrcConn.State, {self()}},
       {Matrix2051.IrcConn.Writer, {self(), sock}},
-      {Matrix2051.IrcConn.Reader, {self(), sock}},
+      {Matrix2051.IrcConn.Reader, {self(), sock}}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

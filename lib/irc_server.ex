@@ -39,12 +39,14 @@ defmodule Matrix2051.IrcServer do
   defp loop_accept(server_sock) do
     {:ok, sock} = :gen_tcp.accept(server_sock)
 
-    {:ok, conn_supervisor} = DynamicSupervisor.start_child(
-      __MODULE__,
-      {Matrix2051.IrcConn.Supervisor, {sock}}
-    )
+    {:ok, conn_supervisor} =
+      DynamicSupervisor.start_child(
+        __MODULE__,
+        {Matrix2051.IrcConn.Supervisor, {sock}}
+      )
 
-    :ok = :gen_tcp.controlling_process(sock, Matrix2051.IrcConn.Supervisor.reader(conn_supervisor))
+    :ok =
+      :gen_tcp.controlling_process(sock, Matrix2051.IrcConn.Supervisor.reader(conn_supervisor))
 
     loop_accept(server_sock)
   end

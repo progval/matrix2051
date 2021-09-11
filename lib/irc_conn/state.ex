@@ -13,6 +13,4 @@ defmodule Matrix2051.IrcConn.State do
     {supervisor} = args
     {:ok, {supervisor}}
   end
-
 end
-
