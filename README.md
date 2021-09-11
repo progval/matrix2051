@@ -3,7 +3,9 @@
 An IRC server backed by Matrix. You can also see it as an IRC bouncer that
 connects to Matrix homeservers instead of IRC servers.
 
-## Supervision tree and module description
+## Module structure
+
+### In supervision tree
 
 * `matrix2051.exs` starts Matrix2051, which starts Matrix2051.Supervisor, which
   supervises:
@@ -17,3 +19,8 @@ connects to Matrix homeservers instead of IRC servers.
         to write lines to it (and batches of lines in the future)
       * `irc_conn/reader.ex`: task busy-waiting on the incoming lines,
         and dispatches them
+
+### Outside supervision tree
+
+* IRC:
+  * `irc/command.ex`: IRC line manipulation
