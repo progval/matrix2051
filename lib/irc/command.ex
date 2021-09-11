@@ -80,7 +80,75 @@ defmodule Matrix2051.Irc.Command do
     {key,
      case value do
        nil -> ""
+       # TODO: unescape
        _ -> value
      end}
+  end
+
+  @doc ~S"""
+    Formats an IRC line from the `Matrix2051.Irc.Command` structure.
+
+    ## Examples
+
+        iex> Matrix2051.Irc.Command.format(%Matrix2051.Irc.Command{
+        ...>   command: "PRIVMSG",
+        ...>   params: ["#chan", "hello"]
+        ...> })
+        "PRIVMSG #chan :hello\r\n"
+
+        iex> Matrix2051.Irc.Command.format(%Matrix2051.Irc.Command{
+        ...>   tags: %{"+typing" => "active"},
+        ...>   command: "TAGMSG",
+        ...>   params: ["#chan"]
+        ...> })
+        "@+typing=active TAGMSG :#chan\r\n"
+
+        iex> Matrix2051.Irc.Command.format(%Matrix2051.Irc.Command{
+        ...>   tags: %{"msgid" => "foo"},
+        ...>   origin: "nick!user@host",
+        ...>   command: "PRIVMSG",
+        ...>   params: ["#chan", "hello"]
+        ...> })
+        "@msgid=foo :nick!user@host PRIVMSG #chan :hello\r\n"
+  """
+  def format(command) do
+    reversed_params =
+      reversed_params =
+      case Enum.reverse(command.params) do
+        # Prepend trailing with ":"
+        [head | tail] -> [":" <> head | tail]
+        [] -> []
+      end
+
+    tokens = [command.command | Enum.reverse(reversed_params)]
+
+    tokens =
+      case command.origin do
+        nil -> tokens
+        "" -> tokens
+        _ -> [":" <> command.origin | tokens]
+      end
+
+    tokens =
+      case command.tags do
+        nil ->
+          tokens
+
+        tags when map_size(tags) == 0 ->
+          tokens
+
+        _ ->
+          [
+            "@" <>
+              Enum.join(
+                # TODO: escape
+                Enum.map(Map.to_list(command.tags), fn {key, value} -> key <> "=" <> value end),
+                ";"
+              )
+            | tokens
+          ]
+      end
+
+    Enum.join(tokens, " ") <> "\r\n"
   end
 end

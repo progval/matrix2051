@@ -13,7 +13,7 @@ defmodule Matrix2051.Irc.CommandTest do
               }}
   end
 
-  test "lenient" do
+  test "parse leniently" do
     assert Matrix2051.Irc.Command.parse(
              "@msgid=foo    :nick!user@host   privMSG  #chan   :hello\n"
            ) ==
@@ -26,12 +26,19 @@ defmodule Matrix2051.Irc.CommandTest do
               }}
   end
 
-  test "numeric" do
+  test "parse numeric" do
     assert Matrix2051.Irc.Command.parse("001 welcome\r\n") ==
              {:ok,
               %Matrix2051.Irc.Command{
                 command: "001",
                 params: ["welcome"]
               }}
+  end
+
+  test "numeric" do
+    assert Matrix2051.Irc.Command.format(%Matrix2051.Irc.Command{
+             command: "001",
+             params: ["welcome"]
+           }) == "001 :welcome\r\n"
   end
 end
