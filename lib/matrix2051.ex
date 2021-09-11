@@ -1,18 +1,18 @@
 defmodule Matrix2051 do
   @moduledoc """
-  Documentation for Matrix2051.
+    Main module of Matrix2051.
   """
+  use Application
 
   @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Matrix2051.hello()
-      :world
-
+    Entrypoint. Takes the global config as args, and starts Matrix2051.Supervisor
   """
-  def hello do
-    :world
+  @impl true
+  def start(_type, args) do
+    children = [
+      {Matrix2051.Supervisor, args}
+    ]
+
+    Supervisor.start_link(children, strategy: :one_for_one)
   end
 end

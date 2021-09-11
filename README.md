@@ -1,21 +1,19 @@
 # Matrix2051
 
-**TODO: Add description**
+An IRC server backed by Matrix. You can also see it as an IRC bouncer that
+connects to Matrix homeservers instead of IRC servers.
 
-## Installation
+## Supervision tree and module description
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `matrix2051` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:matrix2051, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/matrix2051](https://hexdocs.pm/matrix2051).
-
+* matrix2051.exc starts Matrix2051, which starts Matrix2051.Supervisor, which
+  supervises:
+  * Matrix2051.Config: global config agent
+  * Matrix2051.MatrixClient: handles connections to the Matrix homeserver
+    (only one, for now)
+  * Matrix2051.IrcServer: handles connections from IRC clients.
+    * Matrix2051.IrcConnSupervisor: spawned for each client connection
+      * Matrix2051.IrcConnState: stores the state of the connection
+      * Matrix2051.IrcConnWriter: genserver holding the socket and allowing
+        to write lines to it (and batches of lines in the future)
+      * Matrix2051.IrcConnReader: task busy-waiting on the incoming lines,
+        and dispatches them
