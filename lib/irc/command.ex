@@ -113,7 +113,6 @@ defmodule Matrix2051.Irc.Command do
   """
   def format(command) do
     reversed_params =
-      reversed_params =
       case Enum.reverse(command.params) do
         # Prepend trailing with ":"
         [head | tail] -> [":" <> head | tail]
