@@ -14,6 +14,10 @@ defmodule Matrix2051.IrcConn.Writer do
     {:ok, state}
   end
 
+  def write_command(writer, command) do
+    write_line(writer, Matrix2051.Irc.Command.format(command))
+  end
+
   def write_line(writer, line) do
     GenServer.call(writer, {:write_line, line})
   end

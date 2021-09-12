@@ -17,8 +17,11 @@ connects to Matrix homeservers instead of IRC servers.
       * `irc_conn/state.ex`: stores the state of the connection
       * `irc_conn/writer.ex`: genserver holding the socket and allowing
         to write lines to it (and batches of lines in the future)
+      * `irc_conn/handler.ex`: task busy-waiting on the incoming commands
+        from the reader, answers to the simple ones, and dispatches more complex
+        commands
       * `irc_conn/reader.ex`: task busy-waiting on the incoming lines,
-        and dispatches them
+        and sends them to the handler
 
 ### Outside supervision tree
 

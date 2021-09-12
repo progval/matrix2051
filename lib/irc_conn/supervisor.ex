@@ -16,8 +16,9 @@ defmodule Matrix2051.IrcConn.Supervisor do
     {sock} = args
 
     children = [
-      {Matrix2051.IrcConn.State, {self()}},
+      {Matrix2051.IrcConn.State, {__MODULE__, self()}},
       {Matrix2051.IrcConn.Writer, {self(), sock}},
+      {Matrix2051.IrcConn.Handler, {__MODULE__, self()}},
       {Matrix2051.IrcConn.Reader, {self(), sock}}
     ]
 
@@ -30,15 +31,21 @@ defmodule Matrix2051.IrcConn.Supervisor do
     pid
   end
 
-  @doc "Returns the pid of the Matrix2051.IrcConn.Reader child."
-  def reader(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Reader, 0)
-    pid
-  end
-
   @doc "Returns the pid of the Matrix2051.IrcConn.Writer child."
   def writer(sup) do
     {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Writer, 0)
+    pid
+  end
+
+  @doc "Returns the pid of the Matrix2051.IrcConn.Handler child."
+  def handler(sup) do
+    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Handler, 0)
+    pid
+  end
+
+  @doc "Returns the pid of the Matrix2051.IrcConn.Reader child."
+  def reader(sup) do
+    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Reader, 0)
     pid
   end
 end

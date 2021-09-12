@@ -1,9 +1,11 @@
 defmodule Matrix2051.IrcConn.Reader do
   @moduledoc """
-    Reads from a client, and dispatches lines.
+    Reads from a client, and sends commands to the handler.
   """
 
   use Task, restart: :permanent
+
+  require Logger
 
   def start_link(args) do
     Task.start_link(__MODULE__, :serve, [args])
@@ -15,10 +17,15 @@ defmodule Matrix2051.IrcConn.Reader do
   end
 
   defp loop_serve(supervisor, sock) do
-    {:ok, line} = :gen_tcp.recv(sock, 0)
-    {:ok, command} = Matrix2051.Irc.Command.parse(line)
-    writer = Matrix2051.IrcConn.Supervisor.writer(supervisor)
-    Matrix2051.IrcConn.Writer.write_line(writer, Matrix2051.Irc.Command.format(command))
-    loop_serve(supervisor, sock)
+    case :gen_tcp.recv(sock, 0) do
+      {:ok, line} ->
+        {:ok, command} = Matrix2051.Irc.Command.parse(line)
+        handler = Matrix2051.IrcConn.Supervisor.handler(supervisor)
+        send(handler, command)
+        loop_serve(supervisor, sock)
+
+      {:error, :closed} ->
+        Supervisor.stop(supervisor)
+    end
   end
 end

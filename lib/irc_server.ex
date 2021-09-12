@@ -45,8 +45,7 @@ defmodule Matrix2051.IrcServer do
         {Matrix2051.IrcConn.Supervisor, {sock}}
       )
 
-    :ok =
-      :gen_tcp.controlling_process(sock, conn_supervisor)
+    :ok = :gen_tcp.controlling_process(sock, conn_supervisor)
 
     loop_accept(server_sock)
   end
