@@ -9,6 +9,8 @@ defmodule Matrix2051 do
   """
   @impl true
   def start(_type, args) do
+    HTTPoison.start()
+
     children = [
       {Matrix2051.Supervisor, args}
     ]
