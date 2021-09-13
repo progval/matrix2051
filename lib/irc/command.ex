@@ -1,6 +1,6 @@
 defmodule Matrix2051.Irc.Command do
   @enforce_keys [:command, :params]
-  defstruct [{:tags, %{}}, :origin, :command, :params]
+  defstruct [{:tags, %{}}, :source, :command, :params]
 
   @doc ~S"""
     Parses an IRC line into the `Matrix2051.Irc.Command` structure.
@@ -26,7 +26,7 @@ defmodule Matrix2051.Irc.Command do
         {:ok,
          %Matrix2051.Irc.Command{
            tags: %{"msgid" => "foo"},
-           origin: "nick!user@host",
+           source: "nick!user@host",
            command: "PRIVMSG",
            params: ["#chan", "hello"]
          }}
@@ -52,11 +52,11 @@ defmodule Matrix2051.Irc.Command do
       end
 
     # aka "prefix" or "source"
-    {origin, tokens} =
+    {source, tokens} =
       if String.starts_with?(hd(tokens), ":") do
-        [origin | rest] = tokens
-        {_, origin} = String.split_at(origin, 1)
-        {origin, rest}
+        [source | rest] = tokens
+        {_, source} = String.split_at(source, 1)
+        {source, rest}
       else
         {nil, tokens}
       end
@@ -65,7 +65,7 @@ defmodule Matrix2051.Irc.Command do
 
     parsed_line = %__MODULE__{
       tags: tags,
-      origin: origin,
+      source: source,
       command: String.upcase(command),
       params: params
     }
@@ -105,7 +105,7 @@ defmodule Matrix2051.Irc.Command do
 
         iex> Matrix2051.Irc.Command.format(%Matrix2051.Irc.Command{
         ...>   tags: %{"msgid" => "foo"},
-        ...>   origin: "nick!user@host",
+        ...>   source: "nick!user@host",
         ...>   command: "PRIVMSG",
         ...>   params: ["#chan", "hello"]
         ...> })
@@ -122,10 +122,10 @@ defmodule Matrix2051.Irc.Command do
     tokens = [command.command | Enum.reverse(reversed_params)]
 
     tokens =
-      case command.origin do
+      case command.source do
         nil -> tokens
         "" -> tokens
-        _ -> [":" <> command.origin | tokens]
+        _ -> [":" <> command.source | tokens]
       end
 
     tokens =

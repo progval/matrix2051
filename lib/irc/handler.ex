@@ -168,7 +168,7 @@ defmodule Matrix2051.IrcConn.Handler do
     new_nick = Matrix2051.Config.matrix_id()
 
     if current_nick != new_nick do
-      send.(%Matrix2051.Irc.Command{origin: current_nick, command: "NICK", params: [new_nick]})
+      send.(%Matrix2051.Irc.Command{source: current_nick, command: "NICK", params: [new_nick]})
     end
   end
 

@@ -7,7 +7,7 @@ defmodule Matrix2051.Irc.CommandTest do
              {:ok,
               %Matrix2051.Irc.Command{
                 tags: %{},
-                origin: nil,
+                source: nil,
                 command: "PRIVMSG",
                 params: ["#chan", "hello"]
               }}
@@ -20,7 +20,7 @@ defmodule Matrix2051.Irc.CommandTest do
              {:ok,
               %Matrix2051.Irc.Command{
                 tags: %{"msgid" => "foo"},
-                origin: "nick!user@host",
+                source: "nick!user@host",
                 command: "PRIVMSG",
                 params: ["#chan", "hello"]
               }}
