@@ -2,7 +2,7 @@ defmodule Matrix2051.IrcConn.State do
   @moduledoc """
     Stores the state of an open IRC connection.
   """
-  defstruct [:sup_mod, :sup_pid, :registered, :gecos, :caps]
+  defstruct [:sup_mod, :sup_pid, :registered, :nick, :gecos, :caps]
 
   use GenServer
 
@@ -18,6 +18,7 @@ defmodule Matrix2051.IrcConn.State do
        sup_mod: sup_mod,
        sup_pid: sup_pid,
        registered: false,
+       nick: nil,
        gecos: nil,
        caps: []
      }}
@@ -39,9 +40,16 @@ defmodule Matrix2051.IrcConn.State do
     GenServer.call(pid, {:dump_state})
   end
 
-  def nick(_pid) do
-    # No other nick is allowed.
-    Matrix2051.Config.matrix_id()
+  @doc """
+    Return {local_name, hostname}. Must be joined with ":" to get the actual nick.
+  """
+  def nick(pid) do
+    GenServer.call(pid, {:get, :nick})
+  end
+
+  def set_nick(pid, nick) do
+    {_local_name, _hostname} = nick
+    GenServer.call(pid, {:set, :nick, nick})
   end
 
   def registered(pid) do

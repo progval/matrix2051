@@ -8,8 +8,8 @@ defmodule Matrix2051.Config do
     Agent.start_link(fn -> args end, name: __MODULE__)
   end
 
-  def matrix_id() do
-    Agent.get(__MODULE__, & &1[:matrix_id])
+  def httpoison() do
+    Agent.get(__MODULE__, &Keyword.get(&1, :httpoison, HTTPoison))
   end
 
   def port() do

@@ -60,7 +60,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   doctest Matrix2051.IrcConn.Handler
 
   setup do
-    start_supervised!({Matrix2051.Config, [matrix_id: "localname:homeserver.example.org"]})
+    start_supervised!({Matrix2051.Config, []})
     supervisor = start_supervised!({MockIrcConnSupervisor, {self()}})
 
     %{
@@ -99,7 +99,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   end
 
   test "non-IRCv3 registration", %{state: state, handler: handler} do
-    send(handler, cmd("NICK foo"))
+    send(handler, cmd("NICK foo:example.org"))
 
     send(handler, cmd("PING sync1"))
 
@@ -110,16 +110,13 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("USER ident * * :My GECOS"))
     assert_welcome()
 
-    receive do
-      msg -> assert msg == {:line, ":foo NICK :localname:homeserver.example.org\r\n"}
-    end
-
     send(handler, cmd("PING sync2"))
 
     receive do
       msg -> assert msg == {:line, "PONG :sync2\r\n"}
     end
 
+    assert Matrix2051.IrcConn.State.nick(state) == {"foo", "example.org"}
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
   end
 
@@ -136,7 +133,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
       msg -> assert msg == {:line, "PONG :sync1\r\n"}
     end
 
-    send(handler, cmd("NICK foo"))
+    send(handler, cmd("NICK foo:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))
 
     send(handler, cmd("PING sync2"))
@@ -148,10 +145,56 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP END"))
     assert_welcome()
 
+    assert Matrix2051.IrcConn.State.nick(state) == {"foo", "example.org"}
+    assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
+  end
+
+  test "nick validation", %{state: state, handler: handler} do
+    send(handler, cmd("NICK foo"))
+
     receive do
-      msg -> assert msg == {:line, ":foo NICK :localname:homeserver.example.org\r\n"}
+      msg ->
+        assert msg ==
+                 {:line,
+                  "432 * * :Your nickname must contain a colon (':'), to separate the username and hostname. For example: foo:matrix.org\r\n"}
     end
 
+    send(handler, cmd("NICK foo:bar:baz"))
+
+    receive do
+      msg ->
+        assert msg == {:line, "432 * * :Your nickname must not contain more than one colon.\r\n"}
+    end
+
+    send(handler, cmd("NICK :foo bar:baz"))
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line,
+                  "432 * * :Your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"}
+    end
+
+    send(handler, cmd("NICK :café:baz"))
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line,
+                  "432 * * :Your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"}
+    end
+
+    send(handler, cmd("NICK foo:bar"))
+    send(handler, cmd("USER ident * * :My GECOS"))
+    assert_welcome()
+
+    send(handler, cmd("PING sync2"))
+
+    receive do
+      msg -> assert msg == {:line, "PONG :sync2\r\n"}
+    end
+
+    assert Matrix2051.IrcConn.State.nick(state) == {"foo", "bar"}
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
   end
 end

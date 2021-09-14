@@ -49,9 +49,10 @@ defmodule Matrix2051.IrcConn.Handler do
         if nick != nil && gecos != nil && !waiting_cap_end do
           # Registration finished. Send welcome messages and return to the main loop
           state = sup_mod.state(sup_pid)
+          Matrix2051.IrcConn.State.set_nick(state, nick)
           Matrix2051.IrcConn.State.set_gecos(state, gecos)
           Matrix2051.IrcConn.State.set_registered(state)
-          send_welcome(sup_mod, sup_pid, nick)
+          send_welcome(sup_mod, sup_pid)
         else
           loop_registration(sup_mod, sup_pid, nick, gecos, waiting_cap_end)
         end
@@ -75,9 +76,41 @@ defmodule Matrix2051.IrcConn.Handler do
 
     case {command.command, command.params} do
       {"NICK", [nick | _]} ->
-        # We have to somehow accept it (or force users to configure the correct one
-        # in their client right away); so we just forcefully change the client's nick ASAP
-        {:nick, nick}
+        case String.split(nick, ":") do
+          [local_name, hostname] ->
+            if Regex.match?(~r|^[0-9a-z.=_/-]+$|, local_name) do
+              if Regex.match?(~r/.*\s.*/u, hostname) do
+                # ERR_ERRONEUSNICKNAME
+                send_numeric.("432", ["*", "\"" <> hostname <> "\" is not a valid hostname"])
+                nil
+              else
+                {:nick, {local_name, hostname}}
+              end
+            else
+              # ERR_ERRONEUSNICKNAME
+              send_numeric.("432", [
+                "*",
+                "Your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/"
+              ])
+
+              nil
+            end
+
+          [nick] ->
+            # ERR_ERRONEUSNICKNAME
+            send_numeric.("432", [
+              "*",
+              "Your nickname must contain a colon (':'), to separate the username and hostname. For example: " <>
+                nick <> ":matrix.org"
+            ])
+
+            nil
+
+          _ ->
+            # ERR_ERRONEUSNICKNAME
+            send_numeric.("432", ["*", "Your nickname must not contain more than one colon."])
+            nil
+        end
 
       {"NICK", _} ->
         send_needmoreparams.()
@@ -146,7 +179,7 @@ defmodule Matrix2051.IrcConn.Handler do
   end
 
   # Sends the burst of post-registration messages
-  defp send_welcome(sup_mod, sup_pid, current_nick) do
+  defp send_welcome(sup_mod, sup_pid) do
     writer = sup_mod.writer(sup_pid)
     send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
 
@@ -164,12 +197,6 @@ defmodule Matrix2051.IrcConn.Handler do
     send_numeric.("372", ["*", "Welcome to Matrix2051, a Matrix bouncer."])
     # RPL_ENDOFMOTD
     send_numeric.("376", ["*", "End of /MOTD command."])
-
-    new_nick = Matrix2051.Config.matrix_id()
-
-    if current_nick != new_nick do
-      send.(%Matrix2051.Irc.Command{source: current_nick, command: "NICK", params: [new_nick]})
-    end
   end
 
   # Handles a command (after registration is finished)

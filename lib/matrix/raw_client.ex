@@ -1,4 +1,4 @@
-defmodule RawMatrixClient do
+defmodule Matrix2051.Matrix.RawClient do
   @moduledoc """
     Sends queries to a Matrix homeserver.
   """
@@ -6,7 +6,9 @@ defmodule RawMatrixClient do
 
   @callback
   def get(client, path) do
-    IO.inspect(client)
-    IO.inspect(path)
+    case client.httpoison.get!(client.base_url) do
+      %HTTPoison.Response{status_code: 200, body: body} ->
+        {:ok, Jason.decode!(body)}
+    end
   end
 end
