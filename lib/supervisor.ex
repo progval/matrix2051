@@ -14,7 +14,7 @@ defmodule Matrix2051.Supervisor do
   def init(args) do
     children = [
       {Matrix2051.Config, args},
-      Matrix2051.MatrixClientPool,
+      Matrix2051.ClientPool,
       Matrix2051.IrcServer
     ]
 
