@@ -18,9 +18,9 @@ defmodule Matrix2051.IrcConn.Supervisor do
     children = [
       {Matrix2051.IrcConn.State, {__MODULE__, self()}},
       {Matrix2051.IrcConn.Writer, {self(), sock}},
-      {Matrix2051.IrcConn.Handler, {__MODULE__, self()}},
       {Matrix2051.MatrixClient.State, {__MODULE__, self()}},
-      {Matrix2051.MatrixClient.Client, {__MODULE__, self()}},
+      {Matrix2051.MatrixClient.Client, {__MODULE__, self(), []}},
+      {Matrix2051.IrcConn.Handler, {__MODULE__, self()}},
       {Matrix2051.IrcConn.Reader, {self(), sock}}
     ]
 
