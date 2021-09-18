@@ -72,9 +72,9 @@ defmodule Matrix2051.IrcConn.Handler do
 
             _ ->
               # Nick does not match the matrix user id, forcefully change it.
-              send.(%Matrix2051.Irc.Command{source: nick, command: "NICK", params: [user_id]})
-              Matrix2051.IrcConn.State.set_nick(state, user_id)
               send_welcome(sup_mod, sup_pid)
+              Matrix2051.IrcConn.State.set_nick(state, user_id)
+              send.(%Matrix2051.Irc.Command{source: nick, command: "NICK", params: [user_id]})
           end
         else
           loop_registration(sup_mod, sup_pid, nick, gecos, user_id, waiting_cap_end)
@@ -162,6 +162,7 @@ defmodule Matrix2051.IrcConn.Handler do
         # this catches both invalid mechs and actual PLAIN message.
         # FIXME: add some state to tell the two apart.
         matrix_client = sup_mod.matrix_client(sup_pid)
+
         case Matrix2051.MatrixClient.Client.user_id(matrix_client) do
           nil ->
             case Base.decode64(param) do

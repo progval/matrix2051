@@ -261,6 +261,55 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
   end
 
+  test "Registration with mismatched nick", %{state: state, handler: handler} do
+    send(handler, cmd("CAP LS 302"))
+
+    receive do
+      msg -> assert msg == {:line, "CAP * LS :sasl=PLAIN\r\n"}
+    end
+
+    send(handler, cmd("CAP REQ sasl"))
+
+    receive do
+      msg -> assert msg == {:line, "CAP * ACK :sasl\r\n"}
+    end
+
+    send(handler, cmd("NICK initial_nick"))
+    send(handler, cmd("USER ident * * :My GECOS"))
+
+    send(handler, cmd("AUTHENTICATE PLAIN"))
+
+    receive do
+      msg -> assert msg == {:line, "AUTHENTICATE :+\r\n"}
+    end
+
+    # foo:example.org\x00foo:example.org\x00correct password
+    send(
+      handler,
+      cmd("AUTHENTICATE Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk")
+    )
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line, "900 * * foo:example.org :You are now logged in as foo:example.org\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:line, "903 * :Authentication successful\r\n"}
+    end
+
+    send(handler, cmd("CAP END"))
+    assert_welcome()
+
+    receive do
+      msg -> assert msg == {:line, ":initial_nick NICK :foo:example.org\r\n"}
+    end
+
+    assert Matrix2051.IrcConn.State.nick(state) == "foo:example.org"
+    assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
+  end
+
   test "user_id validation", %{state: state, handler: handler} do
     send(handler, cmd("CAP LS"))
 
