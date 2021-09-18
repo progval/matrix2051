@@ -1,4 +1,4 @@
-defmodule Matrix2051.Matrix.Client do
+defmodule Matrix2051.MatrixClient.Client do
   @moduledoc """
     Manages connections to a Matrix homeserver.
   """

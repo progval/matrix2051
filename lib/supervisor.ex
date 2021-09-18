@@ -1,7 +1,7 @@
 defmodule Matrix2051.Supervisor do
   @moduledoc """
     Main supervisor of Matrix2051. Starts the Matrix2051.Config agent,
-    and the Matrix2051.MatrixClient and Matrix2051.IrcServer trees.
+    and the Matrix2051.IrcServer tree.
   """
 
   use Supervisor
@@ -14,7 +14,6 @@ defmodule Matrix2051.Supervisor do
   def init(args) do
     children = [
       {Matrix2051.Config, args},
-      Matrix2051.ClientPool,
       Matrix2051.IrcServer
     ]
 

@@ -1,6 +1,6 @@
-defmodule Matrix2051.Matrix.ClientTest do
+defmodule Matrix2051.MatrixClient.ClientTest do
   use ExUnit.Case
-  doctest Matrix2051.Matrix.Client
+  doctest Matrix2051.MatrixClient.Client
 
   import Mox
   setup :set_mox_from_context
@@ -28,7 +28,7 @@ defmodule Matrix2051.Matrix.ClientTest do
 
     client =
       start_supervised!(
-        {Matrix2051.Matrix.Client,
+        {Matrix2051.MatrixClient.Client,
          [httpoison: MockHTTPoison, local_name: "user", hostname: "matrix.example.org"]}
       )
 
@@ -57,7 +57,7 @@ defmodule Matrix2051.Matrix.ClientTest do
 
     client =
       start_supervised!(
-        {Matrix2051.Matrix.Client,
+        {Matrix2051.MatrixClient.Client,
          [httpoison: MockHTTPoison, local_name: "user", hostname: "matrix.example.org"]}
       )
 

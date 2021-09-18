@@ -10,8 +10,6 @@ connects to Matrix homeservers instead of IRC servers.
 * `matrix2051.exs` starts Matrix2051, which starts Matrix2051.Supervisor, which
   supervises:
   * `config.ex`: global config agent
-  * `client_supervisor.ex`: supervises Matrix clients
-    * `matrix/client.ex`: handles one connection to a Matrix homeserver, as a single user
   * `irc_server.ex`: handles connections from IRC clients.
     * `irc_conn/supervisor.ex`: spawned for each client connection
       * `irc_conn/state.ex`: stores the state of the connection
@@ -22,6 +20,9 @@ connects to Matrix homeservers instead of IRC servers.
         commands
       * `irc_conn/reader.ex`: task busy-waiting on the incoming lines,
         and sends them to the handler
+      * `matrix_client/client_supervisor.ex`
+        * `matrix_client/state.ex`: keeps the state of the connection to a Matrix homeserver
+        * `matrix_client/client.ex`: handles one connection to a Matrix homeserver, as a single user
 
 ### Outside supervision tree
 
