@@ -13,12 +13,13 @@ defmodule Matrix2051.IrcConn.Handler do
   @doc """
     Main loop.
 
-    Starts by calling loop_serve_registration, which deals with the registration
+    Starts by calling loop_connreg, which deals with the connection registration
     (https://modern.ircdocs.horse/#connection-registration) and returns when
-    registration is done
+    it is done.
+    Then loops forever.
   """
   def loop(sup_mod, sup_pid) do
-    loop_registration(sup_mod, sup_pid)
+    loop_connreg(sup_mod, sup_pid)
 
     receive do
       command ->
@@ -28,7 +29,7 @@ defmodule Matrix2051.IrcConn.Handler do
     loop(sup_mod, sup_pid)
   end
 
-  defp loop_registration(
+  defp loop_connreg(
          sup_mod,
          sup_pid,
          nick \\ nil,
@@ -42,7 +43,7 @@ defmodule Matrix2051.IrcConn.Handler do
     receive do
       command ->
         {nick, gecos, user_id, waiting_cap_end} =
-          case handle_registration(sup_mod, sup_pid, command) do
+          case handle_connreg(sup_mod, sup_pid, command) do
             nil -> {nick, gecos, user_id, waiting_cap_end}
             {:nick, nick} -> {nick, gecos, user_id, waiting_cap_end}
             {:user, gecos} -> {nick, gecos, user_id, waiting_cap_end}
@@ -58,8 +59,6 @@ defmodule Matrix2051.IrcConn.Handler do
           Matrix2051.IrcConn.State.set_nick(state, nick)
           Matrix2051.IrcConn.State.set_gecos(state, gecos)
           Matrix2051.IrcConn.State.set_registered(state)
-
-          matrix_client = sup_mod.matrix_client(sup_pid)
 
           case user_id do
             # all good
@@ -77,14 +76,15 @@ defmodule Matrix2051.IrcConn.Handler do
               send.(%Matrix2051.Irc.Command{source: nick, command: "NICK", params: [user_id]})
           end
         else
-          loop_registration(sup_mod, sup_pid, nick, gecos, user_id, waiting_cap_end)
+          loop_connreg(sup_mod, sup_pid, nick, gecos, user_id, waiting_cap_end)
         end
     end
   end
 
-  # Handles a registration command, ie. only NICK/USER/CAP.
-  # Returns nil, {:nick, new_nick}, {:user, new_gecos}, :got_cap_ls, or :got_cap_end.
-  defp handle_registration(sup_mod, sup_pid, command) do
+  # Handles a connection registration command, ie. only NICK/USER/CAP/AUTHENTICATE.
+  # Returns nil, {:nick, new_nick}, {:user, new_gecos}, {:authenticate, user_id},
+  # :got_cap_ls, or :got_cap_end.
+  defp handle_connreg(sup_mod, sup_pid, command) do
     writer = sup_mod.writer(sup_pid)
 
     send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
@@ -272,7 +272,7 @@ defmodule Matrix2051.IrcConn.Handler do
     send_numeric.("376", ["*", "End of /MOTD command."])
   end
 
-  # Handles a command (after registration is finished)
+  # Handles a command (after connection registration is finished)
   defp handle(sup_mod, sup_pid, command) do
     state = sup_mod.state(sup_pid)
     writer = sup_mod.writer(sup_pid)

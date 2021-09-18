@@ -284,7 +284,8 @@ defmodule Matrix2051.MatrixClient.ClientTest do
         {Matrix2051.MatrixClient.Client, {irc_mod, irc_pid, [httpoison: MockHTTPoison]}}
       )
 
-    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) == {:error, :denied, "Invalid password"}
+    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) ==
+             {:error, :denied, "Invalid password"}
 
     assert GenServer.call(client, {:dump_state}) ==
              {:initial_state,

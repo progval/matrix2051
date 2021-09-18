@@ -136,7 +136,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     end
   end
 
-  test "non-IRCv3 registration with no authenticate", %{handler: handler} do
+  test "non-IRCv3 connection registration with no authenticate", %{handler: handler} do
     send(handler, cmd("NICK foo:example.org"))
 
     send(handler, cmd("PING sync1"))
@@ -156,7 +156,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     end
   end
 
-  test "IRCv3 registration with no SASL", %{handler: handler} do
+  test "IRCv3 connection registration with no SASL", %{handler: handler} do
     send(handler, cmd("CAP LS"))
 
     receive do
@@ -183,7 +183,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     end
   end
 
-  test "IRCv3 registration with no authenticate", %{handler: handler} do
+  test "IRCv3 connection registration with no authenticate", %{handler: handler} do
     send(handler, cmd("CAP LS"))
 
     receive do
