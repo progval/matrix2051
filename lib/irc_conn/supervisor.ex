@@ -39,6 +39,14 @@ defmodule Matrix2051.IrcConn.Supervisor do
     pid
   end
 
+  @doc "Returns the pid of the Matrix2051.MatrixClient.Client child."
+  def matrix_client(sup) do
+    {_, pid, _, _} =
+      List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.Client, 0)
+
+    pid
+  end
+
   @doc "Returns the pid of the Matrix2051.IrcConn.Handler child."
   def handler(sup) do
     {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Handler, 0)

@@ -178,7 +178,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       )
 
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) ==
-             {:error, :no_password_flow}
+             {:error, :no_password_flow, "No password flow"}
 
     assert GenServer.call(client, {:dump_state}) ==
              {:initial_state,

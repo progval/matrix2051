@@ -51,7 +51,7 @@ defmodule Matrix2051.MatrixClient.Client do
 
         case flow do
           nil ->
-            {:reply, {:error, :no_password_flow}, state}
+            {:reply, {:error, :no_password_flow, "No password flow"}, state}
 
           _ ->
             raw_client = %Matrix2051.Matrix.RawClient{base_url: base_url, httpoison: httpoison}
@@ -76,5 +76,12 @@ defmodule Matrix2051.MatrixClient.Client do
 
   def connect(pid, local_name, hostname, password) do
     GenServer.call(pid, {:connect, local_name, hostname, password})
+  end
+
+  def user_id(pid) do
+    case GenServer.call(pid, {:dump_state}) do
+      {:connect, state} -> state[:local_name] <> ":" <> state[:hostname]
+      {initial_state, _} -> nil
+    end
   end
 end

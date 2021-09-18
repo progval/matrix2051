@@ -33,28 +33,51 @@ defmodule Matrix2051.IrcConn.Handler do
          sup_pid,
          nick \\ nil,
          gecos \\ nil,
+         user_id \\ nil,
          waiting_cap_end \\ false
        ) do
+    writer = sup_mod.writer(sup_pid)
+    send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
+
     receive do
       command ->
-        {nick, gecos, waiting_cap_end} =
+        {nick, gecos, user_id, waiting_cap_end} =
           case handle_registration(sup_mod, sup_pid, command) do
-            nil -> {nick, gecos, waiting_cap_end}
-            {:nick, nick} -> {nick, gecos, waiting_cap_end}
-            {:user, gecos} -> {nick, gecos, waiting_cap_end}
-            :got_cap_ls -> {nick, gecos, true}
-            :got_cap_end -> {nick, gecos, false}
+            nil -> {nick, gecos, user_id, waiting_cap_end}
+            {:nick, nick} -> {nick, gecos, user_id, waiting_cap_end}
+            {:user, gecos} -> {nick, gecos, user_id, waiting_cap_end}
+            {:authenticate, user_id} -> {nick, gecos, user_id, waiting_cap_end}
+            :got_cap_ls -> {nick, gecos, user_id, true}
+            :got_cap_end -> {nick, gecos, user_id, false}
           end
 
         if nick != nil && gecos != nil && !waiting_cap_end do
           # Registration finished. Send welcome messages and return to the main loop
           state = sup_mod.state(sup_pid)
+
           Matrix2051.IrcConn.State.set_nick(state, nick)
           Matrix2051.IrcConn.State.set_gecos(state, gecos)
           Matrix2051.IrcConn.State.set_registered(state)
-          send_welcome(sup_mod, sup_pid)
+
+          matrix_client = sup_mod.matrix_client(sup_pid)
+
+          case user_id do
+            # all good
+            ^nick ->
+              send_welcome(sup_mod, sup_pid)
+
+            nil ->
+              send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["You must authenticate."]})
+              close_connection(sup_mod, sup_pid)
+
+            _ ->
+              # Nick does not match the matrix user id, forcefully change it.
+              send.(%Matrix2051.Irc.Command{source: nick, command: "NICK", params: [user_id]})
+              Matrix2051.IrcConn.State.set_nick(state, user_id)
+              send_welcome(sup_mod, sup_pid)
+          end
         else
-          loop_registration(sup_mod, sup_pid, nick, gecos, waiting_cap_end)
+          loop_registration(sup_mod, sup_pid, nick, gecos, user_id, waiting_cap_end)
         end
     end
   end
@@ -76,41 +99,7 @@ defmodule Matrix2051.IrcConn.Handler do
 
     case {command.command, command.params} do
       {"NICK", [nick | _]} ->
-        case String.split(nick, ":") do
-          [local_name, hostname] ->
-            if Regex.match?(~r|^[0-9a-z.=_/-]+$|, local_name) do
-              if Regex.match?(~r/.*\s.*/u, hostname) do
-                # ERR_ERRONEUSNICKNAME
-                send_numeric.("432", ["*", "\"" <> hostname <> "\" is not a valid hostname"])
-                nil
-              else
-                {:nick, {local_name, hostname}}
-              end
-            else
-              # ERR_ERRONEUSNICKNAME
-              send_numeric.("432", [
-                "*",
-                "Your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/"
-              ])
-
-              nil
-            end
-
-          [nick] ->
-            # ERR_ERRONEUSNICKNAME
-            send_numeric.("432", [
-              "*",
-              "Your nickname must contain a colon (':'), to separate the username and hostname. For example: " <>
-                nick <> ":matrix.org"
-            ])
-
-            nil
-
-          _ ->
-            # ERR_ERRONEUSNICKNAME
-            send_numeric.("432", ["*", "Your nickname must not contain more than one colon."])
-            nil
-        end
+        {:nick, nick}
 
       {"NICK", _} ->
         send_needmoreparams.()
@@ -124,15 +113,20 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {"CAP", ["LS", "302"]} ->
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LS", ""]})
+        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LS", "sasl=PLAIN"]})
         :got_cap_ls
 
       {"CAP", ["LS" | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LS", ""]})
+        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LS", "sasl"]})
         :got_cap_ls
 
       {"CAP", ["LIST" | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LIST", ""]})
+        # TODO: return sasl when relevant
+        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LIST"]})
+        nil
+
+      {"CAP", ["REQ", "sasl" | _]} ->
+        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "ACK", "sasl"]})
         nil
 
       {"CAP", ["REQ", caps | _]} ->
@@ -159,6 +153,73 @@ defmodule Matrix2051.IrcConn.Handler do
         })
 
         nil
+
+      {"AUTHENTICATE", ["PLAIN" | _]} ->
+        send.(%Matrix2051.Irc.Command{command: "AUTHENTICATE", params: ["+"]})
+        nil
+
+      {"AUTHENTICATE", [param | _]} ->
+        # this catches both invalid mechs and actual PLAIN message.
+        # FIXME: add some state to tell the two apart.
+        matrix_client = sup_mod.matrix_client(sup_pid)
+        case Matrix2051.MatrixClient.Client.user_id(matrix_client) do
+          nil ->
+            case Base.decode64(param) do
+              {:ok, sasl_message} ->
+                case String.split(sasl_message, "\x00") do
+                  [_authzid, authcid, passwd] ->
+                    case Matrix2051.Matrix.Misc.parse_userid(authcid) do
+                      {:ok, {local_name, hostname}} ->
+                        user_id = authcid
+
+                        case Matrix2051.MatrixClient.Client.connect(
+                               matrix_client,
+                               local_name,
+                               hostname,
+                               passwd
+                             ) do
+                          {:ok} ->
+                            # RPL_LOGGEDIN
+                            send_numeric.("900", [
+                              "*",
+                              user_id,
+                              "You are now logged in as " <> user_id
+                            ])
+
+                            # RPL_SASLSUCCESS
+                            send_numeric.("903", ["Authentication successful"])
+                            {:authenticate, user_id}
+
+                          {:error, _, error_message} ->
+                            # ERR_SASLFAIL
+                            send_numeric.("904", [error_message])
+                            nil
+                        end
+
+                      {:error, error_message} ->
+                        # ERR_SASLFAIL
+                        send_numeric.("904", ["Invalid account/user id: " <> error_message])
+                        nil
+                    end
+
+                  _ ->
+                    # ERR_SASLFAIL
+                    send_numeric.("904", [
+                      "Invalid format. If you are a developer, see https://datatracker.ietf.org/doc/html/rfc4616#section-2"
+                    ])
+
+                    nil
+                end
+
+              {:error} ->
+                # RPL_SASLMECHS
+                send_numeric.("907", ["*", "PLAIN", "is the only available SASL mechanism"])
+            end
+
+          user_id ->
+            send_numeric.("907", ["You are already authenticated, as " <> user_id])
+            nil
+        end
 
       {"PING", [cookie]} ->
         send.(%Matrix2051.Irc.Command{command: "PONG", params: [cookie]})
@@ -238,7 +299,7 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {"CAP", ["LIST" | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LIST", ""]})
+        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LIST", "sasl"]})
 
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD

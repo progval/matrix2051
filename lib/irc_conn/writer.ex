@@ -19,7 +19,7 @@ defmodule Matrix2051.IrcConn.Writer do
   end
 
   def write_line(writer, line) do
-    GenServer.call(writer, {:write_line, line})
+    GenServer.call(writer, {:line, line})
   end
 
   def close(writer) do
@@ -29,7 +29,7 @@ defmodule Matrix2051.IrcConn.Writer do
   @impl true
   def handle_call(arg, _from, state) do
     case arg do
-      {:write_line, line} ->
+      {:line, line} ->
         {_supervisor, sock} = state
         :gen_tcp.send(sock, line)
 
@@ -39,11 +39,5 @@ defmodule Matrix2051.IrcConn.Writer do
     end
 
     {:reply, :ok, state}
-  end
-
-  @impl true
-  def handle_cast(arg, state) do
-    IO.inspect("handle_cast")
-    {:no_reply, state}
   end
 end

@@ -48,7 +48,6 @@ defmodule Matrix2051.IrcConn.State do
   end
 
   def set_nick(pid, nick) do
-    {_local_name, _hostname} = nick
     GenServer.call(pid, {:set, :nick, nick})
   end
 

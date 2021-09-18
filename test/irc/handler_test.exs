@@ -12,10 +12,42 @@ defmodule MockIrcConnWriter do
 
   @impl true
   def handle_call(arg, _from, state) do
-    {:write_line, line} = arg
     {test_pid} = state
-    send(test_pid, {:line, line})
+    send(test_pid, arg)
     {:reply, :ok, state}
+  end
+end
+
+defmodule MockMatrixClient do
+  use GenServer
+
+  def start_link(args) do
+    GenServer.start_link(__MODULE__, args)
+  end
+
+  @impl true
+  def init({_sup_mod, _sup_pid}) do
+    {:ok, {:initial_state, {}}}
+  end
+
+  @impl true
+  def handle_call({:connect, local_name, hostname, password}, _from, state) do
+    case {hostname, password} do
+      {"i-hate-passwords.example.org", _} ->
+        {:reply, {:error, :no_password_flow, "No password flow"}, state}
+
+      {_, "correct password"} ->
+        state = [local_name: local_name, hostname: hostname] ++ state
+        {:reply, {:ok}, {:connected, state}}
+
+      {_, "invalid password"} ->
+        {:reply, {:error, :invalid_password, "Invalid password"}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:dump_state}, _from, state) do
+    {:reply, state, state}
   end
 end
 
@@ -31,6 +63,7 @@ defmodule MockIrcConnSupervisor do
     {parent} = args
 
     children = [
+      {MockMatrixClient, {MockIrcConnSupervisor, self()}},
       {Matrix2051.IrcConn.State, {MockIrcConnSupervisor, self()}},
       {Matrix2051.IrcConn.Handler, {MockIrcConnSupervisor, self()}},
       {MockIrcConnWriter, {parent}}
@@ -41,6 +74,11 @@ defmodule MockIrcConnSupervisor do
 
   def state(sup) do
     {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.State, 0)
+    pid
+  end
+
+  def matrix_client(sup) do
+    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), MockMatrixClient, 0)
     pid
   end
 
@@ -98,7 +136,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     end
   end
 
-  test "non-IRCv3 registration", %{state: state, handler: handler} do
+  test "non-IRCv3 registration with no authenticate", %{handler: handler} do
     send(handler, cmd("NICK foo:example.org"))
 
     send(handler, cmd("PING sync1"))
@@ -108,23 +146,21 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     end
 
     send(handler, cmd("USER ident * * :My GECOS"))
-    assert_welcome()
-
-    send(handler, cmd("PING sync2"))
 
     receive do
-      msg -> assert msg == {:line, "PONG :sync2\r\n"}
+      msg -> assert msg == {:line, "ERROR :You must authenticate.\r\n"}
     end
 
-    assert Matrix2051.IrcConn.State.nick(state) == {"foo", "example.org"}
-    assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
+    receive do
+      msg -> assert msg == {:close}
+    end
   end
 
-  test "IRCv3 registration", %{state: state, handler: handler} do
+  test "IRCv3 registration with no SASL", %{handler: handler} do
     send(handler, cmd("CAP LS"))
 
     receive do
-      msg -> assert msg == {:line, "CAP * LS :\r\n"}
+      msg -> assert msg == {:line, "CAP * LS :sasl\r\n"}
     end
 
     send(handler, cmd("PING sync1"))
@@ -136,56 +172,168 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("NICK foo:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))
 
-    send(handler, cmd("PING sync2"))
+    send(handler, cmd("CAP END"))
 
     receive do
-      msg -> assert msg == {:line, "PONG :sync2\r\n"}
+      msg -> assert msg == {:line, "ERROR :You must authenticate.\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:close}
+    end
+  end
+
+  test "IRCv3 registration with no authenticate", %{handler: handler} do
+    send(handler, cmd("CAP LS"))
+
+    receive do
+      msg -> assert msg == {:line, "CAP * LS :sasl\r\n"}
+    end
+
+    send(handler, cmd("CAP REQ sasl"))
+
+    receive do
+      msg -> assert msg == {:line, "CAP * ACK :sasl\r\n"}
+    end
+
+    send(handler, cmd("PING sync1"))
+
+    receive do
+      msg -> assert msg == {:line, "PONG :sync1\r\n"}
+    end
+
+    send(handler, cmd("NICK foo:example.org"))
+    send(handler, cmd("USER ident * * :My GECOS"))
+
+    send(handler, cmd("CAP END"))
+
+    receive do
+      msg -> assert msg == {:line, "ERROR :You must authenticate.\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:close}
+    end
+  end
+
+  test "Registration", %{state: state, handler: handler} do
+    send(handler, cmd("CAP LS 302"))
+
+    receive do
+      msg -> assert msg == {:line, "CAP * LS :sasl=PLAIN\r\n"}
+    end
+
+    send(handler, cmd("CAP REQ sasl"))
+
+    receive do
+      msg -> assert msg == {:line, "CAP * ACK :sasl\r\n"}
+    end
+
+    send(handler, cmd("NICK foo:example.org"))
+    send(handler, cmd("USER ident * * :My GECOS"))
+
+    send(handler, cmd("AUTHENTICATE PLAIN"))
+
+    receive do
+      msg -> assert msg == {:line, "AUTHENTICATE :+\r\n"}
+    end
+
+    # foo:example.org\x00foo:example.org\x00correct password
+    send(
+      handler,
+      cmd("AUTHENTICATE Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk")
+    )
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line, "900 * * foo:example.org :You are now logged in as foo:example.org\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:line, "903 * :Authentication successful\r\n"}
     end
 
     send(handler, cmd("CAP END"))
     assert_welcome()
 
-    assert Matrix2051.IrcConn.State.nick(state) == {"foo", "example.org"}
+    assert Matrix2051.IrcConn.State.nick(state) == "foo:example.org"
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
   end
 
-  test "nick validation", %{state: state, handler: handler} do
-    send(handler, cmd("NICK foo"))
+  test "user_id validation", %{state: state, handler: handler} do
+    send(handler, cmd("CAP LS"))
 
     receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "432 * * :Your nickname must contain a colon (':'), to separate the username and hostname. For example: foo:matrix.org\r\n"}
+      msg -> assert msg == {:line, "CAP * LS :sasl\r\n"}
     end
 
-    send(handler, cmd("NICK foo:bar:baz"))
+    send(handler, cmd("CAP REQ sasl"))
 
     receive do
-      msg ->
-        assert msg == {:line, "432 * * :Your nickname must not contain more than one colon.\r\n"}
-    end
-
-    send(handler, cmd("NICK :foo bar:baz"))
-
-    receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "432 * * :Your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"}
-    end
-
-    send(handler, cmd("NICK :café:baz"))
-
-    receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "432 * * :Your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"}
+      msg -> assert msg == {:line, "CAP * ACK :sasl\r\n"}
     end
 
     send(handler, cmd("NICK foo:bar"))
     send(handler, cmd("USER ident * * :My GECOS"))
+
+    try_userid = fn userid, expected_message ->
+      send(handler, cmd("AUTHENTICATE PLAIN"))
+
+      receive do
+        msg -> assert msg == {:line, "AUTHENTICATE :+\r\n"}
+      end
+
+      send(
+        handler,
+        cmd(
+          "AUTHENTICATE " <>
+            Base.encode64(userid <> "\x00" <> userid <> "\x00" <> "correct password")
+        )
+      )
+
+      receive do
+        msg ->
+          assert msg == {:line, expected_message}
+      end
+    end
+
+    try_userid.(
+      "foo",
+      "904 * :Invalid account/user id: must contain a colon (':'), to separate the username and hostname. For example: foo:matrix.org\r\n"
+    )
+
+    try_userid.(
+      "foo:bar:baz",
+      "904 * :Invalid account/user id: must not contain more than one colon.\r\n"
+    )
+
+    try_userid.(
+      "foo bar:baz",
+      "904 * :Invalid account/user id: your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"
+    )
+
+    try_userid.(
+      "café:baz",
+      "904 * :Invalid account/user id: your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"
+    )
+
+    try_userid.(
+      "café:baz",
+      "904 * :Invalid account/user id: your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"
+    )
+
+    try_userid.(
+      "foo:bar",
+      "900 * * foo:bar :You are now logged in as foo:bar\r\n"
+    )
+
+    receive do
+      msg -> assert msg == {:line, "903 * :Authentication successful\r\n"}
+    end
+
+    send(handler, cmd("CAP END"))
+
     assert_welcome()
 
     send(handler, cmd("PING sync2"))
@@ -194,7 +342,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
       msg -> assert msg == {:line, "PONG :sync2\r\n"}
     end
 
-    assert Matrix2051.IrcConn.State.nick(state) == {"foo", "bar"}
+    assert Matrix2051.IrcConn.State.nick(state) == "foo:bar"
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
   end
 end
