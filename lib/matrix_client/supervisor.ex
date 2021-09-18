@@ -15,7 +15,7 @@ defmodule Matrix2051.MatrixClient.Supervisor do
 
     children = [
       {Matrix2051.MatrixClient.State, {__MODULE__, self()}},
-      {Matrix2051.MatrixClient.Client, {__MODULE__, self()}},
+      {Matrix2051.MatrixClient.Client, {__MODULE__, self()}}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
@@ -23,13 +23,17 @@ defmodule Matrix2051.MatrixClient.Supervisor do
 
   @doc "Returns the pid of the Matrix2051.MatrixClient.State child."
   def state(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.State, 0)
+    {_, pid, _, _} =
+      List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.State, 0)
+
     pid
   end
 
   @doc "Returns the pid of the Matrix2051.MatrixClient.Client child."
   def client(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.Client, 0)
+    {_, pid, _, _} =
+      List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.Client, 0)
+
     pid
   end
 end
