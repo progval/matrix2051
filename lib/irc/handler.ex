@@ -172,6 +172,14 @@ defmodule Matrix2051.IrcConn.Handler do
         send_needmoreparams.()
         nil
 
+      {"QUIT", []} ->
+        send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["Client quit"]})
+        close_connection(sup_mod, sup_pid)
+
+      {"QUIT", [reason | _]} ->
+        send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["Quit: " <> reason]})
+        close_connection(sup_mod, sup_pid)
+
       _ ->
         send_numeric.("421", [command.command, "Unknown command (you are not registered)"])
         nil
@@ -258,8 +266,22 @@ defmodule Matrix2051.IrcConn.Handler do
         send_needmoreparams.()
         nil
 
+      {"QUIT", []} ->
+        send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["Client quit"]})
+        close_connection(sup_mod, sup_pid)
+
+      {"QUIT", [reason | _]} ->
+        send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["Quit: " <> reason]})
+        close_connection(sup_mod, sup_pid)
+
       _ ->
         send_numeric.("421", [command.command, "Unknown command"])
     end
+  end
+
+  defp close_connection(sup_mod, sup_pid) do
+    writer = sup_mod.writer(sup_pid)
+    Matrix2051.IrcConn.Writer.close(writer)
+    sup_mod.terminate()
   end
 end
