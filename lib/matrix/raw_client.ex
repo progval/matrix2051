@@ -2,11 +2,13 @@ defmodule Matrix2051.Matrix.RawClient do
   @moduledoc """
     Sends queries to a Matrix homeserver.
   """
-  defstruct [:base_url, :httpoison]
+  defstruct [:base_url, :access_token, :httpoison]
 
   @callback
-  def get(client, path) do
-    case client.httpoison.get!(client.base_url) do
+  def get(client, path, headers \\ []) do
+    headers = [Authorization: "Bearer " <> client.access_token] ++ headers
+
+    case client.httpoison.get!(client.base_url, headers) do
       %HTTPoison.Response{status_code: 200, body: body} ->
         {:ok, Jason.decode!(body)}
     end

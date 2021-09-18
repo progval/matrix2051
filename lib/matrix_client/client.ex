@@ -54,19 +54,38 @@ defmodule Matrix2051.MatrixClient.Client do
             {:reply, {:error, :no_password_flow, "No password flow"}, state}
 
           _ ->
-            raw_client = %Matrix2051.Matrix.RawClient{base_url: base_url, httpoison: httpoison}
+            body =
+              Jason.encode!(%{type: "m.login.password", user: local_name, password: password})
 
-            state =
-              {:connected,
-               [
-                 irc_mod: irc_mod,
-                 irc_pid: irc_pid,
-                 raw_client: raw_client,
-                 local_name: local_name,
-                 hostname: hostname
-               ]}
+              case httpoison.post!(base_url <> "/_matrix/client/r0/login", body) do
+                %HTTPoison.Response{status_code: 200, body: body} ->
+                  data = Jason.decode!(body)
 
-            {:reply, {:ok}, state}
+                  if data["user_id"] != ("@" <> local_name <> ":" <> hostname) do
+                    raise "Unexpected user_id: " <> data["user_id"]
+                  end
+                  access_token = data["access_token"]
+
+                  raw_client = %Matrix2051.Matrix.RawClient{
+                    base_url: base_url,
+                    access_token: access_token,
+                    httpoison: httpoison
+                  }
+
+                  state = {:connected,
+                   [
+                     irc_mod: irc_mod,
+                     irc_pid: irc_pid,
+                     raw_client: raw_client,
+                     local_name: local_name,
+                     hostname: hostname
+                   ]}
+                  {:reply, {:ok}, state}
+                %HTTPoison.Response{status_code: 403, body: body} ->
+                  data = Jason.decode!(body)
+                  {:reply, {:error, :denied, data["error"]}, state}
+              end
+
         end
 
       {:connected, {_raw_client, local_name, hostname}} ->
@@ -81,7 +100,7 @@ defmodule Matrix2051.MatrixClient.Client do
   def user_id(pid) do
     case GenServer.call(pid, {:dump_state}) do
       {:connect, state} -> state[:local_name] <> ":" <> state[:hostname]
-      {initial_state, _} -> nil
+      {:initial_state, _} -> nil
     end
   end
 end

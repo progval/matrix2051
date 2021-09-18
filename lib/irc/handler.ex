@@ -161,6 +161,9 @@ defmodule Matrix2051.IrcConn.Handler do
       {"AUTHENTICATE", [param | _]} ->
         # this catches both invalid mechs and actual PLAIN message.
         # FIXME: add some state to tell the two apart.
+
+        # TODO: support multi-line AUTHENTICATE
+
         matrix_client = sup_mod.matrix_client(sup_pid)
 
         case Matrix2051.MatrixClient.Client.user_id(matrix_client) do
