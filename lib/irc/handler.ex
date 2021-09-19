@@ -10,6 +10,13 @@ defmodule Matrix2051.IrcConn.Handler do
     Task.start_link(__MODULE__, :loop, [sup_mod, sup_pid])
   end
 
+  # set of capabilities that we will show in CAP LS and accept with ACK;
+  # along with their value (shown in CAP LS 302)
+  @capabilities %{
+    # https://ircv3.net/specs/extensions/sasl-3.1
+    "sasl" => "PLAIN",
+  }
+
   @doc """
     Main loop.
 
@@ -113,11 +120,28 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {"CAP", ["LS", "302"]} ->
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LS", "sasl=PLAIN"]})
+        caps =
+          @capabilities
+          |> Enum.sort_by(fn {k, _v} -> k end)
+          |> Enum.map(fn {k, v} ->
+            case v do
+              nil -> k
+              _ -> k <> "=" <> v
+            end
+          end)
+          |> Enum.join(" ")
+
+        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LS", caps]})
         :got_cap_ls
 
       {"CAP", ["LS" | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LS", "sasl"]})
+        caps =
+          @capabilities
+          |> Enum.sort_by(fn {k, _v} -> k end)
+          |> Enum.map(fn {k, _v} -> k end)
+          |> Enum.join(" ")
+
+        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LS", caps]})
         :got_cap_ls
 
       {"CAP", ["LIST" | _]} ->
