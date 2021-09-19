@@ -3,6 +3,59 @@
 An IRC server backed by Matrix. You can also see it as an IRC bouncer that
 connects to Matrix homeservers instead of IRC servers.
 
+Goals:
+
+* Make it easy for IRC users to join Matrix seemlessly
+* Support existing relay bots, to allows relays that behave better on IRC than
+  existing IRC/Matrix bridges
+* Bleeding-edge IRCv3 implementation
+* As little configuration as possible
+* For me personally: learning Elixir and Matrix
+
+Non-goals:
+
+* Being a hosted service (it would require spam countermeasures)
+* Connecting to multiple accounts or to other protocols (à la [Bitlbee](https://www.bitlbee.org/))
+* Implementing any features not natively supported by either IRC or Matrix (ie. no service bot that you interract with using PRIVMSG)
+
+## Roadmap
+
+* [x] password authentication (using [SASL](https://ircv3.net/specs/extensions/sasl-3.1) on the IRC side)
+* [ ] registration (using the [draft/account-registration](https://github.com/ircv3/ircv3-specifications/pull/435) spec)
+  * [ ] on homeservers with no email verification
+  * [ ] with email verification
+* [ ] retrieving the room list and joining clients to it
+* [ ] retrieving the member list and sending it to clients
+* [ ] support JOIN from clients
+* [ ] sending messages from IRC clients
+* [ ] receiving messages from Matrix
+  * [ ] basics
+  * [ ] split at 512 bytes
+* [ ] direct messages
+* [ ] rewrite mentions/highlights
+* [ ] rewrite formatting and colors
+* [ ] show JOIN/PART events from other members
+* [ ] [display names](https://github.com/ircv3/ircv3-specifications/pull/452)
+* [ ] [chat history](https://ircv3.net/specs/extensions/chathistory)
+* [ ] connection via [websockets](https://github.com/ircv3/ircv3-specifications/pull/342)
+* [ ] optional [multiline](https://ircv3.net/specs/extensions/multiline) messages
+  * [ ] Matrix -> IRC
+  * [ ] IRC -> Matrix
+* [ ] optional [reacts](https://ircv3.net/specs/client-tags/reply)
+  * [ ] Matrix -> IRC
+  * [ ] IRC -> Matrix
+* [ ] optional [replies](https://ircv3.net/specs/client-tags/reply)
+  * [ ] Matrix -> IRC
+  * [ ] IRC -> Matrix
+* [ ] use [channel renaming](https://ircv3.net/specs/extensions/channel-rename) in case of joining duplicate aliases of the same room?
+
+In the far future:
+
+* [ ] support authentication with non-password flows
+* [ ] end-to-"end" encryption (Matrix2051 would be the end, unless there is a way
+  to make IRC clients understand Olm)
+* [ ] Matrix P2P
+
 ## Module structure
 
 ### In supervision tree
