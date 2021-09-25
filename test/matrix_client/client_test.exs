@@ -295,4 +295,57 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                 [httpoison: MockHTTPoison]
               }}
   end
+
+  test "registration" do
+    MockHTTPoison
+    |> expect(:get!, fn url ->
+      assert url == "https://matrix.example.org/.well-known/matrix/client"
+      %HTTPoison.Response{status_code: 404, body: "Error 404"}
+    end)
+    |> expect(:post!, fn url, body ->
+      assert url == "https://matrix.example.org/_matrix/client/r0/register"
+
+      assert Jason.decode!(body) == %{
+               "username" => "user",
+               "password" => "p4ssw0rd",
+               "auth" => %{"type" => "m.login.dummy"}
+             }
+
+      %HTTPoison.Response{
+        status_code: 200,
+        body: """
+        {
+            "access_token": "t0ken",
+            "home_server": "matrix.example.org",
+            "user_id": "@user:matrix.example.org"
+        }
+        """
+      }
+    end)
+
+    irc_mod = nil
+    irc_pid = nil
+
+    client =
+      start_supervised!(
+        {Matrix2051.MatrixClient.Client, {irc_mod, irc_pid, [httpoison: MockHTTPoison]}}
+      )
+
+    assert GenServer.call(client, {:register, "user", "matrix.example.org", "p4ssw0rd"}) ==
+             {:ok, "user:matrix.example.org"}
+
+    assert GenServer.call(client, {:dump_state}) ==
+             {:connected,
+              [
+                irc_mod: irc_mod,
+                irc_pid: irc_pid,
+                raw_client: %Matrix2051.Matrix.RawClient{
+                  base_url: "https://matrix.example.org",
+                  access_token: "t0ken",
+                  httpoison: MockHTTPoison
+                },
+                local_name: "user",
+                hostname: "matrix.example.org"
+              ]}
+  end
 end

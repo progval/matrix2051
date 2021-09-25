@@ -15,6 +15,8 @@ defmodule Matrix2051.IrcConn.Handler do
   @capabilities %{
     # https://ircv3.net/specs/extensions/sasl-3.1
     "sasl" => "PLAIN",
+    # https://github.com/ircv3/ircv3-specifications/pull/435
+    "draft/account-registration" => "before-connect"
   }
 
   @doc """
@@ -50,7 +52,7 @@ defmodule Matrix2051.IrcConn.Handler do
     receive do
       command ->
         {nick, gecos, user_id, waiting_cap_end} =
-          case handle_connreg(sup_mod, sup_pid, command) do
+          case handle_connreg(sup_mod, sup_pid, command, nick) do
             nil -> {nick, gecos, user_id, waiting_cap_end}
             {:nick, nick} -> {nick, gecos, user_id, waiting_cap_end}
             {:user, gecos} -> {nick, gecos, user_id, waiting_cap_end}
@@ -91,7 +93,7 @@ defmodule Matrix2051.IrcConn.Handler do
   # Handles a connection registration command, ie. only NICK/USER/CAP/AUTHENTICATE.
   # Returns nil, {:nick, new_nick}, {:user, new_gecos}, {:authenticate, user_id},
   # :got_cap_ls, or :got_cap_end.
-  defp handle_connreg(sup_mod, sup_pid, command) do
+  defp handle_connreg(sup_mod, sup_pid, command, nick) do
     writer = sup_mod.writer(sup_pid)
 
     send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
@@ -249,6 +251,64 @@ defmodule Matrix2051.IrcConn.Handler do
             nil
         end
 
+      {"REGISTER", ["*", email, password | _]} ->
+        case nick do
+          nil ->
+            send.("FAIL", [
+              "REGISTER",
+              "NEED_NICK",
+              "*",
+              "You must have a nickname set before registering"
+            ])
+
+          _ ->
+            register(sup_mod, sup_pid, nick, email, password)
+        end
+
+      {"REGISTER", [account_name, email, password | _]} ->
+        case nick do
+          nil ->
+            send.(%Matrix2051.Irc.Command{
+              command: "FAIL",
+              params: [
+                "REGISTER",
+                "NEED_NICK",
+                "*",
+                "You must have a nickname set before registering"
+              ]
+            })
+
+          ^account_name ->
+            register(sup_mod, sup_pid, nick, email, password)
+
+          _ ->
+            send.(%Matrix2051.Irc.Command{
+              command: "FAIL",
+              params: [
+                "REGISTER",
+                "ACCOUNT_NAME_MUST_BE_NICK",
+                account_name,
+                "Your account name must be the same as your nick (" <>
+                  nick <> "); cannot register " <> account_name
+              ]
+            })
+        end
+
+      {"REGISTER", _} ->
+        send_needmoreparams.()
+        nil
+
+      {"VERIFY", _} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: [
+            "VERIFY",
+            "TEMPORARILY_UNAVAILABLE",
+            nick,
+            "Verification is not implemented yet."
+          ]
+        })
+
       {"PING", [cookie]} ->
         send.(%Matrix2051.Irc.Command{command: "PONG", params: [cookie]})
         nil
@@ -294,6 +354,78 @@ defmodule Matrix2051.IrcConn.Handler do
     send_numeric.("372", ["*", "Welcome to Matrix2051, a Matrix bouncer."])
     # RPL_ENDOFMOTD
     send_numeric.("376", ["*", "End of /MOTD command."])
+  end
+
+  # Handles the REGISTER command
+  defp register(sup_mod, sup_pid, user_id, _email, password) do
+    writer = sup_mod.writer(sup_pid)
+    matrix_client = sup_mod.matrix_client(sup_pid)
+
+    send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
+
+    send_numeric = fn numeric, params ->
+      send.(%Matrix2051.Irc.Command{command: numeric, params: ["*" | params]})
+    end
+
+    # This function is only called if the nick matches the user_id, and the
+    # nick was already validated.
+    {:ok, {local_name, hostname}} = Matrix2051.Matrix.Misc.parse_userid(user_id)
+
+    case Matrix2051.MatrixClient.Client.register(matrix_client, local_name, hostname, password) do
+      {:ok, user_id} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "REGISTER",
+          params: ["SUCCESS", user_id, "You are now registered as " <> user_id]
+        })
+
+        send_numeric.("900", ["*", user_id, "You are now logged in as " <> user_id])
+
+        # TODO: change nick if it does not match user_id
+
+        {:authenticate, user_id}
+
+      {:error, :invalid_username, message} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: ["REGISTER", "BAD_ACCOUNT_NAME", user_id, "Bad account name: " <> message]
+        })
+
+        nil
+
+      {:error, :user_in_use, message} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: ["REGISTER", "ACCOUNT_EXISTS", user_id, "Account already exists: " <> message]
+        })
+
+        nil
+
+      {:error, :exclusive, message} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: [
+            "REGISTER",
+            "BAD_ACCOUNT_NAME",
+            user_id,
+            "Account name is exclusive: " <> message
+          ]
+        })
+
+        nil
+
+      {:error, :unknown, message} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: [
+            "REGISTER",
+            "TEMPORARILY_UNAVAILABLE",
+            user_id,
+            "Could not register: " <> message
+          ]
+        })
+
+        nil
+    end
   end
 
   # Handles a command (after connection registration is finished)
@@ -362,6 +494,22 @@ defmodule Matrix2051.IrcConn.Handler do
       {"QUIT", [reason | _]} ->
         send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["Quit: " <> reason]})
         close_connection(sup_mod, sup_pid)
+
+      {"REGISTER", _} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: ["REGISTER", "ALREADY_AUTHENTICATED", nick, "You are already authenticated."]
+        })
+
+        nil
+
+      {"VERIFY", _} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: ["VERIFY", "ALREADY_AUTHENTICATED", nick, "You are already authenticated."]
+        })
+
+        nil
 
       _ ->
         send_numeric.("421", [command.command, "Unknown command"])

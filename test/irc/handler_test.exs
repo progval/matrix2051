@@ -46,6 +46,18 @@ defmodule MockMatrixClient do
   end
 
   @impl true
+  def handle_call({:register, local_name, hostname, password}, _from, state) do
+    case {local_name, password} do
+      {"user", "my p4ssw0rd"} ->
+        state = [local_name: local_name, hostname: hostname] ++ state
+        {:reply, {:ok, local_name <> ":" <> hostname}, {:connected, state}}
+
+      {"reserveduser", _} ->
+        {:reply, {:error, :exclusive, "This username is reserved"}, state}
+    end
+  end
+
+  @impl true
   def handle_call({:dump_state}, _from, state) do
     {:reply, state, state}
   end
@@ -160,7 +172,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS"))
 
     receive do
-      msg -> assert msg == {:line, "CAP * LS :sasl\r\n"}
+      msg -> assert msg == {:line, "CAP * LS :draft/account-registration sasl\r\n"}
     end
 
     send(handler, cmd("PING sync1"))
@@ -187,7 +199,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS"))
 
     receive do
-      msg -> assert msg == {:line, "CAP * LS :sasl\r\n"}
+      msg -> assert msg == {:line, "CAP * LS :draft/account-registration sasl\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -216,11 +228,13 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     end
   end
 
-  test "Registration", %{state: state, handler: handler} do
+  test "Connection registration", %{state: state, handler: handler} do
     send(handler, cmd("CAP LS 302"))
 
     receive do
-      msg -> assert msg == {:line, "CAP * LS :sasl=PLAIN\r\n"}
+      msg ->
+        assert msg ==
+                 {:line, "CAP * LS :draft/account-registration=before-connect sasl=PLAIN\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -265,7 +279,9 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS 302"))
 
     receive do
-      msg -> assert msg == {:line, "CAP * LS :sasl=PLAIN\r\n"}
+      msg ->
+        assert msg ==
+                 {:line, "CAP * LS :draft/account-registration=before-connect sasl=PLAIN\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -314,7 +330,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS"))
 
     receive do
-      msg -> assert msg == {:line, "CAP * LS :sasl\r\n"}
+      msg -> assert msg == {:line, "CAP * LS :draft/account-registration sasl\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -393,5 +409,44 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert Matrix2051.IrcConn.State.nick(state) == "foo:bar"
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
+  end
+
+  test "Account registration", %{state: state, handler: handler} do
+    send(handler, cmd("CAP LS 302"))
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line, "CAP * LS :draft/account-registration=before-connect sasl=PLAIN\r\n"}
+    end
+
+    send(handler, cmd("CAP REQ sasl"))
+
+    receive do
+      msg -> assert msg == {:line, "CAP * ACK :sasl\r\n"}
+    end
+
+    send(handler, cmd("NICK user:example.org"))
+    send(handler, cmd("USER ident * * :My GECOS"))
+
+    send(handler, cmd("REGISTER * * :my p4ssw0rd"))
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line,
+                  "REGISTER SUCCESS user:example.org :You are now registered as user:example.org\r\n"}
+    end
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line,
+                  "900 * * user:example.org :You are now logged in as user:example.org\r\n"}
+    end
+
+    send(handler, cmd("CAP END"))
+
+    assert_welcome()
   end
 end
