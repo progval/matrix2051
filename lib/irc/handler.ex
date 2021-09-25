@@ -14,9 +14,11 @@ defmodule Matrix2051.IrcConn.Handler do
   # along with their value (shown in CAP LS 302)
   @capabilities %{
     # https://ircv3.net/specs/extensions/sasl-3.1
-    "sasl" => "PLAIN",
+    "sasl" => {:sasl, "PLAIN"},
     # https://github.com/ircv3/ircv3-specifications/pull/435
-    "draft/account-registration" => "before-connect"
+    "draft/account-registration" => {:account_registration, "before-connect"},
+    # https://ircv3.net/specs/extensions/labeled-response
+    "labeled-response" => {:labeled_response, nil}
   }
 
   @doc """
@@ -72,7 +74,7 @@ defmodule Matrix2051.IrcConn.Handler do
           case user_id do
             # all good
             ^nick ->
-              send_welcome(sup_mod, sup_pid)
+              send_welcome(sup_mod, sup_pid, command)
 
             nil ->
               send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["You must authenticate."]})
@@ -80,7 +82,7 @@ defmodule Matrix2051.IrcConn.Handler do
 
             _ ->
               # Nick does not match the matrix user id, forcefully change it.
-              send_welcome(sup_mod, sup_pid)
+              send_welcome(sup_mod, sup_pid, command)
               Matrix2051.IrcConn.State.set_nick(state, user_id)
               send.(%Matrix2051.Irc.Command{source: nick, command: "NICK", params: [user_id]})
           end
@@ -90,13 +92,31 @@ defmodule Matrix2051.IrcConn.Handler do
     end
   end
 
+  # Returns a function that can be used to reply to the given command
+  defp make_send_function(command, sup_mod, sup_pid) do
+    writer = sup_mod.writer(sup_pid)
+    state = sup_mod.state(sup_pid)
+    capabilities = Matrix2051.IrcConn.State.capabilities(state)
+
+    fn cmd ->
+      tags = cmd.tags
+
+      tags =
+        case {Enum.member?(capabilities, :labeled_response), Map.get(command.tags, "label")} do
+          {true, label} when label != nil -> Map.put_new(tags, "label", label)
+          _ -> tags
+        end
+
+      cmd = %Matrix2051.Irc.Command{cmd | tags: tags}
+      Matrix2051.IrcConn.Writer.write_command(writer, cmd)
+    end
+  end
+
   # Handles a connection registration command, ie. only NICK/USER/CAP/AUTHENTICATE.
   # Returns nil, {:nick, new_nick}, {:user, new_gecos}, {:authenticate, user_id},
   # :got_cap_ls, or :got_cap_end.
   defp handle_connreg(sup_mod, sup_pid, command, nick) do
-    writer = sup_mod.writer(sup_pid)
-
-    send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
+    send = make_send_function(command, sup_mod, sup_pid)
 
     send_numeric = fn numeric, params ->
       send.(%Matrix2051.Irc.Command{command: numeric, params: ["*" | params]})
@@ -124,8 +144,9 @@ defmodule Matrix2051.IrcConn.Handler do
       {"CAP", ["LS", "302"]} ->
         caps =
           @capabilities
+          |> Map.to_list()
           |> Enum.sort_by(fn {k, _v} -> k end)
-          |> Enum.map(fn {k, v} ->
+          |> Enum.map(fn {k, {_, v}} ->
             case v do
               nil -> k
               _ -> k <> "=" <> v
@@ -139,7 +160,8 @@ defmodule Matrix2051.IrcConn.Handler do
       {"CAP", ["LS" | _]} ->
         caps =
           @capabilities
-          |> Enum.sort_by(fn {k, _v} -> k end)
+          |> Map.to_list()
+          |> Enum.sort_by(fn {k, {_, _v}} -> k end)
           |> Enum.map(fn {k, _v} -> k end)
           |> Enum.join(" ")
 
@@ -151,12 +173,25 @@ defmodule Matrix2051.IrcConn.Handler do
         send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LIST"]})
         nil
 
-      {"CAP", ["REQ", "sasl" | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "ACK", "sasl"]})
-        nil
-
       {"CAP", ["REQ", caps | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "NAK", caps]})
+        cap_atoms =
+          caps
+          |> String.split(" ", trim: true)
+          |> Enum.map(fn cap ->
+            {atom, _} = Map.get(@capabilities, cap)
+            atom
+          end)
+
+        all_caps_known = Enum.all?(cap_atoms, fn atom -> atom != nil end)
+
+        if all_caps_known do
+          send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "ACK", caps]})
+          state = sup_mod.state(sup_pid)
+          Matrix2051.IrcConn.State.add_capabilities(state, cap_atoms)
+        else
+          send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "NAK", caps]})
+        end
+
         nil
 
       {"CAP", ["END" | _]} ->
@@ -262,7 +297,7 @@ defmodule Matrix2051.IrcConn.Handler do
             ])
 
           _ ->
-            register(sup_mod, sup_pid, nick, email, password)
+            register(sup_mod, sup_pid, command, nick, email, password)
         end
 
       {"REGISTER", [account_name, email, password | _]} ->
@@ -279,7 +314,7 @@ defmodule Matrix2051.IrcConn.Handler do
             })
 
           ^account_name ->
-            register(sup_mod, sup_pid, nick, email, password)
+            register(sup_mod, sup_pid, command, nick, email, password)
 
           _ ->
             send.(%Matrix2051.Irc.Command{
@@ -336,9 +371,8 @@ defmodule Matrix2051.IrcConn.Handler do
   end
 
   # Sends the burst of post-registration messages
-  defp send_welcome(sup_mod, sup_pid) do
-    writer = sup_mod.writer(sup_pid)
-    send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
+  defp send_welcome(sup_mod, sup_pid, command) do
+    send = make_send_function(command, sup_mod, sup_pid)
 
     send_numeric = fn numeric, params ->
       send.(%Matrix2051.Irc.Command{command: numeric, params: ["*" | params]})
@@ -357,11 +391,10 @@ defmodule Matrix2051.IrcConn.Handler do
   end
 
   # Handles the REGISTER command
-  defp register(sup_mod, sup_pid, user_id, _email, password) do
-    writer = sup_mod.writer(sup_pid)
+  defp register(sup_mod, sup_pid, command, user_id, _email, password) do
     matrix_client = sup_mod.matrix_client(sup_pid)
 
-    send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
+    send = make_send_function(command, sup_mod, sup_pid)
 
     send_numeric = fn numeric, params ->
       send.(%Matrix2051.Irc.Command{command: numeric, params: ["*" | params]})
@@ -431,10 +464,9 @@ defmodule Matrix2051.IrcConn.Handler do
   # Handles a command (after connection registration is finished)
   defp handle(sup_mod, sup_pid, command) do
     state = sup_mod.state(sup_pid)
-    writer = sup_mod.writer(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(state)
 
-    send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
+    send = make_send_function(command, sup_mod, sup_pid)
 
     send_numeric = fn numeric, params ->
       send.(%Matrix2051.Irc.Command{command: numeric, params: ["*" | params]})

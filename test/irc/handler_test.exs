@@ -148,6 +148,53 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     end
   end
 
+  def do_connection_registration(handler) do
+    send(handler, cmd("CAP LS 302"))
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line,
+                  "CAP * LS :draft/account-registration=before-connect labeled-response sasl=PLAIN\r\n"}
+    end
+
+    send(handler, cmd("CAP REQ :sasl labeled-response"))
+
+    receive do
+      msg -> assert msg == {:line, "CAP * ACK :sasl labeled-response\r\n"}
+    end
+
+    send(handler, cmd("NICK foo:example.org"))
+    send(handler, cmd("USER ident * * :My GECOS"))
+
+    send(handler, cmd("@label=reg01 AUTHENTICATE PLAIN"))
+
+    receive do
+      msg -> assert msg == {:line, "@label=reg01 AUTHENTICATE :+\r\n"}
+    end
+
+    send(
+      handler,
+      cmd(
+        "@label=reg02 AUTHENTICATE Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk"
+      )
+    )
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line,
+                  "@label=reg02 900 * * foo:example.org :You are now logged in as foo:example.org\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:line, "@label=reg02 903 * :Authentication successful\r\n"}
+    end
+
+    send(handler, cmd("CAP END"))
+    assert_welcome()
+  end
+
   test "non-IRCv3 connection registration with no authenticate", %{handler: handler} do
     send(handler, cmd("NICK foo:example.org"))
 
@@ -172,7 +219,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS"))
 
     receive do
-      msg -> assert msg == {:line, "CAP * LS :draft/account-registration sasl\r\n"}
+      msg ->
+        assert msg == {:line, "CAP * LS :draft/account-registration labeled-response sasl\r\n"}
     end
 
     send(handler, cmd("PING sync1"))
@@ -199,7 +247,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS"))
 
     receive do
-      msg -> assert msg == {:line, "CAP * LS :draft/account-registration sasl\r\n"}
+      msg ->
+        assert msg == {:line, "CAP * LS :draft/account-registration labeled-response sasl\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -234,7 +283,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     receive do
       msg ->
         assert msg ==
-                 {:line, "CAP * LS :draft/account-registration=before-connect sasl=PLAIN\r\n"}
+                 {:line,
+                  "CAP * LS :draft/account-registration=before-connect labeled-response sasl=PLAIN\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -281,7 +331,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     receive do
       msg ->
         assert msg ==
-                 {:line, "CAP * LS :draft/account-registration=before-connect sasl=PLAIN\r\n"}
+                 {:line,
+                  "CAP * LS :draft/account-registration=before-connect labeled-response sasl=PLAIN\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -330,7 +381,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS"))
 
     receive do
-      msg -> assert msg == {:line, "CAP * LS :draft/account-registration sasl\r\n"}
+      msg ->
+        assert msg == {:line, "CAP * LS :draft/account-registration labeled-response sasl\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -411,13 +463,14 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
   end
 
-  test "Account registration", %{state: state, handler: handler} do
+  test "Account registration", %{handler: handler} do
     send(handler, cmd("CAP LS 302"))
 
     receive do
       msg ->
         assert msg ==
-                 {:line, "CAP * LS :draft/account-registration=before-connect sasl=PLAIN\r\n"}
+                 {:line,
+                  "CAP * LS :draft/account-registration=before-connect labeled-response sasl=PLAIN\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -448,5 +501,15 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP END"))
 
     assert_welcome()
+  end
+
+  test "Labeled response", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=abcd PING sync1"))
+
+    receive do
+      msg -> assert msg == {:line, "@label=abcd PONG :sync1\r\n"}
+    end
   end
 end

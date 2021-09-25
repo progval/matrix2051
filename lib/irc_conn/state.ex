@@ -2,7 +2,7 @@ defmodule Matrix2051.IrcConn.State do
   @moduledoc """
     Stores the state of an open IRC connection.
   """
-  defstruct [:sup_mod, :sup_pid, :registered, :nick, :gecos, :caps]
+  defstruct [:sup_mod, :sup_pid, :registered, :nick, :gecos, :capabilities]
 
   use GenServer
 
@@ -20,7 +20,7 @@ defmodule Matrix2051.IrcConn.State do
        registered: false,
        nick: nil,
        gecos: nil,
-       caps: []
+       capabilities: []
      }}
   end
 
@@ -65,5 +65,13 @@ defmodule Matrix2051.IrcConn.State do
 
   def set_gecos(pid, gecos) do
     GenServer.call(pid, {:set, :gecos, gecos})
+  end
+
+  def capabilities(pid) do
+    GenServer.call(pid, {:get, :capabilities})
+  end
+
+  def add_capabilities(pid, new_capabilities) do
+    GenServer.call(pid, {:set, :capabilities, new_capabilities ++ capabilities(pid)})
   end
 end

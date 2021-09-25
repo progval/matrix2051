@@ -48,6 +48,7 @@ Non-goals:
 * [ ] optional [replies](https://ircv3.net/specs/client-tags/reply)
   * [ ] Matrix -> IRC
   * [ ] IRC -> Matrix
+* [ ] invites
 * [ ] use [channel renaming](https://ircv3.net/specs/extensions/channel-rename) in case of joining duplicate aliases of the same room?
 
 In the far future:
