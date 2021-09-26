@@ -21,12 +21,12 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       )
 
     assert GenServer.call(client, {:dump_state}) ==
-             {:initial_state,
-              {
-                irc_mod,
-                irc_pid,
-                [httpoison: MockHTTPoison]
-              }}
+             %Matrix2051.MatrixClient.Client{
+               state: :initial_state,
+               irc_mod: irc_mod,
+               irc_pid: irc_pid,
+               args: [httpoison: MockHTTPoison]
+             }
   end
 
   test "connection without well-known" do
@@ -89,18 +89,18 @@ defmodule Matrix2051.MatrixClient.ClientTest do
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) == {:ok}
 
     assert GenServer.call(client, {:dump_state}) ==
-             {:connected,
-              [
-                irc_mod: irc_mod,
-                irc_pid: irc_pid,
-                raw_client: %Matrix2051.Matrix.RawClient{
-                  base_url: "https://matrix.example.org",
-                  access_token: "t0ken",
-                  httpoison: MockHTTPoison
-                },
-                local_name: "user",
-                hostname: "matrix.example.org"
-              ]}
+             %Matrix2051.MatrixClient.Client{
+               state: :connected,
+               irc_mod: irc_mod,
+               irc_pid: irc_pid,
+               raw_client: %Matrix2051.Matrix.RawClient{
+                 base_url: "https://matrix.example.org",
+                 access_token: "t0ken",
+                 httpoison: MockHTTPoison
+               },
+               local_name: "user",
+               hostname: "matrix.example.org"
+             }
   end
 
   test "connection with well-known" do
@@ -168,18 +168,18 @@ defmodule Matrix2051.MatrixClient.ClientTest do
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) == {:ok}
 
     assert GenServer.call(client, {:dump_state}) ==
-             {:connected,
-              [
-                irc_mod: irc_mod,
-                irc_pid: irc_pid,
-                raw_client: %Matrix2051.Matrix.RawClient{
-                  base_url: "https://matrix.example.com",
-                  access_token: "t0ken",
-                  httpoison: MockHTTPoison
-                },
-                local_name: "user",
-                hostname: "matrix.example.org"
-              ]}
+             %Matrix2051.MatrixClient.Client{
+               state: :connected,
+               irc_mod: irc_mod,
+               irc_pid: irc_pid,
+               raw_client: %Matrix2051.Matrix.RawClient{
+                 base_url: "https://matrix.example.com",
+                 access_token: "t0ken",
+                 httpoison: MockHTTPoison
+               },
+               local_name: "user",
+               hostname: "matrix.example.org"
+             }
   end
 
   test "connection without password flow" do
@@ -223,12 +223,12 @@ defmodule Matrix2051.MatrixClient.ClientTest do
              {:error, :no_password_flow, "No password flow"}
 
     assert GenServer.call(client, {:dump_state}) ==
-             {:initial_state,
-              {
-                irc_mod,
-                irc_pid,
-                [httpoison: MockHTTPoison]
-              }}
+             %Matrix2051.MatrixClient.Client{
+               state: :initial_state,
+               irc_mod: irc_mod,
+               irc_pid: irc_pid,
+               args: [httpoison: MockHTTPoison]
+             }
   end
 
   test "connection with invalid password" do
@@ -288,12 +288,12 @@ defmodule Matrix2051.MatrixClient.ClientTest do
              {:error, :denied, "Invalid password"}
 
     assert GenServer.call(client, {:dump_state}) ==
-             {:initial_state,
-              {
-                irc_mod,
-                irc_pid,
-                [httpoison: MockHTTPoison]
-              }}
+             %Matrix2051.MatrixClient.Client{
+               state: :initial_state,
+               irc_mod: irc_mod,
+               irc_pid: irc_pid,
+               args: [httpoison: MockHTTPoison]
+             }
   end
 
   test "registration" do
@@ -335,17 +335,17 @@ defmodule Matrix2051.MatrixClient.ClientTest do
              {:ok, "user:matrix.example.org"}
 
     assert GenServer.call(client, {:dump_state}) ==
-             {:connected,
-              [
-                irc_mod: irc_mod,
-                irc_pid: irc_pid,
-                raw_client: %Matrix2051.Matrix.RawClient{
-                  base_url: "https://matrix.example.org",
-                  access_token: "t0ken",
-                  httpoison: MockHTTPoison
-                },
-                local_name: "user",
-                hostname: "matrix.example.org"
-              ]}
+             %Matrix2051.MatrixClient.Client{
+               state: :connected,
+               irc_mod: irc_mod,
+               irc_pid: irc_pid,
+               raw_client: %Matrix2051.Matrix.RawClient{
+                 base_url: "https://matrix.example.org",
+                 access_token: "t0ken",
+                 httpoison: MockHTTPoison
+               },
+               local_name: "user",
+               hostname: "matrix.example.org"
+             }
   end
 end

@@ -4,13 +4,38 @@ defmodule Matrix2051.MatrixClient.Client do
   """
   use GenServer
 
+  # The state of this client
+  defstruct [
+    # :initial_state or :connected
+    :state,
+    # extra keyword list passed to init/1
+    :args,
+    # IrcConnSupervisor
+    :irc_mod,
+    # pid of IrcConnSupervisor
+    :irc_pid,
+    # Matrix2051.Matrix.RawClient structure
+    :raw_client,
+    # room_alias -> room_id map
+    :local_name,
+    :hostname
+  ]
+
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
   end
 
   @impl true
   def init(args) do
-    {:ok, {:initial_state, args}}
+    {irc_mod, irc_pid, extra_args} = args
+
+    {:ok,
+     %Matrix2051.MatrixClient.Client{
+       state: :initial_state,
+       irc_mod: irc_mod,
+       irc_pid: irc_pid,
+       args: extra_args
+     }}
   end
 
   @impl true
@@ -21,7 +46,12 @@ defmodule Matrix2051.MatrixClient.Client do
   @impl true
   def handle_call({:connect, local_name, hostname, password}, _from, state) do
     case state do
-      {:initial_state, {irc_mod, irc_pid, args}} ->
+      %Matrix2051.MatrixClient.Client{
+        state: :initial_state,
+        irc_mod: irc_mod,
+        irc_pid: irc_pid,
+        args: args
+      } ->
         httpoison = Keyword.get(args, :httpoison, HTTPoison)
         base_url = get_base_url(hostname, httpoison)
 
@@ -68,15 +98,14 @@ defmodule Matrix2051.MatrixClient.Client do
                   httpoison: httpoison
                 }
 
-                state =
-                  {:connected,
-                   [
-                     irc_mod: irc_mod,
-                     irc_pid: irc_pid,
-                     raw_client: raw_client,
-                     local_name: local_name,
-                     hostname: hostname
-                   ]}
+                state = %Matrix2051.MatrixClient.Client{
+                  state: :connected,
+                  irc_mod: irc_mod,
+                  irc_pid: irc_pid,
+                  raw_client: raw_client,
+                  local_name: local_name,
+                  hostname: hostname
+                }
 
                 {:reply, {:ok}, state}
 
@@ -86,7 +115,11 @@ defmodule Matrix2051.MatrixClient.Client do
             end
         end
 
-      {:connected, {_raw_client, local_name, hostname}} ->
+      %Matrix2051.MatrixClient.Client{
+        state: :connected,
+        local_name: local_name,
+        hostname: hostname
+      } ->
         {:reply, {:error, {:already_connected, local_name, hostname}}, state}
     end
   end
@@ -94,7 +127,12 @@ defmodule Matrix2051.MatrixClient.Client do
   @impl true
   def handle_call({:register, local_name, hostname, password}, _from, state) do
     case state do
-      {:initial_state, {irc_mod, irc_pid, args}} ->
+      %Matrix2051.MatrixClient.Client{
+        state: :initial_state,
+        irc_mod: irc_mod,
+        irc_pid: irc_pid,
+        args: args
+      } ->
         httpoison = Keyword.get(args, :httpoison, HTTPoison)
         base_url = get_base_url(hostname, httpoison)
 
@@ -123,15 +161,14 @@ defmodule Matrix2051.MatrixClient.Client do
               httpoison: httpoison
             }
 
-            state =
-              {:connected,
-               [
-                 irc_mod: irc_mod,
-                 irc_pid: irc_pid,
-                 raw_client: raw_client,
-                 local_name: local_name,
-                 hostname: hostname
-               ]}
+            state = %Matrix2051.MatrixClient.Client{
+              state: :connected,
+              irc_mod: irc_mod,
+              irc_pid: irc_pid,
+              raw_client: raw_client,
+              local_name: local_name,
+              hostname: hostname
+            }
 
             {:reply, {:ok, user_id}, state}
 
@@ -157,7 +194,11 @@ defmodule Matrix2051.MatrixClient.Client do
             {:reply, {:error, :unknown, Kernel.inspect(body)}, state}
         end
 
-      {:connected, {_raw_client, local_name, hostname}} ->
+      %Matrix2051.MatrixClient.Client{
+        state: :connected,
+        local_name: local_name,
+        hostname: hostname
+      } ->
         {:reply, {:error, {:already_connected, local_name, hostname}}, state}
     end
   end

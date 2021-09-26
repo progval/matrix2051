@@ -32,6 +32,7 @@ Non-goals:
 * [ ] receiving messages from Matrix
   * [ ] basics
   * [ ] split at 512 bytes
+* [ ] support PART from IRC clients
 * [ ] direct messages
 * [ ] rewrite mentions/highlights
 * [ ] rewrite formatting and colors
