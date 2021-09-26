@@ -224,8 +224,15 @@ defmodule Matrix2051.MatrixClient.Client do
 
   def user_id(pid) do
     case GenServer.call(pid, {:dump_state}) do
-      {:connect, state} -> state[:local_name] <> ":" <> state[:hostname]
-      {:initial_state, _} -> nil
+      %Matrix2051.MatrixClient.Client{
+        state: :connected,
+        local_name: local_name,
+        hostname: hostname
+      } ->
+        local_name <> ":" <> hostname
+
+      %Matrix2051.MatrixClient.Client{state: :initial_state} ->
+        nil
     end
   end
 

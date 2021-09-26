@@ -27,7 +27,11 @@ defmodule MockMatrixClient do
 
   @impl true
   def init({_sup_mod, _sup_pid}) do
-    {:ok, {:initial_state, {}}}
+    {:ok,
+     %Matrix2051.MatrixClient.Client{
+       state: :initial_state,
+       args: []
+     }}
   end
 
   @impl true

@@ -101,6 +101,8 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                local_name: "user",
                hostname: "matrix.example.org"
              }
+
+    assert Matrix2051.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
   end
 
   test "connection with well-known" do
@@ -180,6 +182,8 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                local_name: "user",
                hostname: "matrix.example.org"
              }
+
+    assert Matrix2051.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
   end
 
   test "connection without password flow" do
@@ -229,6 +233,8 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                irc_pid: irc_pid,
                args: [httpoison: MockHTTPoison]
              }
+
+    assert Matrix2051.MatrixClient.Client.user_id(client) == nil
   end
 
   test "connection with invalid password" do
@@ -294,6 +300,8 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                irc_pid: irc_pid,
                args: [httpoison: MockHTTPoison]
              }
+
+    assert Matrix2051.MatrixClient.Client.user_id(client) == nil
   end
 
   test "registration" do
@@ -347,5 +355,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                local_name: "user",
                hostname: "matrix.example.org"
              }
+
+    assert Matrix2051.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
   end
 end
