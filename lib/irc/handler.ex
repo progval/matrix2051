@@ -7,18 +7,20 @@ defmodule Matrix2051.IrcConn.Handler do
 
   def start_link(args) do
     {sup_mod, sup_pid} = args
-    Task.start_link(__MODULE__, :loop, [sup_mod, sup_pid])
+    Task.start_link(__MODULE__, :run, [sup_mod, sup_pid])
   end
 
   # set of capabilities that we will show in CAP LS and accept with ACK;
   # along with their value (shown in CAP LS 302)
   @capabilities %{
-    # https://ircv3.net/specs/extensions/sasl-3.1
-    "sasl" => {:sasl, "PLAIN"},
     # https://github.com/ircv3/ircv3-specifications/pull/435
     "draft/account-registration" => {:account_registration, "before-connect"},
+    # https://ircv3.net/specs/extensions/extended-join.html
+    "extended-join" => {:extended_join, nil},
     # https://ircv3.net/specs/extensions/labeled-response
-    "labeled-response" => {:labeled_response, nil}
+    "labeled-response" => {:labeled_response, nil},
+    # https://ircv3.net/specs/extensions/sasl-3.1
+    "sasl" => {:sasl, "PLAIN"}
   }
 
   @doc """
@@ -29,9 +31,12 @@ defmodule Matrix2051.IrcConn.Handler do
     it is done.
     Then loops forever.
   """
-  def loop(sup_mod, sup_pid) do
+  def run(sup_mod, sup_pid) do
     loop_connreg(sup_mod, sup_pid)
+    loop(sup_mod, sup_pid)
+  end
 
+  defp loop(sup_mod, sup_pid) do
     receive do
       command ->
         handle(sup_mod, sup_pid, command)
@@ -464,7 +469,9 @@ defmodule Matrix2051.IrcConn.Handler do
   # Handles a command (after connection registration is finished)
   defp handle(sup_mod, sup_pid, command) do
     state = sup_mod.state(sup_pid)
+    matrix_client = sup_mod.matrix_client(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(state)
+    capabilities = Matrix2051.IrcConn.State.capabilities(state)
 
     send = make_send_function(command, sup_mod, sup_pid)
 
@@ -474,6 +481,16 @@ defmodule Matrix2051.IrcConn.Handler do
 
     send_needmoreparams = fn ->
       send_numeric.("461", [command.command, "Need more parameters"])
+    end
+
+    send_ack = fn ->
+      case {Enum.member?(capabilities, :labeled_response), Map.get(command.tags, "label")} do
+        {true, label} when label != nil ->
+          send.(%Matrix2051.Irc.Command{command: "ACK", params: []})
+
+        _ ->
+          nil
+      end
     end
 
     case {command.command, command.params} do
@@ -509,15 +526,12 @@ defmodule Matrix2051.IrcConn.Handler do
 
       {"PING", [cookie]} ->
         send.(%Matrix2051.Irc.Command{command: "PONG", params: [cookie]})
-        nil
 
       {"PING", [_, cookie | _]} ->
         send.(%Matrix2051.Irc.Command{command: "PONG", params: [cookie]})
-        nil
 
       {"PING", []} ->
         send_needmoreparams.()
-        nil
 
       {"QUIT", []} ->
         send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["Client quit"]})
@@ -533,15 +547,44 @@ defmodule Matrix2051.IrcConn.Handler do
           params: ["REGISTER", "ALREADY_AUTHENTICATED", nick, "You are already authenticated."]
         })
 
-        nil
-
       {"VERIFY", _} ->
         send.(%Matrix2051.Irc.Command{
           command: "FAIL",
           params: ["VERIFY", "ALREADY_AUTHENTICATED", nick, "You are already authenticated."]
         })
 
-        nil
+      {"JOIN", [channel | _]} ->
+        case Matrix2051.MatrixClient.Client.join_room(matrix_client, channel) do
+          {:ok, _room_id} ->
+            account_name = nick
+            # TODO: get the actual display name
+            real_name = nick
+
+            send.(%Matrix2051.Irc.Command{
+              source: nick,
+              command: "JOIN",
+              params:
+                if Enum.member?(capabilities, :extended_join) do
+                  [channel, account_name, real_name]
+                else
+                  [channel]
+                end
+            })
+
+          {:error, :already_joined, _room_id} ->
+            send_ack.()
+
+          {:error, :banned_or_missing_invite, message} ->
+            # ERR_BANNEDFROMCHAN
+            send_numeric.("474", [channel, "Cannot join channel: " <> message])
+
+          {:error, :unknown, message} ->
+            # ERR_NOSUCHCHANNEL
+            send_numeric.("403", [channel, "Cannot join channel: " <> message])
+        end
+
+      {"JOIN", _} ->
+        send_needmoreparams.()
 
       _ ->
         send_numeric.("421", [command.command, "Unknown command"])

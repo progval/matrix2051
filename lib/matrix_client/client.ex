@@ -17,6 +17,7 @@ defmodule Matrix2051.MatrixClient.Client do
     # Matrix2051.Matrix.RawClient structure
     :raw_client,
     # room_alias -> room_id map
+    :rooms,
     :local_name,
     :hostname
   ]
@@ -103,6 +104,7 @@ defmodule Matrix2051.MatrixClient.Client do
                   irc_mod: irc_mod,
                   irc_pid: irc_pid,
                   raw_client: raw_client,
+                  rooms: Map.new(),
                   local_name: local_name,
                   hostname: hostname
                 }
@@ -166,6 +168,7 @@ defmodule Matrix2051.MatrixClient.Client do
               irc_mod: irc_mod,
               irc_pid: irc_pid,
               raw_client: raw_client,
+              rooms: Map.new(),
               local_name: local_name,
               hostname: hostname
             }
@@ -200,6 +203,32 @@ defmodule Matrix2051.MatrixClient.Client do
         hostname: hostname
       } ->
         {:reply, {:error, {:already_connected, local_name, hostname}}, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:join_room, room_alias}, _from, state) do
+    %Matrix2051.MatrixClient.Client{state: :connected, raw_client: raw_client, rooms: rooms} =
+      state
+
+    path = "/_matrix/client/r0/join/" <> URI.encode(room_alias, &URI.char_unreserved?/1)
+
+    room_id = Map.get(rooms, room_alias)
+
+    if room_id != nil do
+      {:reply, {:error, :already_joined, room_id}, state}
+    else
+      case Matrix2051.Matrix.RawClient.post(raw_client, path, "{}") do
+        {:ok, %{"room_id" => room_id}} ->
+          state = %{state | rooms: Map.put(rooms, room_alias, room_id)}
+          {:reply, {:ok, room_id}, state}
+
+        {:error, 403, %{"errcode" => errcode, "error" => message}} ->
+          {:reply, {:error, :banned_or_missing_invite, errcode <> ": " <> message}, state}
+
+        {:error, _, %{"errcode" => errcode, "error" => message}} ->
+          {:reply, {:error, :unknown, errcode <> ": " <> message}, state}
+      end
     end
   end
 
@@ -238,5 +267,9 @@ defmodule Matrix2051.MatrixClient.Client do
 
   def register(pid, local_name, hostname, password) do
     GenServer.call(pid, {:register, local_name, hostname, password})
+  end
+
+  def join_room(pid, room_alias) do
+    GenServer.call(pid, {:join_room, room_alias})
   end
 end

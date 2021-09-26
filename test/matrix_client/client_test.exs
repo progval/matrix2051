@@ -11,6 +11,44 @@ defmodule Matrix2051.MatrixClient.ClientTest do
     %{config: config}
   end
 
+  def expect_login(mock_httpoison) do
+    mock_httpoison
+    |> expect(:get!, fn url ->
+      assert url == "https://matrix.example.org/.well-known/matrix/client"
+      %HTTPoison.Response{status_code: 404, body: "Error 404"}
+    end)
+    |> expect(:get!, fn url ->
+      assert url == "https://matrix.example.org/_matrix/client/r0/login"
+
+      %HTTPoison.Response{
+        status_code: 200,
+        body: """
+          {"flows": [{"type": "m.login.password"}]}
+        """
+      }
+    end)
+    |> expect(:post!, fn url, body ->
+      assert url == "https://matrix.example.org/_matrix/client/r0/login"
+
+      assert Jason.decode!(body) == %{
+               "type" => "m.login.password",
+               "user" => "user",
+               "password" => "p4ssw0rd"
+             }
+
+      %HTTPoison.Response{
+        status_code: 200,
+        body: """
+          {
+              "access_token": "t0ken",
+              "home_server": "matrix.example.org",
+              "user_id": "@user:matrix.example.org"
+          }
+        """
+      }
+    end)
+  end
+
   test "initialization" do
     irc_mod = nil
     irc_pid = nil
@@ -98,6 +136,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                  access_token: "t0ken",
                  httpoison: MockHTTPoison
                },
+               rooms: Map.new(),
                local_name: "user",
                hostname: "matrix.example.org"
              }
@@ -179,6 +218,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                  access_token: "t0ken",
                  httpoison: MockHTTPoison
                },
+               rooms: Map.new(),
                local_name: "user",
                hostname: "matrix.example.org"
              }
@@ -352,10 +392,42 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                  access_token: "t0ken",
                  httpoison: MockHTTPoison
                },
+               rooms: Map.new(),
                local_name: "user",
                hostname: "matrix.example.org"
              }
 
     assert Matrix2051.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
+  end
+
+  test "joining a room" do
+    MockHTTPoison
+    |> expect_login
+    |> expect(:post!, fn url, body, headers ->
+      assert headers == [Authorization: "Bearer t0ken"]
+
+      assert url ==
+               "https://matrix.example.org/_matrix/client/r0/join/%23testroom%3Amatrix.example.com"
+
+      assert Jason.decode!(body) == %{}
+      %HTTPoison.Response{status_code: 200, body: "{\"room_id\": \"!abc:matrix.example.net\"}"}
+    end)
+
+    irc_mod = nil
+    irc_pid = nil
+
+    client =
+      start_supervised!(
+        {Matrix2051.MatrixClient.Client, {irc_mod, irc_pid, [httpoison: MockHTTPoison]}}
+      )
+
+    assert Matrix2051.MatrixClient.Client.connect(
+             client,
+             "user",
+             "matrix.example.org",
+             "p4ssw0rd"
+           ) == {:ok}
+
+    assert Matrix2051.MatrixClient.Client.join_room(client, "#testroom:matrix.example.com")
   end
 end

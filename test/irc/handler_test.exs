@@ -62,6 +62,13 @@ defmodule MockMatrixClient do
   end
 
   @impl true
+  def handle_call({:join_room, room_alias}, _from, state) do
+    case room_alias do
+      "#existing_room:example.org" -> {:reply, {:ok, "!existing_room_id:example.org"}, state}
+    end
+  end
+
+  @impl true
   def handle_call({:dump_state}, _from, state) do
     {:reply, state, state}
   end
@@ -152,20 +159,21 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     end
   end
 
-  def do_connection_registration(handler) do
+  def do_connection_registration(handler, capabilities \\ []) do
     send(handler, cmd("CAP LS 302"))
 
     receive do
       msg ->
         assert msg ==
                  {:line,
-                  "CAP * LS :draft/account-registration=before-connect labeled-response sasl=PLAIN\r\n"}
+                  "CAP * LS :draft/account-registration=before-connect extended-join labeled-response sasl=PLAIN\r\n"}
     end
 
-    send(handler, cmd("CAP REQ :sasl labeled-response"))
+    joined_caps = Enum.join(["sasl", "labeled-response"] ++ capabilities, " ")
+    send(handler, cmd("CAP REQ :" <> joined_caps))
 
     receive do
-      msg -> assert msg == {:line, "CAP * ACK :sasl labeled-response\r\n"}
+      msg -> assert msg == {:line, "CAP * ACK :" <> joined_caps <> "\r\n"}
     end
 
     send(handler, cmd("NICK foo:example.org"))
@@ -224,7 +232,9 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     receive do
       msg ->
-        assert msg == {:line, "CAP * LS :draft/account-registration labeled-response sasl\r\n"}
+        assert msg ==
+                 {:line,
+                  "CAP * LS :draft/account-registration extended-join labeled-response sasl\r\n"}
     end
 
     send(handler, cmd("PING sync1"))
@@ -252,7 +262,9 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     receive do
       msg ->
-        assert msg == {:line, "CAP * LS :draft/account-registration labeled-response sasl\r\n"}
+        assert msg ==
+                 {:line,
+                  "CAP * LS :draft/account-registration extended-join labeled-response sasl\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -288,7 +300,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
       msg ->
         assert msg ==
                  {:line,
-                  "CAP * LS :draft/account-registration=before-connect labeled-response sasl=PLAIN\r\n"}
+                  "CAP * LS :draft/account-registration=before-connect extended-join labeled-response sasl=PLAIN\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -336,7 +348,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
       msg ->
         assert msg ==
                  {:line,
-                  "CAP * LS :draft/account-registration=before-connect labeled-response sasl=PLAIN\r\n"}
+                  "CAP * LS :draft/account-registration=before-connect extended-join labeled-response sasl=PLAIN\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -386,7 +398,9 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     receive do
       msg ->
-        assert msg == {:line, "CAP * LS :draft/account-registration labeled-response sasl\r\n"}
+        assert msg ==
+                 {:line,
+                  "CAP * LS :draft/account-registration extended-join labeled-response sasl\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -474,7 +488,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
       msg ->
         assert msg ==
                  {:line,
-                  "CAP * LS :draft/account-registration=before-connect labeled-response sasl=PLAIN\r\n"}
+                  "CAP * LS :draft/account-registration=before-connect extended-join labeled-response sasl=PLAIN\r\n"}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -514,6 +528,29 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     receive do
       msg -> assert msg == {:line, "@label=abcd PONG :sync1\r\n"}
+    end
+  end
+
+  test "joining a room", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("JOIN #existing_room:example.org"))
+
+    receive do
+      msg -> assert msg == {:line, ":foo:example.org JOIN :#existing_room:example.org\r\n"}
+    end
+  end
+
+  test "joining a room with extended-join", %{handler: handler} do
+    do_connection_registration(handler, ["extended-join"])
+
+    send(handler, cmd("JOIN #existing_room:example.org"))
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line,
+                  ":foo:example.org JOIN #existing_room:example.org foo:example.org :foo:example.org\r\n"}
     end
   end
 end

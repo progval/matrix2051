@@ -27,7 +27,7 @@ Non-goals:
   * [ ] on other homeservers (when the Matrix spec defines how to)
 * [ ] retrieving the room list and joining clients to it
 * [ ] retrieving the member list and sending it to clients
-* [ ] support JOIN from clients
+* [x] support JOIN from clients
 * [ ] sending messages from IRC clients
 * [ ] receiving messages from Matrix
   * [ ] basics

@@ -4,13 +4,27 @@ defmodule Matrix2051.Matrix.RawClient do
   """
   defstruct [:base_url, :access_token, :httpoison]
 
-  @callback
   def get(client, path, headers \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
 
-    case client.httpoison.get!(client.base_url, headers) do
+    case client.httpoison.get!(client.base_url <> path, headers) do
       %HTTPoison.Response{status_code: 200, body: body} ->
         {:ok, Jason.decode!(body)}
+
+      %HTTPoison.Response{status_code: status_code, body: body} ->
+        {:error, status_code, Jason.decode!(body)}
+    end
+  end
+
+  def post(client, path, body, headers \\ []) do
+    headers = [Authorization: "Bearer " <> client.access_token] ++ headers
+
+    case client.httpoison.post!(client.base_url <> path, body, headers) do
+      %HTTPoison.Response{status_code: 200, body: body} ->
+        {:ok, Jason.decode!(body)}
+
+      %HTTPoison.Response{status_code: status_code, body: body} ->
+        {:error, status_code, Jason.decode!(body)}
     end
   end
 end
