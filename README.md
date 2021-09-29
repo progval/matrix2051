@@ -37,6 +37,9 @@ Non-goals:
 * [ ] rewrite mentions/highlights
 * [ ] rewrite formatting and colors
 * [ ] show JOIN/PART events from other members
+* [ ] figure out images / files
+  * [ ] Matrix -> IRC
+  * [ ] IRC -> Matrix
 * [ ] [display names](https://github.com/ircv3/ircv3-specifications/pull/452)
 * [ ] [chat history](https://ircv3.net/specs/extensions/chathistory)
 * [ ] connection via [websockets](https://github.com/ircv3/ircv3-specifications/pull/342)
@@ -74,11 +77,11 @@ In the far future:
       * `irc_conn/handler.ex`: task busy-waiting on the incoming commands
         from the reader, answers to the simple ones, and dispatches more complex
         commands
-      * `irc_conn/reader.ex`: task busy-waiting on the incoming lines,
-        and sends them to the handler
       * `matrix_client/client_supervisor.ex`
         * `matrix_client/state.ex`: keeps the state of the connection to a Matrix homeserver
         * `matrix_client/client.ex`: handles one connection to a Matrix homeserver, as a single user
+      * `irc_conn/reader.ex`: task busy-waiting on the incoming lines,
+        and sends them to the handler
 
 ### Outside supervision tree
 
