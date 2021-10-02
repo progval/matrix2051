@@ -109,6 +109,9 @@ defmodule Matrix2051.MatrixClient.Client do
                   hostname: hostname
                 }
 
+                poller = irc_mod.matrix_poller(irc_pid)
+                send(poller, :connected)
+
                 {:reply, {:ok}, state}
 
               %HTTPoison.Response{status_code: 403, body: body} ->
@@ -172,6 +175,9 @@ defmodule Matrix2051.MatrixClient.Client do
               local_name: local_name,
               hostname: hostname
             }
+
+            poller = irc_mod.matrix_poller(irc_pid)
+            send(poller, :connected)
 
             {:reply, {:ok, user_id}, state}
 
@@ -249,6 +255,19 @@ defmodule Matrix2051.MatrixClient.Client do
 
   def connect(pid, local_name, hostname, password) do
     GenServer.call(pid, {:connect, local_name, hostname, password})
+  end
+
+  def raw_client(pid) do
+    case GenServer.call(pid, {:dump_state}) do
+      %Matrix2051.MatrixClient.Client{
+        state: :connected,
+        raw_client: raw_client
+      } ->
+        raw_client
+
+      %Matrix2051.MatrixClient.Client{state: :initial_state} ->
+        nil
+    end
   end
 
   def user_id(pid) do

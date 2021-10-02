@@ -80,6 +80,7 @@ In the far future:
       * `matrix_client/client_supervisor.ex`
         * `matrix_client/state.ex`: keeps the state of the connection to a Matrix homeserver
         * `matrix_client/client.ex`: handles one connection to a Matrix homeserver, as a single user
+        * `matrix_client/poller.ex`: repeatedly asks the Matrix homeserver for new events (including the initial sync)
       * `irc_conn/reader.ex`: task busy-waiting on the incoming lines,
         and sends them to the handler
 

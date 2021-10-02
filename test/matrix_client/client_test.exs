@@ -1,3 +1,9 @@
+defmodule MockIrcSupervisor do
+  def matrix_poller(pid) do
+    pid
+  end
+end
+
 defmodule Matrix2051.MatrixClient.ClientTest do
   use ExUnit.Case
   doctest Matrix2051.MatrixClient.Client
@@ -8,7 +14,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
 
   setup do
     config = start_supervised!({Matrix2051.Config, []})
-    %{config: config}
+    %{config: config, irc_pid: self()}
   end
 
   def expect_login(mock_httpoison) do
@@ -49,9 +55,8 @@ defmodule Matrix2051.MatrixClient.ClientTest do
     end)
   end
 
-  test "initialization" do
-    irc_mod = nil
-    irc_pid = nil
+  test "initialization", %{irc_pid: irc_pid} do
+    irc_mod = MockIrcSupervisor
 
     client =
       start_supervised!(
@@ -67,7 +72,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
              }
   end
 
-  test "connection without well-known" do
+  test "connection without well-known", %{irc_pid: irc_pid} do
     MockHTTPoison
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
@@ -116,8 +121,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    irc_mod = nil
-    irc_pid = nil
+    irc_mod = MockIrcSupervisor
 
     client =
       start_supervised!(
@@ -142,9 +146,13 @@ defmodule Matrix2051.MatrixClient.ClientTest do
              }
 
     assert Matrix2051.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
+
+    receive do
+      msg -> assert msg == :connected
+    end
   end
 
-  test "connection with well-known" do
+  test "connection with well-known", %{irc_pid: irc_pid} do
     MockHTTPoison
     |> expect(:get!, fn _url ->
       %HTTPoison.Response{
@@ -198,8 +206,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    irc_mod = nil
-    irc_pid = nil
+    irc_mod = MockIrcSupervisor
 
     client =
       start_supervised!(
@@ -224,9 +231,13 @@ defmodule Matrix2051.MatrixClient.ClientTest do
              }
 
     assert Matrix2051.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
+
+    receive do
+      msg -> assert msg == :connected
+    end
   end
 
-  test "connection without password flow" do
+  test "connection without password flow", %{irc_pid: irc_pid} do
     MockHTTPoison
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
@@ -255,8 +266,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    irc_mod = nil
-    irc_pid = nil
+    irc_mod = MockIrcSupervisor
 
     client =
       start_supervised!(
@@ -277,7 +287,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
     assert Matrix2051.MatrixClient.Client.user_id(client) == nil
   end
 
-  test "connection with invalid password" do
+  test "connection with invalid password", %{irc_pid: irc_pid} do
     MockHTTPoison
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
@@ -322,8 +332,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    irc_mod = nil
-    irc_pid = nil
+    irc_mod = MockIrcSupervisor
 
     client =
       start_supervised!(
@@ -344,7 +353,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
     assert Matrix2051.MatrixClient.Client.user_id(client) == nil
   end
 
-  test "registration" do
+  test "registration", %{irc_pid: irc_pid} do
     MockHTTPoison
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
@@ -371,8 +380,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    irc_mod = nil
-    irc_pid = nil
+    irc_mod = MockIrcSupervisor
 
     client =
       start_supervised!(
@@ -398,9 +406,13 @@ defmodule Matrix2051.MatrixClient.ClientTest do
              }
 
     assert Matrix2051.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
+
+    receive do
+      msg -> assert msg == :connected
+    end
   end
 
-  test "joining a room" do
+  test "joining a room", %{irc_pid: irc_pid} do
     MockHTTPoison
     |> expect_login
     |> expect(:post!, fn url, body, headers ->
@@ -413,8 +425,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       %HTTPoison.Response{status_code: 200, body: "{\"room_id\": \"!abc:matrix.example.net\"}"}
     end)
 
-    irc_mod = nil
-    irc_pid = nil
+    irc_mod = MockIrcSupervisor
 
     client =
       start_supervised!(
@@ -427,6 +438,10 @@ defmodule Matrix2051.MatrixClient.ClientTest do
              "matrix.example.org",
              "p4ssw0rd"
            ) == {:ok}
+
+    receive do
+      msg -> assert msg == :connected
+    end
 
     assert Matrix2051.MatrixClient.Client.join_room(client, "#testroom:matrix.example.com")
   end
