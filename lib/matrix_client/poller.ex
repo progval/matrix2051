@@ -80,7 +80,7 @@ defmodule Matrix2051.MatrixClient.Poller do
           sender -> String.slice(sender, 1..-1)
         end
 
-      handle_state_event(sup_mod, sup_pid, room_id, sender, event)
+      handle_event(sup_mod, sup_pid, room_id, sender, event)
     end)
 
     room_event
@@ -95,11 +95,11 @@ defmodule Matrix2051.MatrixClient.Poller do
           sender -> String.slice(sender, 1..-1)
         end
 
-      handle_timeline_event(sup_mod, sup_pid, room_id, sender, event)
+      handle_event(sup_mod, sup_pid, room_id, sender, event)
     end)
   end
 
-  defp handle_state_event(
+  defp handle_event(
          sup_mod,
          sup_pid,
          room_id,
@@ -170,7 +170,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     end
   end
 
-  defp handle_state_event(
+  defp handle_event(
          sup_mod,
          sup_pid,
          room_id,
@@ -192,7 +192,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     send.(%Matrix2051.Irc.Command{source: sender, command: "TOPIC", params: [channel, topic]})
   end
 
-  defp handle_state_event(
+  defp handle_event(
          sup_mod,
          sup_pid,
          room_id,
@@ -213,7 +213,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     send.(%Matrix2051.Irc.Command{source: sender, command: "TOPIC", params: [channel, topic]})
   end
 
-  defp handle_state_event(sup_mod, sup_pid, room_id, _sender, event) do
+  defp handle_event(sup_mod, sup_pid, room_id, _sender, event) do
     state = sup_mod.matrix_state(sup_pid)
     send = make_send_function(sup_mod, sup_pid)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
@@ -224,26 +224,6 @@ defmodule Matrix2051.MatrixClient.Poller do
       params: [
         channel,
         "Unknown state event (" <> event["type"] <> "): " <> Kernel.inspect(event)
-      ]
-    })
-  end
-
-  defp handle_timeline_event(sup_mod, sup_pid, room_id, _sender, event) do
-    state = sup_mod.matrix_state(sup_pid)
-    send = make_send_function(sup_mod, sup_pid)
-
-    channel =
-      case Matrix2051.MatrixClient.State.room_canonical_alias(state, room_id) do
-        nil -> room_id
-        canonical_alias -> canonical_alias
-      end
-
-    send.(%Matrix2051.Irc.Command{
-      source: "server",
-      command: "NOTICE",
-      params: [
-        channel,
-        "Unknown timeline event (" <> event["type"] <> "): " <> Kernel.inspect(event)
       ]
     })
   end
