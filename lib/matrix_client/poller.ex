@@ -155,6 +155,17 @@ defmodule Matrix2051.MatrixClient.Poller do
             command: "332",
             params: [nick, new_canonical_alias, topic]
           })
+
+          # RPL_TOPICWHOTIME
+          send.(%Matrix2051.Irc.Command{
+            command: "333",
+            params: [
+              nick,
+              new_canonical_alias,
+              sender,
+              Integer.to_string(event["origin_server_ts"])
+            ]
+          })
       end
 
       # Handle closing the old channel, if any

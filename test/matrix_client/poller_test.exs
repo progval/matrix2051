@@ -190,6 +190,13 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       msg ->
         assert msg ==
                  {:line,
+                  "333 mynick:example.com #test2:example.org nick2:example.org :1632644251623\r\n"}
+    end
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line,
                   ":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n"}
     end
 
