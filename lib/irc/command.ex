@@ -150,4 +150,60 @@ defmodule Matrix2051.Irc.Command do
 
     Enum.join(tokens, " ") <> "\r\n"
   end
+
+  @doc ~S"""
+    Rewrites the command to remove features the IRC client does not support
+
+    # Example
+
+        iex> cmd = %Matrix2051.Irc.Command{
+        ...>   tags: %{"account" => "abcd"},
+        ...>   command: "JOIN",
+        ...>   params: ["#foo", "account", "realname"]
+        ...> }
+        iex> Matrix2051.Irc.Command.downgrade(cmd, [:extended_join])
+        %Matrix2051.Irc.Command{
+             tags: %{},
+             command: "JOIN",
+             params: ["#foo", "account", "realname"]
+           }
+
+  """
+  def downgrade(command, capabilities) do
+    tags =
+      command.tags
+      |> Map.to_list()
+      |> Enum.filter(fn {key, _value} ->
+        case key do
+          "label" -> Enum.member?(capabilities, :labeled_response)
+          "account" -> Enum.member?(capabilities, :account_tag)
+          _ -> false
+        end
+      end)
+      |> Enum.filter(&(&1 != nil))
+      |> Map.new()
+
+    command = %Matrix2051.Irc.Command{command | tags: tags}
+
+    case command do
+      %{command: "JOIN", params: params} ->
+        [channel, _account_name, _real_name] = params
+
+        if Enum.member?(capabilities, :extended_join) do
+          command
+        else
+          %{command | params: [channel]}
+        end
+
+      %{command: "ACK"} ->
+        if Enum.member?(capabilities, :labeled_response) do
+          command
+        else
+          nil
+        end
+
+      _ ->
+        command
+    end
+  end
 end

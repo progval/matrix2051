@@ -41,4 +41,102 @@ defmodule Matrix2051.Irc.CommandTest do
              params: ["welcome"]
            }) == "001 :welcome\r\n"
   end
+
+  test "downgrade noop" do
+    assert Matrix2051.Irc.Command.downgrade(
+             %Matrix2051.Irc.Command{
+               command: "001",
+               params: ["welcome"]
+             },
+             []
+           ) == %Matrix2051.Irc.Command{
+             command: "001",
+             params: ["welcome"]
+           }
+  end
+
+  test "downgrade label" do
+    cmd = %Matrix2051.Irc.Command{
+      tags: %{"label" => "abcd"},
+      command: "PONG",
+      params: ["foo"]
+    }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, []) == %Matrix2051.Irc.Command{
+             command: "PONG",
+             params: ["foo"]
+           }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:labeled_response]) == cmd
+  end
+
+  test "downgrade ack" do
+    cmd = %Matrix2051.Irc.Command{
+      tags: %{"label" => "abcd"},
+      command: "ACK",
+      params: []
+    }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, []) == nil
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:labeled_response]) == cmd
+  end
+
+  test "downgrade account-tag" do
+    cmd = %Matrix2051.Irc.Command{
+      tags: %{"account" => "abcd"},
+      command: "PRIVMSG",
+      params: ["#foo", "bar"]
+    }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, []) == %Matrix2051.Irc.Command{
+             command: "PRIVMSG",
+             params: ["#foo", "bar"]
+           }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:account_tag]) == cmd
+  end
+
+  test "downgrade extended-join" do
+    cmd = %Matrix2051.Irc.Command{
+      command: "JOIN",
+      params: ["#foo", "account", "realname"]
+    }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, []) == %Matrix2051.Irc.Command{
+             command: "JOIN",
+             params: ["#foo"]
+           }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:extended_join]) == cmd
+  end
+
+  test "downgrade extended-join and/or account-tag" do
+    cmd = %Matrix2051.Irc.Command{
+      tags: %{"account" => "abcd"},
+      command: "JOIN",
+      params: ["#foo", "account", "realname"]
+    }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, []) == %Matrix2051.Irc.Command{
+             tags: %{},
+             command: "JOIN",
+             params: ["#foo"]
+           }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:extended_join]) == %Matrix2051.Irc.Command{
+             tags: %{},
+             command: "JOIN",
+             params: ["#foo", "account", "realname"]
+           }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:account_tag]) == %Matrix2051.Irc.Command{
+             tags: %{"account" => "abcd"},
+             command: "JOIN",
+             params: ["#foo"]
+           }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:account_tag, :extended_join]) == cmd
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:extended_join, :account_tag]) == cmd
+  end
 end

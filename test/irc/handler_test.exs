@@ -120,6 +120,9 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   use ExUnit.Case
   doctest Matrix2051.IrcConn.Handler
 
+  @cap_ls_302 "CAP * LS :account-tag draft/account-registration=before-connect extended-join labeled-response sasl=PLAIN\r\n"
+  @cap_ls "CAP * LS :account-tag draft/account-registration extended-join labeled-response sasl\r\n"
+
   setup do
     start_supervised!({Matrix2051.Config, []})
     supervisor = start_supervised!({MockIrcConnSupervisor, {self()}})
@@ -163,10 +166,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS 302"))
 
     receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "CAP * LS :draft/account-registration=before-connect extended-join labeled-response sasl=PLAIN\r\n"}
+      msg -> assert msg == {:line, @cap_ls_302}
     end
 
     joined_caps = Enum.join(["sasl", "labeled-response"] ++ capabilities, " ")
@@ -231,10 +231,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS"))
 
     receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "CAP * LS :draft/account-registration extended-join labeled-response sasl\r\n"}
+      msg -> assert msg == {:line, @cap_ls}
     end
 
     send(handler, cmd("PING sync1"))
@@ -261,10 +258,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS"))
 
     receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "CAP * LS :draft/account-registration extended-join labeled-response sasl\r\n"}
+      msg -> assert msg == {:line, @cap_ls}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -297,10 +291,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS 302"))
 
     receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "CAP * LS :draft/account-registration=before-connect extended-join labeled-response sasl=PLAIN\r\n"}
+      msg -> assert msg == {:line, @cap_ls_302}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -345,10 +336,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS 302"))
 
     receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "CAP * LS :draft/account-registration=before-connect extended-join labeled-response sasl=PLAIN\r\n"}
+      msg -> assert msg == {:line, @cap_ls_302}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -397,10 +385,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS"))
 
     receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "CAP * LS :draft/account-registration extended-join labeled-response sasl\r\n"}
+      msg -> assert msg == {:line, @cap_ls}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -485,10 +470,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS 302"))
 
     receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "CAP * LS :draft/account-registration=before-connect extended-join labeled-response sasl=PLAIN\r\n"}
+      msg -> assert msg == {:line, @cap_ls_302}
     end
 
     send(handler, cmd("CAP REQ sasl"))
@@ -534,23 +516,10 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   test "joining a room", %{handler: handler} do
     do_connection_registration(handler)
 
-    send(handler, cmd("JOIN #existing_room:example.org"))
+    send(handler, cmd("@label=abcd JOIN #existing_room:example.org"))
 
     receive do
-      msg -> assert msg == {:line, ":foo:example.org JOIN :#existing_room:example.org\r\n"}
-    end
-  end
-
-  test "joining a room with extended-join", %{handler: handler} do
-    do_connection_registration(handler, ["extended-join"])
-
-    send(handler, cmd("JOIN #existing_room:example.org"))
-
-    receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  ":foo:example.org JOIN #existing_room:example.org foo:example.org :foo:example.org\r\n"}
+      msg -> assert msg == {:line, "@label=abcd ACK\r\n"}
     end
   end
 end

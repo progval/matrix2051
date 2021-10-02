@@ -15,6 +15,8 @@ defmodule Matrix2051.IrcConn.Handler do
   @capabilities %{
     # https://github.com/ircv3/ircv3-specifications/pull/435
     "draft/account-registration" => {:account_registration, "before-connect"},
+    # https://ircv3.net/specs/extensions/account-tag.html
+    "account-tag" => {:account_tag, nil},
     # https://ircv3.net/specs/extensions/extended-join.html
     "extended-join" => {:extended_join, nil},
     # https://ircv3.net/specs/extensions/labeled-response
@@ -104,16 +106,18 @@ defmodule Matrix2051.IrcConn.Handler do
     capabilities = Matrix2051.IrcConn.State.capabilities(state)
 
     fn cmd ->
-      tags = cmd.tags
-
       tags =
-        case {Enum.member?(capabilities, :labeled_response), Map.get(command.tags, "label")} do
-          {true, label} when label != nil -> Map.put_new(tags, "label", label)
-          _ -> tags
+        case Map.get(command.tags, "label") do
+          nil -> cmd.tags
+          label -> Map.put_new(cmd.tags, "label", label)
         end
 
       cmd = %Matrix2051.Irc.Command{cmd | tags: tags}
-      Matrix2051.IrcConn.Writer.write_command(writer, cmd)
+
+      Matrix2051.IrcConn.Writer.write_command(
+        writer,
+        Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+      )
     end
   end
 
@@ -471,7 +475,6 @@ defmodule Matrix2051.IrcConn.Handler do
     state = sup_mod.state(sup_pid)
     matrix_client = sup_mod.matrix_client(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(state)
-    capabilities = Matrix2051.IrcConn.State.capabilities(state)
 
     send = make_send_function(command, sup_mod, sup_pid)
 
@@ -483,15 +486,7 @@ defmodule Matrix2051.IrcConn.Handler do
       send_numeric.("461", [command.command, "Need more parameters"])
     end
 
-    send_ack = fn ->
-      case {Enum.member?(capabilities, :labeled_response), Map.get(command.tags, "label")} do
-        {true, label} when label != nil ->
-          send.(%Matrix2051.Irc.Command{command: "ACK", params: []})
-
-        _ ->
-          nil
-      end
-    end
+    send_ack = fn -> send.(%Matrix2051.Irc.Command{command: "ACK", params: []}) end
 
     case {command.command, command.params} do
       {"NICK", [new_nick | _]} ->
@@ -556,20 +551,8 @@ defmodule Matrix2051.IrcConn.Handler do
       {"JOIN", [channel | _]} ->
         case Matrix2051.MatrixClient.Client.join_room(matrix_client, channel) do
           {:ok, _room_id} ->
-            account_name = nick
-            # TODO: get the actual display name
-            real_name = nick
-
-            send.(%Matrix2051.Irc.Command{
-              source: nick,
-              command: "JOIN",
-              params:
-                if Enum.member?(capabilities, :extended_join) do
-                  [channel, account_name, real_name]
-                else
-                  [channel]
-                end
-            })
+            # Should we send a JOIN?
+            send_ack.()
 
           {:error, :already_joined, _room_id} ->
             send_ack.()

@@ -15,7 +15,9 @@ defmodule Matrix2051.IrcConn.Writer do
   end
 
   def write_command(writer, command) do
-    write_line(writer, Matrix2051.Irc.Command.format(command))
+    if command != nil do
+      write_line(writer, Matrix2051.Irc.Command.format(command))
+    end
   end
 
   def write_line(writer, line) do
