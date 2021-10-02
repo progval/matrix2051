@@ -6,8 +6,9 @@ defmodule Matrix2051.Matrix.RawClient do
 
   def get(client, path, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
-    # Need to be larger than Poller's timeout
-    options = [recv_timeout: 1000] ++ options
+    # Need to be larger than Poller's timeout (time 1000 because this ones seems
+    # to be in milliseconds)
+    options = [recv_timeout: 1_000_000] ++ options
 
     case client.httpoison.get!(client.base_url <> path, headers, options) do
       %HTTPoison.Response{status_code: 200, body: body} ->
@@ -20,7 +21,7 @@ defmodule Matrix2051.Matrix.RawClient do
 
   def post(client, path, body, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
-    options = [recv_timeout: 1000] ++ options
+    options = [recv_timeout: 1_000_000] ++ options
 
     case client.httpoison.post!(client.base_url <> path, body, headers, options) do
       %HTTPoison.Response{status_code: 200, body: body} ->
