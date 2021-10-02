@@ -74,7 +74,6 @@ defmodule Matrix2051.MatrixClient.Poller do
       |> Map.get("state", %{})
       |> Map.get("events", [])
       # oldest first
-      |> Enum.reverse()
       |> Enum.map(fn event ->
         sender =
           case Map.get(event, "sender") do
@@ -106,7 +105,6 @@ defmodule Matrix2051.MatrixClient.Poller do
     |> Map.get("timeline", %{})
     |> Map.get("events", [])
     # oldest first
-    |> Enum.reverse()
     |> Enum.map(fn event ->
       sender =
         case Map.get(event, "sender") do

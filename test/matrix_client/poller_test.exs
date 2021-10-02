@@ -46,18 +46,18 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   test "new room with disordered events" do
     state_events = [
       %{
-        "content" => %{"alias" => "#test:example.org"},
-        "event_id" => "$event2",
-        "origin_server_ts" => 1_632_644_251_623,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.canonical_alias"
-      },
-      %{
         "content" => %{"name" => "test"},
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_975,
         "sender" => "@nick:example.org",
         "type" => "m.room.name"
+      },
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias"
       }
     ]
 
@@ -142,11 +142,11 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   test "renamed room with name and topic" do
     state_events = [
       %{
-        "content" => %{"topic" => "the topic"},
-        "event_id" => "$event3",
-        "origin_server_ts" => 1_633_176_350_104,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.topic"
+        "content" => %{"alias" => "#test1:example.org"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick1:example.org",
+        "type" => "m.room.canonical_alias"
       },
       %{
         "content" => %{"name" => "test"},
@@ -156,11 +156,11 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "type" => "m.room.name"
       },
       %{
-        "content" => %{"alias" => "#test1:example.org"},
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_644_251_623,
-        "sender" => "@nick1:example.org",
-        "type" => "m.room.canonical_alias"
+        "content" => %{"topic" => "the topic"},
+        "event_id" => "$event3",
+        "origin_server_ts" => 1_633_176_350_104,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.topic"
       }
     ]
 
@@ -235,11 +235,11 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   test "existing members" do
     state_events = [
       %{
-        "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
-        "event_id" => "$event3",
-        "origin_server_ts" => 1_632_648_797_438,
-        "sender" => "mynick:example.org",
-        "type" => "m.room.member"
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias"
       },
       %{
         "content" => %{"avatar_url" => nil, "displayname" => "Name 2", "membership" => "join"},
@@ -249,11 +249,11 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "type" => "m.room.member"
       },
       %{
-        "content" => %{"alias" => "#test:example.org"},
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_644_251_623,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.canonical_alias"
+        "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
+        "event_id" => "$event3",
+        "origin_server_ts" => 1_632_648_797_438,
+        "sender" => "mynick:example.org",
+        "type" => "m.room.member"
       }
     ]
 
@@ -296,17 +296,17 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     timeline_events = [
       %{
-        "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
-        "event_id" => "$event2",
-        "origin_server_ts" => 1_632_648_797_438,
-        "sender" => "mynick:example.org",
-        "type" => "m.room.member"
-      },
-      %{
         "content" => %{"avatar_url" => nil, "displayname" => "Name 2", "membership" => "join"},
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_648_797_438,
         "sender" => "nick2:example.org",
+        "type" => "m.room.member"
+      },
+      %{
+        "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_648_797_438,
+        "sender" => "mynick:example.org",
         "type" => "m.room.member"
       }
     ]
@@ -348,15 +348,15 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     timeline_events = [
       %{
-        "content" => %{"join_rule" => "invite"},
-        "event_id" => "$event2",
+        "content" => %{"join_rule" => "public"},
+        "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_803,
         "sender" => "@nick:example.org",
         "type" => "m.room.join_rules"
       },
       %{
-        "content" => %{"join_rule" => "public"},
-        "event_id" => "$event1",
+        "content" => %{"join_rule" => "invite"},
+        "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_803,
         "sender" => "@nick:example.org",
         "type" => "m.room.join_rules"
