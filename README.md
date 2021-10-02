@@ -5,18 +5,19 @@ connects to Matrix homeservers instead of IRC servers.
 
 Goals:
 
-* Make it easy for IRC users to join Matrix seemlessly
-* Support existing relay bots, to allows relays that behave better on IRC than
-  existing IRC/Matrix bridges
-* Bleeding-edge IRCv3 implementation
-* As little configuration as possible
-* For me personally: learning Elixir and Matrix
+1. Make it easy for IRC users to join Matrix seamlessly
+2. Support existing relay bots, to allows relays that behave better on IRC than
+   existing IRC/Matrix bridges
+3. Bleeding-edge IRCv3 implementation
+4. As little configuration and database as possible (ideally zero)
+5. For me personally: learning Elixir and Matrix
 
 Non-goals:
 
-* Being a hosted service (it would require spam countermeasures)
-* Connecting to multiple accounts or to other protocols (à la [Bitlbee](https://www.bitlbee.org/))
-* Implementing any features not natively supported by either IRC or Matrix (ie. no service bot that you interract with using PRIVMSG)
+1. Being a hosted service (it would require spam countermeasures)
+2. TLS support (see previous point). Just run it on localhost. If you really need it to be remote, access it via a VPN or a reverse proxy.
+3. Connecting to multiple accounts per IRC connect or to other protocols (à la [Bitlbee](https://www.bitlbee.org/)). This conflicts with goals 1 and 4.
+4. Implementing any features not natively by **both** protocols (ie. no need for service bots that you interract with using PRIVMSG)
 
 ## Roadmap
 
