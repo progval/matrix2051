@@ -409,7 +409,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
   test "joining a room", %{irc_pid: irc_pid} do
     MockHTTPoison
     |> expect_login
-    |> expect(:post!, fn url, body, headers ->
+    |> expect(:post!, fn url, body, headers, _options ->
       assert headers == [Authorization: "Bearer t0ken"]
 
       assert url ==

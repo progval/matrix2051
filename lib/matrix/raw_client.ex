@@ -4,10 +4,11 @@ defmodule Matrix2051.Matrix.RawClient do
   """
   defstruct [:base_url, :access_token, :httpoison]
 
-  def get(client, path, headers \\ []) do
+  def get(client, path, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
+    options = [recv_timeout: 1000] ++ options  # Need to be larger than Poller's timeout
 
-    case client.httpoison.get!(client.base_url <> path, headers) do
+    case client.httpoison.get!(client.base_url <> path, headers, options) do
       %HTTPoison.Response{status_code: 200, body: body} ->
         {:ok, Jason.decode!(body)}
 
@@ -16,10 +17,11 @@ defmodule Matrix2051.Matrix.RawClient do
     end
   end
 
-  def post(client, path, body, headers \\ []) do
+  def post(client, path, body, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
+    options = [recv_timeout: 1000] ++ options
 
-    case client.httpoison.post!(client.base_url <> path, body, headers) do
+    case client.httpoison.post!(client.base_url <> path, body, headers, options) do
       %HTTPoison.Response{status_code: 200, body: body} ->
         {:ok, Jason.decode!(body)}
 

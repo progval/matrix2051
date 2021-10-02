@@ -31,7 +31,8 @@ defmodule Matrix2051.MatrixClient.Poller do
 
   defp poll_one(sup_mod, sup_pid, since, raw_client) do
     query = %{
-      # Completely arbitrary value.
+      # Completely arbitrary value. Just make sure it's lower than recv_timeout
+      # in RawClient
       "timeout" => "600"
     }
 
