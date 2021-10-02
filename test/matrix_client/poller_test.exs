@@ -248,4 +248,49 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       msg -> assert msg == {:line, ":nick2:example.org JOIN :#test:example.org\r\n"}
     end
   end
+
+  test "join_rules" do
+    events = [
+      %{
+        "content" => %{"join_rule" => "invite"},
+        "origin_server_ts" => 1_632_644_251_803,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.join_rules"
+      },
+      %{
+        "content" => %{"join_rule" => "public"},
+        "origin_server_ts" => 1_632_644_251_803,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.join_rules"
+      },
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias"
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+      "rooms" => %{
+        "join" => %{"!testid:example.org" => %{"state" => %{"events" => events}}}
+      }
+    })
+
+    receive do
+      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:line, "331 mynick:example.com :#test:example.org\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:line, ":nick:example.org MODE #test:example.org :-i\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:line, ":nick:example.org MODE #test:example.org :+i\r\n"}
+    end
+  end
 end

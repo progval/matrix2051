@@ -205,6 +205,33 @@ defmodule Matrix2051.MatrixClient.Poller do
          sup_pid,
          room_id,
          sender,
+         %{"type" => "m.room.join_rules"} = event
+       ) do
+    state = sup_mod.matrix_state(sup_pid)
+    channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+    send = make_send_function(sup_mod, sup_pid)
+
+    mode =
+      case event["content"]["join_rule"] do
+        "public" -> "-i"
+        "knock" -> "+i"
+        "invite" -> "+i"
+        "private" -> "+i"
+      end
+
+    send.(%Matrix2051.Irc.Command{
+      tags: %{"account" => sender},
+      source: sender,
+      command: "MODE",
+      params: [channel, mode]
+    })
+  end
+
+  defp handle_event(
+         sup_mod,
+         sup_pid,
+         room_id,
+         sender,
          %{"type" => "m.room.member"} = _event
        ) do
     state = sup_mod.matrix_state(sup_pid)
@@ -269,14 +296,23 @@ defmodule Matrix2051.MatrixClient.Poller do
     send = make_send_function(sup_mod, sup_pid)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
 
-    send.(%Matrix2051.Irc.Command{
-      source: "server",
-      command: "NOTICE",
-      params: [
-        channel,
-        "Unknown state event (" <> event["type"] <> "): " <> Kernel.inspect(event)
-      ]
-    })
+    case event["type"] do
+      "m.room.create" ->
+        nil
+
+      "m.room.history_visibility" ->
+        nil
+
+      event_type ->
+        send.(%Matrix2051.Irc.Command{
+          source: "server",
+          command: "NOTICE",
+          params: [
+            channel,
+            "Unknown state event (" <> event_type <> "): " <> Kernel.inspect(event)
+          ]
+        })
+    end
   end
 
   defp handle_left_room(sup_mod, sup_pid, _room_id, _event) do
