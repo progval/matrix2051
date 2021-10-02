@@ -25,7 +25,7 @@ Non-goals:
   * [x] on Synapse with no email verification
   * [ ] on Synapse with email verification
   * [ ] on other homeservers (when the Matrix spec defines how to)
-* [ ] retrieving the room list and joining clients to it
+* [x] retrieving the room list and joining clients to it
 * [ ] retrieving the member list and sending it to clients
 * [x] support JOIN from clients
 * [ ] sending messages from IRC clients

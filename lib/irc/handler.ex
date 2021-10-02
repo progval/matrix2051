@@ -390,7 +390,14 @@ defmodule Matrix2051.IrcConn.Handler do
     # RPL_WELCOME
     send_numeric.("001", ["*", "Welcome to this Matrix bouncer."])
     # RPL_ISUPPORT
-    send_numeric.("005", ["*", "CASEMAPPING=rfc3454", "CHANLIMIT=", "TARGMAX=JOIN:1,PART:1"])
+    send_numeric.("005", [
+      "*",
+      "CASEMAPPING=rfc3454",
+      "CHANLIMIT=",
+      "CHANTYPES=#!",
+      "TARGMAX=JOIN:1,PART:1"
+    ])
+
     # RPL_MOTDSTART
     send_numeric.("375", ["*", "- Message of the day"])
     # RPL_MOTD

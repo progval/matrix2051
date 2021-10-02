@@ -102,6 +102,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
   @cap_ls_302 "CAP * LS :account-tag draft/account-registration=before-connect extended-join labeled-response sasl=PLAIN\r\n"
   @cap_ls "CAP * LS :account-tag draft/account-registration extended-join labeled-response sasl\r\n"
+  @isupport "005 * * CASEMAPPING=rfc3454 CHANLIMIT= CHANTYPES=#! :TARGMAX=JOIN:1,PART:1\r\n"
 
   setup do
     start_supervised!({Matrix2051.Config, []})
@@ -126,7 +127,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     receive do
       msg ->
-        assert msg == {:line, "005 * * CASEMAPPING=rfc3454 CHANLIMIT= :TARGMAX=JOIN:1,PART:1\r\n"}
+        assert msg == {:line, @isupport}
     end
 
     receive do

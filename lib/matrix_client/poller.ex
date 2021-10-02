@@ -74,7 +74,13 @@ defmodule Matrix2051.MatrixClient.Poller do
     # oldest first
     |> Enum.reverse()
     |> Enum.map(fn event ->
-      handle_state_event(sup_mod, sup_pid, room_id, event)
+      sender =
+        case Map.get(event, "sender") do
+          nil -> nil
+          sender -> String.slice(sender, 1..-1)
+        end
+
+      handle_state_event(sup_mod, sup_pid, room_id, sender, event)
     end)
 
     room_event
@@ -83,7 +89,13 @@ defmodule Matrix2051.MatrixClient.Poller do
     # oldest first
     |> Enum.reverse()
     |> Enum.map(fn event ->
-      handle_timeline_event(sup_mod, sup_pid, room_id, event)
+      sender =
+        case Map.get(event, "sender") do
+          nil -> nil
+          sender -> String.slice(sender, 1..-1)
+        end
+
+      handle_timeline_event(sup_mod, sup_pid, room_id, sender, event)
     end)
   end
 
@@ -91,22 +103,15 @@ defmodule Matrix2051.MatrixClient.Poller do
          sup_mod,
          sup_pid,
          room_id,
+         sender,
          %{"type" => "m.room.canonical_alias"} = event
        ) do
     new_canonical_alias = event["content"]["alias"]
     irc_state = sup_mod.state(sup_pid)
     state = sup_mod.matrix_state(sup_pid)
-    capabilities = Matrix2051.IrcConn.State.capabilities(irc_state)
-    writer = sup_mod.writer(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(irc_state)
-    sender = Map.get(event, "sender", "someone")
 
-    send = fn cmd ->
-      Matrix2051.IrcConn.Writer.write_command(
-        writer,
-        Matrix2051.Irc.Command.downgrade(cmd, capabilities)
-      )
-    end
+    send = make_send_function(sup_mod, sup_pid)
 
     old_canonical_alias =
       Matrix2051.MatrixClient.State.set_room_canonical_alias(
@@ -115,55 +120,105 @@ defmodule Matrix2051.MatrixClient.Poller do
         new_canonical_alias
       )
 
-    # Join the new channel
-    send.(%Matrix2051.Irc.Command{
-      tags: %{"account" => nick},
-      source: nick,
-      command: "JOIN",
-      params: [new_canonical_alias, nick, nick]
-    })
+    if old_canonical_alias != new_canonical_alias do
+      # Join the new channel
+      send.(%Matrix2051.Irc.Command{
+        tags: %{"account" => nick},
+        source: nick,
+        command: "JOIN",
+        params: [new_canonical_alias, nick, nick]
+      })
 
-    # Handle closing the old channel, if any
-    case old_canonical_alias do
-      # this is a new room, nothing to do
-      nil ->
-        nil
+      case compute_topic(sup_mod, sup_pid, room_id) do
+        nil ->
+          # RPL_NOTOPIC
+          send.(%Matrix2051.Irc.Command{command: "331", params: [nick, new_canonical_alias]})
 
-      old_canonical_alias ->
-        # this is a known room that got renamed; part the old channel.
-        send.(%Matrix2051.Irc.Command{
-          tags: %{"account" => nick},
-          source: nick,
-          command: "PART",
-          params: [
-            old_canonical_alias,
-            sender <> " renamed this room to " <> new_canonical_alias
-          ]
-        })
+        topic ->
+          # RPL_TOPIC
+          send.(%Matrix2051.Irc.Command{command: "332", params: [nick, new_canonical_alias, topic]})
+      end
 
-        # And announce the change in the new one.
-        send.(%Matrix2051.Irc.Command{
-          source: "server",
-          command: "NOTICE",
-          params: [
-            new_canonical_alias,
-            sender <> " renamed this room was renamed from " <> old_canonical_alias
-          ]
-        })
+      # Handle closing the old channel, if any
+      case old_canonical_alias do
+        # this is a new room, nothing to do
+        nil ->
+          nil
+
+        old_canonical_alias when old_canonical_alias != new_canonical_alias ->
+          # this is a known room that got renamed; part the old channel.
+          send.(%Matrix2051.Irc.Command{
+            tags: %{"account" => nick},
+            source: nick,
+            command: "PART",
+            params: [
+              old_canonical_alias,
+              (sender || "someone") <> " renamed this room to " <> new_canonical_alias
+            ]
+          })
+
+          # And announce the change in the new one.
+          send.(%Matrix2051.Irc.Command{
+            source: "server",
+            command: "NOTICE",
+            params: [
+              new_canonical_alias,
+              (sender || "someone") <> " renamed this room was renamed from " <> old_canonical_alias
+            ]
+          })
+      end
     end
   end
 
-  defp handle_state_event(sup_mod, sup_pid, room_id, event) do
+  defp handle_state_event(
+         sup_mod,
+         sup_pid,
+         room_id,
+         sender,
+         %{"type" => "m.room.name"} = event
+       ) do
     state = sup_mod.matrix_state(sup_pid)
-    writer = sup_mod.writer(sup_pid)
+    send = make_send_function(sup_mod, sup_pid)
 
-    channel =
-      case Matrix2051.MatrixClient.State.room_canonical_alias(state, room_id) do
-        nil -> room_id
-        canonical_alias -> canonical_alias
+    channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+    Matrix2051.MatrixClient.State.set_room_name(state, room_id, event["content"]["name"])
+
+    topic =
+      case compute_topic(sup_mod, sup_pid, room_id) do
+        nil -> ""
+        topic -> topic
       end
 
-    Matrix2051.IrcConn.Writer.write_command(writer, %Matrix2051.Irc.Command{
+    send.(%Matrix2051.Irc.Command{source: sender, command: "TOPIC", params: [channel, topic]})
+  end
+
+  defp handle_state_event(
+         sup_mod,
+         sup_pid,
+         room_id,
+         sender,
+         %{"type" => "m.room.topic"} = event
+       ) do
+    state = sup_mod.matrix_state(sup_pid)
+    send = make_send_function(sup_mod, sup_pid)
+    channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+    Matrix2051.MatrixClient.State.set_room_topic(state, room_id, event["content"]["topic"])
+
+    topic =
+      case compute_topic(sup_mod, sup_pid, room_id) do
+        nil -> ""
+        topic -> topic
+      end
+
+    send.(%Matrix2051.Irc.Command{source: sender, command: "TOPIC", params: [channel, topic]})
+  end
+
+  defp handle_state_event(sup_mod, sup_pid, room_id, _sender, event) do
+    state = sup_mod.matrix_state(sup_pid)
+    send = make_send_function(sup_mod, sup_pid)
+    channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+
+    send.(%Matrix2051.Irc.Command{
       source: "server",
       command: "NOTICE",
       params: [
@@ -173,9 +228,9 @@ defmodule Matrix2051.MatrixClient.Poller do
     })
   end
 
-  defp handle_timeline_event(sup_mod, sup_pid, room_id, event) do
+  defp handle_timeline_event(sup_mod, sup_pid, room_id, _sender, event) do
     state = sup_mod.matrix_state(sup_pid)
-    writer = sup_mod.writer(sup_pid)
+    send = make_send_function(sup_mod, sup_pid)
 
     channel =
       case Matrix2051.MatrixClient.State.room_canonical_alias(state, room_id) do
@@ -183,7 +238,7 @@ defmodule Matrix2051.MatrixClient.Poller do
         canonical_alias -> canonical_alias
       end
 
-    Matrix2051.IrcConn.Writer.write_command(writer, %Matrix2051.Irc.Command{
+    send.(%Matrix2051.Irc.Command{
       source: "server",
       command: "NOTICE",
       params: [
@@ -197,5 +252,32 @@ defmodule Matrix2051.MatrixClient.Poller do
     _state = sup_mod.matrix_state(sup_pid)
     _writer = sup_mod.writer(sup_pid)
     # TODO
+  end
+
+  defp compute_topic(sup_mod, sup_pid, room_id) do
+    state = sup_mod.matrix_state(sup_pid)
+    name = Matrix2051.MatrixClient.State.room_name(state, room_id)
+    topic = Matrix2051.MatrixClient.State.room_topic(state, room_id)
+
+    case {name, topic} do
+      {nil, nil} -> nil
+      {name, nil} -> "[" <> name <> "]"
+      {nil, topic} -> "[] " <> topic
+      {name, topic} -> "[" <> name <> "] " <> topic
+    end
+  end
+
+  # Returns a function that can be used to send messages
+  defp make_send_function(sup_mod, sup_pid) do
+    writer = sup_mod.writer(sup_pid)
+    state = sup_mod.state(sup_pid)
+    capabilities = Matrix2051.IrcConn.State.capabilities(state)
+
+    fn cmd ->
+      Matrix2051.IrcConn.Writer.write_command(
+        writer,
+        Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+      )
+    end
   end
 end
