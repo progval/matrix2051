@@ -69,19 +69,30 @@ defmodule Matrix2051.MatrixClient.Poller do
   end
 
   defp handle_joined_room(sup_mod, sup_pid, room_id, room_event) do
-    room_event
-    |> Map.get("state", %{})
-    |> Map.get("events", [])
-    # oldest first
-    |> Enum.reverse()
-    |> Enum.map(fn event ->
-      sender =
-        case Map.get(event, "sender") do
-          nil -> nil
-          sender -> String.replace_prefix(sender, "@", "")
-        end
+    new_rooms =
+      room_event
+      |> Map.get("state", %{})
+      |> Map.get("events", [])
+      # oldest first
+      |> Enum.reverse()
+      |> Enum.map(fn event ->
+        sender =
+          case Map.get(event, "sender") do
+            nil -> nil
+            sender -> String.replace_prefix(sender, "@", "")
+          end
 
-      handle_event(sup_mod, sup_pid, room_id, sender, event)
+        handle_event(sup_mod, sup_pid, room_id, sender, true, event)
+      end)
+
+    # Send self JOIN, RPL_TOPIC/RPL_NOTOPIC, RPL_NAMREPLY
+    new_rooms
+    |> Enum.filter(fn room -> room != nil end)
+    # dedup
+    |> Map.new()
+    |> Map.to_list()
+    |> Enum.map(fn {room_id, {canonical_alias_sender, old_canonical_alias}} ->
+      send_channel_welcome(sup_mod, sup_pid, room_id, canonical_alias_sender, old_canonical_alias)
     end)
 
     room_event
@@ -96,7 +107,7 @@ defmodule Matrix2051.MatrixClient.Poller do
           sender -> String.replace_prefix(sender, "@", "")
         end
 
-      handle_event(sup_mod, sup_pid, room_id, sender, event)
+      handle_event(sup_mod, sup_pid, room_id, sender, false, event)
     end)
   end
 
@@ -105,14 +116,12 @@ defmodule Matrix2051.MatrixClient.Poller do
          sup_pid,
          room_id,
          sender,
+         state_event,
          %{"type" => "m.room.canonical_alias"} = event
        ) do
     new_canonical_alias = event["content"]["alias"]
-    irc_state = sup_mod.state(sup_pid)
     state = sup_mod.matrix_state(sup_pid)
-    nick = Matrix2051.IrcConn.State.nick(irc_state)
-
-    send = make_send_function(sup_mod, sup_pid)
+    irc_state = sup_mod.state(sup_pid)
 
     old_canonical_alias =
       Matrix2051.MatrixClient.State.set_room_canonical_alias(
@@ -121,84 +130,11 @@ defmodule Matrix2051.MatrixClient.Poller do
         new_canonical_alias
       )
 
-    # old_canonical_alias is nil if this is a new room
-
-    if old_canonical_alias != new_canonical_alias do
-      # Join the new channel
-      send.(%Matrix2051.Irc.Command{
-        tags: %{"account" => nick},
-        source: nick,
-        command: "JOIN",
-        params: [new_canonical_alias, nick, nick]
-      })
-
-      # Send joins for other users
-      Matrix2051.MatrixClient.State.room_members(state, room_id)
-      |> Enum.map(fn member ->
-        if member != nick do
-          send.(%Matrix2051.Irc.Command{
-            tags: %{"account" => member},
-            source: member,
-            command: "JOIN",
-            params: [new_canonical_alias, member, member]
-          })
-        end
-      end)
-
-      case compute_topic(sup_mod, sup_pid, room_id) do
-        nil ->
-          # RPL_NOTOPIC
-          send.(%Matrix2051.Irc.Command{command: "331", params: [nick, new_canonical_alias]})
-
-        topic ->
-          # RPL_TOPIC
-          send.(%Matrix2051.Irc.Command{
-            command: "332",
-            params: [nick, new_canonical_alias, topic]
-          })
-
-          # RPL_TOPICWHOTIME
-          send.(%Matrix2051.Irc.Command{
-            command: "333",
-            params: [
-              nick,
-              new_canonical_alias,
-              sender,
-              Integer.to_string(event["origin_server_ts"])
-            ]
-          })
-      end
-
-      # Handle closing the old channel, if any
-      case old_canonical_alias do
-        # this is a new room, nothing to do
-        nil ->
-          nil
-
-        old_canonical_alias when old_canonical_alias != new_canonical_alias ->
-          # this is a known room that got renamed; part the old channel.
-          send.(%Matrix2051.Irc.Command{
-            tags: %{"account" => nick},
-            source: nick,
-            command: "PART",
-            params: [
-              old_canonical_alias,
-              (sender || "someone") <> " renamed this room to " <> new_canonical_alias
-            ]
-          })
-
-          # And announce the change in the new one.
-          send.(%Matrix2051.Irc.Command{
-            source: "server",
-            command: "NOTICE",
-            params: [
-              new_canonical_alias,
-              (sender || "someone") <>
-                " renamed this room was renamed from " <> old_canonical_alias
-            ]
-          })
-      end
+    if !state_event do
+      send_channel_welcome(sup_mod, sup_pid, room_id, sender, old_canonical_alias)
     end
+
+    {room_id, {sender, old_canonical_alias}}
   end
 
   defp handle_event(
@@ -206,26 +142,31 @@ defmodule Matrix2051.MatrixClient.Poller do
          sup_pid,
          room_id,
          sender,
+         state_event,
          %{"type" => "m.room.join_rules"} = event
        ) do
     state = sup_mod.matrix_state(sup_pid)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_mod, sup_pid)
 
-    mode =
-      case event["content"]["join_rule"] do
-        "public" -> "-i"
-        "knock" -> "+i"
-        "invite" -> "+i"
-        "private" -> "+i"
-      end
+    if !state_event do
+      mode =
+        case event["content"]["join_rule"] do
+          "public" -> "-i"
+          "knock" -> "+i"
+          "invite" -> "+i"
+          "private" -> "+i"
+        end
 
-    send.(%Matrix2051.Irc.Command{
-      tags: %{"account" => sender},
-      source: sender,
-      command: "MODE",
-      params: [channel, mode]
-    })
+      send.(%Matrix2051.Irc.Command{
+        tags: %{"account" => sender},
+        source: sender,
+        command: "MODE",
+        params: [channel, mode]
+      })
+    end
+
+    nil
   end
 
   defp handle_event(
@@ -233,13 +174,16 @@ defmodule Matrix2051.MatrixClient.Poller do
          sup_pid,
          room_id,
          sender,
+         state_event,
          %{"type" => "m.room.member"} = _event
        ) do
     state = sup_mod.matrix_state(sup_pid)
     send = make_send_function(sup_mod, sup_pid)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
 
-    if !Matrix2051.MatrixClient.State.room_member_add(state, room_id, sender) do
+    was_already_member = Matrix2051.MatrixClient.State.room_member_add(state, room_id, sender)
+
+    if !state_event && !was_already_member do
       send.(%Matrix2051.Irc.Command{
         tags: %{"account" => sender},
         source: sender,
@@ -247,6 +191,8 @@ defmodule Matrix2051.MatrixClient.Poller do
         params: [channel, sender, sender]
       })
     end
+
+    nil
   end
 
   defp handle_event(
@@ -254,6 +200,7 @@ defmodule Matrix2051.MatrixClient.Poller do
          sup_pid,
          room_id,
          sender,
+         _state_event,
          %{"type" => "m.room.message"} = event
        ) do
     state = sup_mod.matrix_state(sup_pid)
@@ -266,6 +213,8 @@ defmodule Matrix2051.MatrixClient.Poller do
       command: "PRIVMSG",
       params: [channel, event["content"]["body"]]
     })
+
+    nil
   end
 
   defp handle_event(
@@ -273,6 +222,7 @@ defmodule Matrix2051.MatrixClient.Poller do
          sup_pid,
          room_id,
          sender,
+         state_event,
          %{"type" => "m.room.name"} = event
        ) do
     state = sup_mod.matrix_state(sup_pid)
@@ -281,13 +231,17 @@ defmodule Matrix2051.MatrixClient.Poller do
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
     Matrix2051.MatrixClient.State.set_room_name(state, room_id, event["content"]["name"])
 
-    topic =
-      case compute_topic(sup_mod, sup_pid, room_id) do
-        nil -> ""
-        topic -> topic
-      end
+    if !state_event do
+      topic =
+        case compute_topic(sup_mod, sup_pid, room_id) do
+          nil -> ""
+          {topic, _whotime} -> topic
+        end
 
-    send.(%Matrix2051.Irc.Command{source: sender, command: "TOPIC", params: [channel, topic]})
+      send.(%Matrix2051.Irc.Command{source: sender, command: "TOPIC", params: [channel, topic]})
+    end
+
+    nil
   end
 
   defp handle_event(
@@ -295,23 +249,33 @@ defmodule Matrix2051.MatrixClient.Poller do
          sup_pid,
          room_id,
          sender,
+         state_event,
          %{"type" => "m.room.topic"} = event
        ) do
     state = sup_mod.matrix_state(sup_pid)
     send = make_send_function(sup_mod, sup_pid)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
-    Matrix2051.MatrixClient.State.set_room_topic(state, room_id, event["content"]["topic"])
 
-    topic =
-      case compute_topic(sup_mod, sup_pid, room_id) do
-        nil -> ""
-        topic -> topic
-      end
+    Matrix2051.MatrixClient.State.set_room_topic(
+      state,
+      room_id,
+      {event["content"]["topic"], sender, event["origin_server_ts"]}
+    )
 
-    send.(%Matrix2051.Irc.Command{source: sender, command: "TOPIC", params: [channel, topic]})
+    if !state_event do
+      topic =
+        case compute_topic(sup_mod, sup_pid, room_id) do
+          nil -> ""
+          {topic, _whotime} -> topic
+        end
+
+      send.(%Matrix2051.Irc.Command{source: sender, command: "TOPIC", params: [channel, topic]})
+    end
+
+    nil
   end
 
-  defp handle_event(sup_mod, sup_pid, room_id, _sender, event) do
+  defp handle_event(sup_mod, sup_pid, room_id, _sender, _state_event, event) do
     state = sup_mod.matrix_state(sup_pid)
     send = make_send_function(sup_mod, sup_pid)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
@@ -333,6 +297,8 @@ defmodule Matrix2051.MatrixClient.Poller do
           ]
         })
     end
+
+    nil
   end
 
   defp handle_left_room(sup_mod, sup_pid, _room_id, _event) do
@@ -344,14 +310,103 @@ defmodule Matrix2051.MatrixClient.Poller do
   defp compute_topic(sup_mod, sup_pid, room_id) do
     state = sup_mod.matrix_state(sup_pid)
     name = Matrix2051.MatrixClient.State.room_name(state, room_id)
-    topic = Matrix2051.MatrixClient.State.room_topic(state, room_id)
+    topicwhotime = Matrix2051.MatrixClient.State.room_topic(state, room_id)
 
-    case {name, topic} do
+    case {name, topicwhotime} do
       {nil, nil} -> nil
-      {name, nil} -> "[" <> name <> "]"
-      {nil, topic} -> "[] " <> topic
-      {name, topic} -> "[" <> name <> "] " <> topic
+      {name, nil} -> {"[" <> name <> "]", nil}
+      {nil, {topic, who, time}} -> {"[] " <> topic, {who, time}}
+      {name, {topic, who, time}} -> {"[" <> name <> "] " <> topic, {who, time}}
     end
+  end
+
+  # Sends self JOIN, RPL_TOPIC/RPL_NOTOPIC, RPL_NAMREPLY
+  defp send_channel_welcome(sup_mod, sup_pid, room_id, canonical_alias_sender, old_canonical_alias) do
+    irc_state = sup_mod.state(sup_pid)
+    state = sup_mod.matrix_state(sup_pid)
+    nick = Matrix2051.IrcConn.State.nick(irc_state)
+    channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+
+    send = make_send_function(sup_mod, sup_pid)
+
+    # Join the new channel
+    send.(%Matrix2051.Irc.Command{
+      tags: %{"account" => nick},
+      source: nick,
+      command: "JOIN",
+      params: [channel, nick, nick]
+    })
+
+    # RPL_NAMREPLY
+    Matrix2051.MatrixClient.State.room_members(state, room_id)
+    |> Enum.map(fn member ->
+      # TODO: group them in lines
+
+      # RPL_NAMREPLY
+      send.(%Matrix2051.Irc.Command{
+        command: "353",
+        params: [nick, "=", channel, member]
+      })
+    end)
+
+    case compute_topic(sup_mod, sup_pid, room_id) do
+      nil ->
+        # RPL_NOTOPIC
+        send.(%Matrix2051.Irc.Command{command: "331", params: [nick, channel]})
+
+      {topic, whotime} ->
+        # RPL_TOPIC
+        send.(%Matrix2051.Irc.Command{
+          command: "332",
+          params: [nick, channel, topic]
+        })
+
+        case whotime do
+          nil ->
+            nil
+
+          {who, time} ->
+            # RPL_TOPICWHOTIME
+            send.(%Matrix2051.Irc.Command{
+              command: "333",
+              params: [nick, channel, who, Integer.to_string(time)]
+            })
+        end
+    end
+
+    if old_canonical_alias != nil do
+      announce_channel_rename(sup_mod, sup_pid, room_id, canonical_alias_sender, old_canonical_alias)
+    end
+  end
+
+  defp announce_channel_rename(sup_mod, sup_pid, room_id, canonical_alias_sender, old_canonical_alias) do
+    irc_state = sup_mod.state(sup_pid)
+    state = sup_mod.matrix_state(sup_pid)
+    nick = Matrix2051.IrcConn.State.nick(irc_state)
+    new_canonical_alias = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+
+    send = make_send_function(sup_mod, sup_pid)
+
+    # this is a known room that got renamed; part the old channel.
+    send.(%Matrix2051.Irc.Command{
+      tags: %{"account" => nick},
+      source: nick,
+      command: "PART",
+      params: [
+        old_canonical_alias,
+        canonical_alias_sender <> " renamed this room to " <> new_canonical_alias
+      ]
+    })
+
+    # Announce the rename in the new room
+    send.(%Matrix2051.Irc.Command{
+      source: "server",
+      command: "NOTICE",
+      params: [
+        new_canonical_alias,
+        canonical_alias_sender <> " renamed this room from " <> old_canonical_alias
+      ]
+    })
   end
 
   # Returns a function that can be used to send messages

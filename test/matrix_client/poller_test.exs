@@ -22,7 +22,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "new room" do
-    events = [
+    state_events = [
       %{
         "content" => %{"alias" => "#test:example.org"},
         "origin_server_ts" => 1_632_644_251_623,
@@ -33,7 +33,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
       "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"state" => %{"events" => events}}}
+        "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
       }
     })
 
@@ -43,7 +43,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "new room with disordered events" do
-    events = [
+    state_events = [
       %{
         "content" => %{"alias" => "#test:example.org"},
         "origin_server_ts" => 1_632_644_251_623,
@@ -60,27 +60,21 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
       "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"state" => %{"events" => events}}}
+        "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
       }
     })
 
     receive do
-      msg -> assert msg == {:line, ":nick:example.org TOPIC !testid:example.org :[test]\r\n"}
+      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
     end
 
     receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
+      msg -> assert msg == {:line, "332 mynick:example.com #test:example.org :[test]\r\n"}
     end
   end
 
   test "renamed room" do
-    events = [
-      %{
-        "content" => %{"alias" => "#test2:example.org"},
-        "origin_server_ts" => 1_632_644_251_623,
-        "sender" => "@nick2:example.org",
-        "type" => "m.room.canonical_alias"
-      },
+    state_events = [
       %{
         "content" => %{"alias" => "#test1:example.org"},
         "origin_server_ts" => 1_632_644_251_623,
@@ -89,9 +83,23 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
+    timeline_events = [
+      %{
+        "content" => %{"alias" => "#test2:example.org"},
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick2:example.org",
+        "type" => "m.room.canonical_alias"
+      }
+    ]
+
     Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
       "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"state" => %{"events" => events}}}
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
       }
     })
 
@@ -122,18 +130,12 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       msg ->
         assert msg ==
                  {:line,
-                  ":server NOTICE #test2:example.org :nick2:example.org renamed this room was renamed from #test1:example.org\r\n"}
+                  ":server NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n"}
     end
   end
 
   test "renamed room with name and topic" do
-    events = [
-      %{
-        "content" => %{"alias" => "#test2:example.org"},
-        "origin_server_ts" => 1_632_644_251_623,
-        "sender" => "@nick2:example.org",
-        "type" => "m.room.canonical_alias"
-      },
+    state_events = [
       %{
         "content" => %{"topic" => "the topic"},
         "origin_server_ts" => 1_633_176_350_104,
@@ -154,9 +156,23 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
+    timeline_events = [
+      %{
+        "content" => %{"alias" => "#test2:example.org"},
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick2:example.org",
+        "type" => "m.room.canonical_alias"
+      }
+    ]
+
     Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
       "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"state" => %{"events" => events}}}
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
       }
     })
 
@@ -165,16 +181,15 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     end
 
     receive do
-      msg -> assert msg == {:line, "331 mynick:example.com :#test1:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, ":nick:example.org TOPIC #test1:example.org :[test]\r\n"}
+      msg ->
+        assert msg == {:line, "332 mynick:example.com #test1:example.org :[test] the topic\r\n"}
     end
 
     receive do
       msg ->
-        assert msg == {:line, ":nick:example.org TOPIC #test1:example.org :[test] the topic\r\n"}
+        assert msg ==
+                 {:line,
+                  "333 mynick:example.com #test1:example.org nick:example.org :1633176350104\r\n"}
     end
 
     receive do
@@ -190,7 +205,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       msg ->
         assert msg ==
                  {:line,
-                  "333 mynick:example.com #test2:example.org nick2:example.org :1632644251623\r\n"}
+                  "333 mynick:example.com #test2:example.org nick:example.org :1633176350104\r\n"}
     end
 
     receive do
@@ -204,12 +219,12 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       msg ->
         assert msg ==
                  {:line,
-                  ":server NOTICE #test2:example.org :nick2:example.org renamed this room was renamed from #test1:example.org\r\n"}
+                  ":server NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n"}
     end
   end
 
-  test "new joins" do
-    events = [
+  test "existing members" do
+    state_events = [
       %{
         "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
         "origin_server_ts" => 1_632_648_797_438,
@@ -232,7 +247,63 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
       "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"state" => %{"events" => events}}}
+        "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
+      }
+    })
+
+    receive do
+      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
+    end
+
+    receive do
+      msg ->
+        assert msg ==
+                 {:line, "353 mynick:example.com = #test:example.org :mynick:example.org\r\n"}
+    end
+
+    receive do
+      msg ->
+        assert msg == {:line, "353 mynick:example.com = #test:example.org :nick2:example.org\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:line, "331 mynick:example.com :#test:example.org\r\n"}
+    end
+  end
+
+  test "new members" do
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias"
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
+        "origin_server_ts" => 1_632_648_797_438,
+        "sender" => "mynick:example.org",
+        "type" => "m.room.member"
+      },
+      %{
+        "content" => %{"avatar_url" => nil, "displayname" => "Name 2", "membership" => "join"},
+        "origin_server_ts" => 1_632_648_797_438,
+        "sender" => "nick2:example.org",
+        "type" => "m.room.member"
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
       }
     })
 
@@ -250,7 +321,16 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "join_rules" do
-    events = [
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias"
+      }
+    ]
+
+    timeline_events = [
       %{
         "content" => %{"join_rule" => "invite"},
         "origin_server_ts" => 1_632_644_251_803,
@@ -262,18 +342,17 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "origin_server_ts" => 1_632_644_251_803,
         "sender" => "@nick:example.org",
         "type" => "m.room.join_rules"
-      },
-      %{
-        "content" => %{"alias" => "#test:example.org"},
-        "origin_server_ts" => 1_632_644_251_623,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.canonical_alias"
       }
     ]
 
     Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
       "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"state" => %{"events" => events}}}
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
       }
     })
 
@@ -295,13 +374,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "message" do
-    events = [
-      %{
-        "content" => %{"body" => "first message", "msgtype" => "m.text"},
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message"
-      },
+    state_events = [
       %{
         "content" => %{"alias" => "#test:example.org"},
         "origin_server_ts" => 1_632_644_251_623,
@@ -310,9 +383,23 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
+    timeline_events = [
+      %{
+        "content" => %{"body" => "first message", "msgtype" => "m.text"},
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message"
+      }
+    ]
+
     Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
       "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"state" => %{"events" => events}}}
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
       }
     })
 
