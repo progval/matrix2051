@@ -21,8 +21,13 @@ defmodule Matrix2051.IrcConn.Handler do
     "extended-join" => {:extended_join, nil},
     # https://ircv3.net/specs/extensions/labeled-response
     "labeled-response" => {:labeled_response, nil},
+    # https://ircv3.net/specs/extensions/message-ids
+    # https://ircv3.net/specs/extensions/message-tags
+    "message-tags" => {:message_tags, nil},
     # https://ircv3.net/specs/extensions/sasl-3.1
-    "sasl" => {:sasl, "PLAIN"}
+    "sasl" => {:sasl, "PLAIN"},
+    # https://ircv3.net/specs/extensions/server-time
+    "server-time" => {:server_time, nil}
   }
 
   @doc """

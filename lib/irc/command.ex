@@ -177,6 +177,8 @@ defmodule Matrix2051.Irc.Command do
         case key do
           "label" -> Enum.member?(capabilities, :labeled_response)
           "account" -> Enum.member?(capabilities, :account_tag)
+          "server_time" -> Enum.member?(capabilities, :server_time)
+          "msgid" -> Enum.member?(capabilities, :message_tags)
           _ -> false
         end
       end)
