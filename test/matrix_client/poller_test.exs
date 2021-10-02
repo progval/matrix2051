@@ -200,4 +200,45 @@ defmodule Matrix2051.MatrixClient.PollerTest do
                   ":server NOTICE #test2:example.org :nick2:example.org renamed this room was renamed from #test1:example.org\r\n"}
     end
   end
+
+  test "new joins" do
+    events = [
+      %{
+        "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
+        "origin_server_ts" => 1_632_648_797_438,
+        "sender" => "mynick:example.org",
+        "type" => "m.room.member"
+      },
+      %{
+        "content" => %{"avatar_url" => nil, "displayname" => "Name 2", "membership" => "join"},
+        "origin_server_ts" => 1_632_648_797_438,
+        "sender" => "nick2:example.org",
+        "type" => "m.room.member"
+      },
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias"
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+      "rooms" => %{
+        "join" => %{"!testid:example.org" => %{"state" => %{"events" => events}}}
+      }
+    })
+
+    receive do
+      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:line, "331 mynick:example.com :#test:example.org\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:line, ":nick2:example.org JOIN :#test:example.org\r\n"}
+    end
+  end
 end

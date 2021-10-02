@@ -31,9 +31,27 @@ defmodule Matrix2051.MatrixClient.State do
   end
 
   def room_canonical_alias(pid, room_id) do
-    Agent.get(pid, fn state ->
-      Map.get(state.rooms, room_id, @emptyroom).canonical_alias
+    Agent.get(pid, fn state -> Map.get(state.rooms, room_id, @emptyroom).canonical_alias end)
+  end
+
+  @doc """
+    Adds a member to the room and returns true iff it was already there
+  """
+  def room_member_add(pid, room_id, userid) do
+    Agent.get_and_update(pid, fn state ->
+      room = Map.get(state.rooms, room_id, @emptyroom)
+
+      if MapSet.member?(room.members, userid) do
+        {true, state}
+      else
+        room = %{room | members: MapSet.put(room.members, userid)}
+        {false, %{state | rooms: Map.put(state.rooms, room_id, room)}}
+      end
     end)
+  end
+
+  def room_members(pid, room_id) do
+    Agent.get(pid, fn state -> Map.get(state.rooms, room_id, @emptyroom).members end)
   end
 
   def set_room_name(pid, room_id, name) do
@@ -41,9 +59,7 @@ defmodule Matrix2051.MatrixClient.State do
   end
 
   def room_name(pid, room_id) do
-    Agent.get(pid, fn state ->
-      Map.get(state.rooms, room_id, @emptyroom).name
-    end)
+    Agent.get(pid, fn state -> Map.get(state.rooms, room_id, @emptyroom).name end)
   end
 
   def set_room_topic(pid, room_id, topic) do
@@ -51,9 +67,7 @@ defmodule Matrix2051.MatrixClient.State do
   end
 
   def room_topic(pid, room_id) do
-    Agent.get(pid, fn state ->
-      Map.get(state.rooms, room_id, @emptyroom).topic
-    end)
+    Agent.get(pid, fn state -> Map.get(state.rooms, room_id, @emptyroom).topic end)
   end
 
   @doc """

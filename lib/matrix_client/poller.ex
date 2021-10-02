@@ -77,7 +77,7 @@ defmodule Matrix2051.MatrixClient.Poller do
       sender =
         case Map.get(event, "sender") do
           nil -> nil
-          sender -> String.slice(sender, 1..-1)
+          sender -> String.replace_prefix(sender, "@", "")
         end
 
       handle_event(sup_mod, sup_pid, room_id, sender, event)
@@ -92,7 +92,7 @@ defmodule Matrix2051.MatrixClient.Poller do
       sender =
         case Map.get(event, "sender") do
           nil -> nil
-          sender -> String.slice(sender, 1..-1)
+          sender -> String.replace_prefix(sender, "@", "")
         end
 
       handle_event(sup_mod, sup_pid, room_id, sender, event)
@@ -120,6 +120,8 @@ defmodule Matrix2051.MatrixClient.Poller do
         new_canonical_alias
       )
 
+    # old_canonical_alias is nil if this is a new room
+
     if old_canonical_alias != new_canonical_alias do
       # Join the new channel
       send.(%Matrix2051.Irc.Command{
@@ -129,6 +131,19 @@ defmodule Matrix2051.MatrixClient.Poller do
         params: [new_canonical_alias, nick, nick]
       })
 
+      # Send joins for other users
+      Matrix2051.MatrixClient.State.room_members(state, room_id)
+      |> Enum.map(fn member ->
+        if member != nick do
+          send.(%Matrix2051.Irc.Command{
+            tags: %{"account" => member},
+            source: member,
+            command: "JOIN",
+            params: [new_canonical_alias, member, member]
+          })
+        end
+      end)
+
       case compute_topic(sup_mod, sup_pid, room_id) do
         nil ->
           # RPL_NOTOPIC
@@ -136,7 +151,10 @@ defmodule Matrix2051.MatrixClient.Poller do
 
         topic ->
           # RPL_TOPIC
-          send.(%Matrix2051.Irc.Command{command: "332", params: [nick, new_canonical_alias, topic]})
+          send.(%Matrix2051.Irc.Command{
+            command: "332",
+            params: [nick, new_canonical_alias, topic]
+          })
       end
 
       # Handle closing the old channel, if any
@@ -163,10 +181,32 @@ defmodule Matrix2051.MatrixClient.Poller do
             command: "NOTICE",
             params: [
               new_canonical_alias,
-              (sender || "someone") <> " renamed this room was renamed from " <> old_canonical_alias
+              (sender || "someone") <>
+                " renamed this room was renamed from " <> old_canonical_alias
             ]
           })
       end
+    end
+  end
+
+  defp handle_event(
+         sup_mod,
+         sup_pid,
+         room_id,
+         sender,
+         %{"type" => "m.room.member"} = _event
+       ) do
+    state = sup_mod.matrix_state(sup_pid)
+    send = make_send_function(sup_mod, sup_pid)
+    channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+
+    if !Matrix2051.MatrixClient.State.room_member_add(state, room_id, sender) do
+      send.(%Matrix2051.Irc.Command{
+        tags: %{"account" => sender},
+        source: sender,
+        command: "JOIN",
+        params: [channel, sender, sender]
+      })
     end
   end
 
