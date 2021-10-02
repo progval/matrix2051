@@ -1,23 +1,3 @@
-defmodule MockIrcConnWriter do
-  use GenServer
-
-  def start_link(args) do
-    GenServer.start_link(__MODULE__, args)
-  end
-
-  @impl true
-  def init(state) do
-    {:ok, state}
-  end
-
-  @impl true
-  def handle_call(arg, _from, state) do
-    {test_pid} = state
-    send(test_pid, arg)
-    {:reply, :ok, state}
-  end
-end
-
 defmodule MockMatrixClient do
   use GenServer
 

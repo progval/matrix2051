@@ -99,11 +99,13 @@ defmodule Matrix2051.Irc.CommandTest do
 
   test "downgrade extended-join" do
     cmd = %Matrix2051.Irc.Command{
+      source: "nick",
       command: "JOIN",
       params: ["#foo", "account", "realname"]
     }
 
     assert Matrix2051.Irc.Command.downgrade(cmd, []) == %Matrix2051.Irc.Command{
+             source: "nick",
              command: "JOIN",
              params: ["#foo"]
            }

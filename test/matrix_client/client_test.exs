@@ -1,9 +1,3 @@
-defmodule MockIrcSupervisor do
-  def matrix_poller(pid) do
-    pid
-  end
-end
-
 defmodule Matrix2051.MatrixClient.ClientTest do
   use ExUnit.Case
   doctest Matrix2051.MatrixClient.Client

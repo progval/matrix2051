@@ -50,69 +50,10 @@ defmodule Matrix2051.MatrixClient.Poller do
     end
   end
 
-  defp handle_events(sup_mod, sup_pid, events) do
-    IO.inspect(events)
-
-    """
-    # Preprocess events to get the new channel names early
-    new_canonical_names =
-      events
-      |> Map.get("rooms", %{})
-      |> Map.get("join", %{})
-      |> Map.to_list()
-      |> Enum.map(fn {room_id, room_event} ->
-        room_event
-        |> Map.get("state", %{})
-        |> Map.get("events", [])
-        |> Enum.reverse() # most recent last
-        |> Enum.find_value(
-          room_id,
-          fn event ->
-            case event["type"] do
-              "m.room.canonical_alias" -> {room_id, event["content"]["alias"]}
-              _ -> nil
-            end
-          end
-        )
-      end)
-      # dedups in case there are multiple canonical name changes, keeps only the most recent
-      |> Map.new()
-      |> Enum.to_list()
-
-    existing_channels =
-      state
-      |> Matrix2051.IrcConn.State.channels
-      |> Enum.map(fn channel -> {channel.room_id, channel.name} end)
-      |> Map.new()
-
-    # FIXME: this has quadratic complexity because of linear iteration in 'channels'
-    # every time. Use maps to fix this.
-    channels =
-      new_canonical_names
-      |> Enum.reduce(existing_channels, fn {room_id, canonical_name}, channels ->
-        case channels |> Enum.find(fn channel -> channel.room_id == room_id end) do
-          nil ->
-            # this is a new channel
-            # TODO: join it
-            new_channel = %Matrix2051.Irc.ChannelState{name: canonical_name, room_id: room_id}
-            [new_channel | channels]
-
-          channel ->
-            # existing channel.
-            if channel.canonical_name == channel.name do
-              # name is unchanged
-              channels
-            else
-              # TODO: part the old name and join the new one 
-              new_channel = %Matrix2051.Irc.ChannelState{channel | name: canonical_name}
-              [new_channel | Enum.filter(channels, fn channel -> channel.room_id != room_id end)]
-            end
-        end
-      end)
-
-    Matrix2051.IrcConn.State.set_channels(state, channels)
-    """
-
+  @doc """
+    Internal method that dispatches event; public only so it can be unit-tested.
+  """
+  def handle_events(sup_mod, sup_pid, events) do
     events
     |> Map.get("rooms", %{})
     |> Map.get("join", %{})
@@ -158,6 +99,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     capabilities = Matrix2051.IrcConn.State.capabilities(irc_state)
     writer = sup_mod.writer(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(irc_state)
+    sender = Map.get(event, "sender", "someone")
 
     send = fn cmd ->
       Matrix2051.IrcConn.Writer.write_command(
@@ -194,8 +136,8 @@ defmodule Matrix2051.MatrixClient.Poller do
           source: nick,
           command: "PART",
           params: [
-            new_canonical_alias,
-            "This room was renamed to " <> new_canonical_alias
+            old_canonical_alias,
+            sender <> " renamed this room to " <> new_canonical_alias
           ]
         })
 
@@ -205,7 +147,7 @@ defmodule Matrix2051.MatrixClient.Poller do
           command: "NOTICE",
           params: [
             new_canonical_alias,
-            "This room was renamed from " <> old_canonical_alias
+            sender <> " renamed this room was renamed from " <> old_canonical_alias
           ]
         })
     end
@@ -251,8 +193,9 @@ defmodule Matrix2051.MatrixClient.Poller do
     })
   end
 
-  defp handle_left_room(sup_mod, sup_pid, room_id, event) do
-    state = sup_mod.matrix_state(sup_pid)
-    writer = sup_mod.writer(sup_pid)
+  defp handle_left_room(sup_mod, sup_pid, _room_id, _event) do
+    _state = sup_mod.matrix_state(sup_pid)
+    _writer = sup_mod.writer(sup_pid)
+    # TODO
   end
 end
