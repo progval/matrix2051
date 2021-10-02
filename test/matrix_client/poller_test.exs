@@ -293,4 +293,40 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       msg -> assert msg == {:line, ":nick:example.org MODE #test:example.org :+i\r\n"}
     end
   end
+
+  test "message" do
+    events = [
+      %{
+        "content" => %{"body" => "first message", "msgtype" => "m.text"},
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message"
+      },
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias"
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+      "rooms" => %{
+        "join" => %{"!testid:example.org" => %{"state" => %{"events" => events}}}
+      }
+    })
+
+    receive do
+      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
+    end
+
+    receive do
+      msg -> assert msg == {:line, "331 mynick:example.com :#test:example.org\r\n"}
+    end
+
+    receive do
+      msg ->
+        assert msg == {:line, ":nick:example.org PRIVMSG #test:example.org :first message\r\n"}
+    end
+  end
 end

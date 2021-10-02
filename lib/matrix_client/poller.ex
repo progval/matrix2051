@@ -254,6 +254,25 @@ defmodule Matrix2051.MatrixClient.Poller do
          sup_pid,
          room_id,
          sender,
+         %{"type" => "m.room.message"} = event
+       ) do
+    state = sup_mod.matrix_state(sup_pid)
+    send = make_send_function(sup_mod, sup_pid)
+    channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+
+    send.(%Matrix2051.Irc.Command{
+      tags: %{"account" => sender},
+      source: sender,
+      command: "PRIVMSG",
+      params: [channel, event["content"]["body"]]
+    })
+  end
+
+  defp handle_event(
+         sup_mod,
+         sup_pid,
+         room_id,
+         sender,
          %{"type" => "m.room.name"} = event
        ) do
     state = sup_mod.matrix_state(sup_pid)
