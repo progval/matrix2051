@@ -22,16 +22,16 @@ Non-goals:
 ## Roadmap
 
 * [x] password authentication (using [SASL](https://ircv3.net/specs/extensions/sasl-3.1) on the IRC side)
-* [x] registration (using the [draft/account-registration](https://github.com/ircv3/ircv3-specifications/pull/435) spec)
+* registration (using the [draft/account-registration](https://github.com/ircv3/ircv3-specifications/pull/435) spec)
   * [x] on Synapse with no email verification
   * [ ] on Synapse with email verification
   * [ ] on other homeservers (when the Matrix spec defines how to)
 * [x] retrieving the room list and joining clients to it
-* [ ] retrieving the member list and sending it to clients
+* [x] retrieving the member list and sending it to clients
 * [x] support JOIN from clients
 * [ ] sending messages from IRC clients
-* [ ] receiving messages from Matrix
-  * [ ] basics
+* receiving messages from Matrix
+  * [x] basics
   * [ ] split at 512 bytes
 * [ ] support PART from IRC clients
 * [ ] direct messages
@@ -44,17 +44,19 @@ Non-goals:
 * [ ] [display names](https://github.com/ircv3/ircv3-specifications/pull/452)
 * [ ] [chat history](https://ircv3.net/specs/extensions/chathistory)
 * [ ] connection via [websockets](https://github.com/ircv3/ircv3-specifications/pull/342)
-* [ ] optional [multiline](https://ircv3.net/specs/extensions/multiline) messages
+* [multiline](https://ircv3.net/specs/extensions/multiline) messages
   * [ ] Matrix -> IRC
   * [ ] IRC -> Matrix
-* [ ] optional [reacts](https://ircv3.net/specs/client-tags/reply)
+* [reacts](https://ircv3.net/specs/client-tags/reply)
   * [ ] Matrix -> IRC
   * [ ] IRC -> Matrix
-* [ ] optional [replies](https://ircv3.net/specs/client-tags/reply)
+* [replies](https://ircv3.net/specs/client-tags/reply)
   * [ ] Matrix -> IRC
   * [ ] IRC -> Matrix
 * [ ] invites
-* [ ] use [channel renaming](https://ircv3.net/specs/extensions/channel-rename) in case of joining duplicate aliases of the same room?
+* use [channel renaming](https://ircv3.net/specs/extensions/channel-rename)
+   [ ] when the canonical name changes
+  * [ ] in case of joining duplicate aliases of the same room?
 
 In the far future:
 
