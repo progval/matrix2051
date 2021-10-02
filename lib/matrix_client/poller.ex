@@ -211,11 +211,45 @@ defmodule Matrix2051.MatrixClient.Poller do
     send = make_send_function(sup_mod, sup_pid, event)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
 
+    {command, body} =
+      case event["content"] do
+        %{"msgtype" => "m.text", "body" => body} ->
+          # TODO: if "format" key is present, parse the HTML and convert it to IRC formatting
+          {"PRIVMSG", body}
+
+        %{"msgtype" => "m.emote", "body" => body} ->
+          # TODO: ditto
+          {"PRIVMSG", "\x01ACTION " <> body <> "\x01"}
+
+        %{"msgtype" => "m.notice", "body" => body} ->
+          # TODO: ditto
+          {"NOTICE", body}
+
+        %{"msgtype" => "m.image", "body" => body, "url" => url} ->
+          {"PRIVMSG", body <> " " <> format_url(url)}
+
+        %{"msgtype" => "m.file", "body" => body, "url" => url} ->
+          {"PRIVMSG", body <> " " <> format_url(url)}
+
+        %{"msgtype" => "m.audio", "body" => body, "url" => url} ->
+          {"PRIVMSG", body <> " " <> format_url(url)}
+
+        %{"msgtype" => "m.location", "body" => body, "geo_uri" => geo_uri} ->
+          {"PRIVMSG", body <> " (" <> geo_uri <> ")"}
+
+        %{"msgtype" => "m.video", "body" => body, "url" => url} ->
+          {"PRIVMSG", body <> " " <> format_url(url)}
+
+        %{"body" => body} ->
+          # fallback
+          {"PRIVMSG", body}
+      end
+
     send.(%Matrix2051.Irc.Command{
       tags: %{"account" => sender},
       source: sender,
-      command: "PRIVMSG",
-      params: [channel, event["content"]["body"]]
+      command: command,
+      params: [channel, body]
     })
 
     nil
@@ -432,6 +466,16 @@ defmodule Matrix2051.MatrixClient.Poller do
     })
   end
 
+  defp format_url(url) do
+    case URI.parse(url) do
+      %{scheme: "mxc", host: host, path: path} ->
+        "https://#{host}/_matrix/media/r0/download/#{host}#{path}"
+
+      _ ->
+        url
+    end
+  end
+
   # Returns a function that can be used to send messages
   defp make_send_function(sup_mod, sup_pid, event) do
     writer = sup_mod.writer(sup_pid)
@@ -445,8 +489,13 @@ defmodule Matrix2051.MatrixClient.Poller do
             cmd
 
           %{"origin_server_ts" => origin_server_ts, "event_id" => event_id} ->
-            server_time = origin_server_ts |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601()
-            %{cmd | tags: Map.merge(cmd.tags, %{"server_time" => server_time, "msgid" => event_id})}
+            server_time =
+              origin_server_ts |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601()
+
+            %{
+              cmd
+              | tags: Map.merge(cmd.tags, %{"server_time" => server_time, "msgid" => event_id})
+            }
         end
 
       Matrix2051.IrcConn.Writer.write_command(

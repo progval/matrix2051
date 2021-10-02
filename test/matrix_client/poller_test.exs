@@ -17,6 +17,12 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     :ok
   end
 
+  defp assert_line(line) do
+    receive do
+      msg -> assert msg == {:line, line}
+    end
+  end
+
   test "no events" do
     Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{})
   end
@@ -38,9 +44,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
-    end
+    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
   end
 
   test "new room with disordered events" do
@@ -67,13 +71,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, "332 mynick:example.com #test:example.org :[test]\r\n"}
-    end
+    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line("332 mynick:example.com #test:example.org :[test]\r\n")
   end
 
   test "renamed room" do
@@ -108,35 +107,12 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test1:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, "331 mynick:example.com :#test1:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test2:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, "331 mynick:example.com :#test2:example.org\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  ":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  ":server NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n"}
-    end
+    assert_line(":mynick:example.com JOIN :#test1:example.org\r\n")
+    assert_line("331 mynick:example.com :#test1:example.org\r\n")
+    assert_line(":mynick:example.com JOIN :#test2:example.org\r\n")
+    assert_line("331 mynick:example.com :#test2:example.org\r\n")
+    assert_line(":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n")
+    assert_line(":server NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n")
   end
 
   test "renamed room with name and topic" do
@@ -185,51 +161,14 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test1:example.org\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg == {:line, "332 mynick:example.com #test1:example.org :[test] the topic\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "333 mynick:example.com #test1:example.org nick:example.org :1633176350104\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test2:example.org\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg == {:line, "332 mynick:example.com #test2:example.org :[test] the topic\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  "333 mynick:example.com #test2:example.org nick:example.org :1633176350104\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  ":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg ==
-                 {:line,
-                  ":server NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n"}
-    end
+    assert_line(":mynick:example.com JOIN :#test1:example.org\r\n")
+    assert_line("332 mynick:example.com #test1:example.org :[test] the topic\r\n")
+    assert_line("333 mynick:example.com #test1:example.org nick:example.org :1633176350104\r\n")
+    assert_line(":mynick:example.com JOIN :#test2:example.org\r\n")
+    assert_line("332 mynick:example.com #test2:example.org :[test] the topic\r\n")
+    assert_line("333 mynick:example.com #test2:example.org nick:example.org :1633176350104\r\n")
+    assert_line(":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n")
+    assert_line(":server NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n")
   end
 
   test "existing members" do
@@ -263,24 +202,10 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg ==
-                 {:line, "353 mynick:example.com = #test:example.org :mynick:example.org\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg == {:line, "353 mynick:example.com = #test:example.org :nick2:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, "331 mynick:example.com :#test:example.org\r\n"}
-    end
+    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line("353 mynick:example.com = #test:example.org :mynick:example.org\r\n")
+    assert_line("353 mynick:example.com = #test:example.org :nick2:example.org\r\n")
+    assert_line("331 mynick:example.com :#test:example.org\r\n")
   end
 
   test "new members" do
@@ -322,17 +247,9 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, "331 mynick:example.com :#test:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, ":nick2:example.org JOIN :#test:example.org\r\n"}
-    end
+    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line("331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":nick2:example.org JOIN :#test:example.org\r\n")
   end
 
   test "join_rules" do
@@ -374,24 +291,13 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, "331 mynick:example.com :#test:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, ":nick:example.org MODE #test:example.org :-i\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, ":nick:example.org MODE #test:example.org :+i\r\n"}
-    end
+    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line("331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":nick:example.org MODE #test:example.org :-i\r\n")
+    assert_line(":nick:example.org MODE #test:example.org :+i\r\n")
   end
 
-  test "message" do
+  test "messages" do
     state_events = [
       %{
         "content" => %{"alias" => "#test:example.org"},
@@ -405,6 +311,34 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     timeline_events = [
       %{
         "content" => %{"body" => "first message", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message"
+      },
+      %{
+        "content" => %{"body" => "is using emotes", "msgtype" => "m.emote"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message"
+      },
+      %{
+        "content" => %{"body" => "this is a notice", "msgtype" => "m.notice"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message"
+      },
+      %{
+        "content" => %{"body" => "cat.jpg", "msgtype" => "m.image", "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message"
+      },
+      %{
+        "content" => %{"body" => "chat.jpg", "msgtype" => "m.image", "url" => "https://example.org/chat.jpg"},
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
         "sender" => "@nick:example.org",
@@ -423,18 +357,13 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, "331 mynick:example.com :#test:example.org\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg == {:line, ":nick:example.org PRIVMSG #test:example.org :first message\r\n"}
-    end
+    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line("331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":nick:example.org PRIVMSG #test:example.org :first message\r\n")
+    assert_line(":nick:example.org PRIVMSG #test:example.org :\x01ACTION is using emotes\x01\r\n")
+    assert_line(":nick:example.org NOTICE #test:example.org :this is a notice\r\n")
+    assert_line(":nick:example.org PRIVMSG #test:example.org :cat.jpg https://matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb\r\n")
+    assert_line(":nick:example.org PRIVMSG #test:example.org :chat.jpg https://example.org/chat.jpg\r\n")
   end
 
   test "message with tags" do
@@ -470,17 +399,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    receive do
-      msg -> assert msg == {:line, ":mynick:example.com JOIN :#test:example.org\r\n"}
-    end
-
-    receive do
-      msg -> assert msg == {:line, "331 mynick:example.com :#test:example.org\r\n"}
-    end
-
-    receive do
-      msg ->
-        assert msg == {:line, "@msgid=$event1;server_time=2021-09-29T20:10:33.579Z :nick:example.org PRIVMSG #test:example.org :first message\r\n"}
-    end
+    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line("331 mynick:example.com :#test:example.org\r\n")
+    assert_line("@msgid=$event1;server_time=2021-09-29T20:10:33.579Z :nick:example.org PRIVMSG #test:example.org :first message\r\n")
   end
 end

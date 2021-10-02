@@ -39,7 +39,7 @@ Non-goals:
 * [ ] rewrite formatting and colors
 * [ ] show JOIN/PART events from other members
 * [ ] figure out images / files
-  * [ ] Matrix -> IRC
+  * [x] Matrix -> IRC
   * [ ] IRC -> Matrix
 * [ ] [display names](https://github.com/ircv3/ircv3-specifications/pull/452)
 * [ ] [chat history](https://ircv3.net/specs/extensions/chathistory)
@@ -53,6 +53,7 @@ Non-goals:
 * [ ] [replies](https://ircv3.net/specs/client-tags/reply)
   * [ ] Matrix -> IRC
   * [ ] IRC -> Matrix
+* [ ] message edition/deletion
 * [ ] invites
 * [ ] use [channel renaming](https://ircv3.net/specs/extensions/channel-rename)
   * [ ] when the canonical name changes
