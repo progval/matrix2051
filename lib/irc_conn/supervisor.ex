@@ -20,6 +20,7 @@ defmodule Matrix2051.IrcConn.Supervisor do
       {Matrix2051.IrcConn.Writer, {self(), sock}},
       {Matrix2051.MatrixClient.State, {__MODULE__, self()}},
       {Matrix2051.MatrixClient.Client, {__MODULE__, self(), []}},
+      {Matrix2051.MatrixClient.Sender, {__MODULE__, self()}},
       {Matrix2051.MatrixClient.Poller, {__MODULE__, self()}},
       {Matrix2051.IrcConn.Handler, {__MODULE__, self()}},
       {Matrix2051.IrcConn.Reader, {self(), sock}}
@@ -44,6 +45,14 @@ defmodule Matrix2051.IrcConn.Supervisor do
   def matrix_client(sup) do
     {_, pid, _, _} =
       List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.Client, 0)
+
+    pid
+  end
+
+  @doc "Returns the pid of the Matrix2051.MatrixClient.Sender child."
+  def matrix_sender(sup) do
+    {_, pid, _, _} =
+      List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.Sender, 0)
 
     pid
   end

@@ -79,4 +79,21 @@ defmodule Matrix2051.MatrixClient.State do
       canonical_alias -> canonical_alias
     end
   end
+
+  @doc """
+    Returns the {room_id, room} corresponding the to given room, or nil.
+  """
+  def room_from_irc_channel(pid, channel) do
+    Agent.get(pid, fn state ->
+      state.rooms
+      |> Map.to_list()
+      |> Enum.find_value(fn {room_id, room} ->
+        if room.canonical_alias == channel || room_id == channel do
+          {room_id, room}
+        else
+          nil
+        end
+      end)
+    end)
+  end
 end

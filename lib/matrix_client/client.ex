@@ -238,6 +238,54 @@ defmodule Matrix2051.MatrixClient.Client do
     end
   end
 
+  @impl true
+  def handle_call({:send_event, channel, event_type, label, event}, _from, state) do
+    %Matrix2051.MatrixClient.Client{
+      state: :connected,
+      irc_mod: irc_mod,
+      irc_pid: irc_pid,
+      rooms: rooms
+    } = state
+    matrix_state = irc_mod.matrix_state(irc_pid)
+
+    transaction_id = label_to_transaction_id(label)
+
+    case Matrix2051.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+      nil ->
+        {:reply, {:error, {:room_not_found, channel, rooms}}, state}
+
+      {room_id, _room} ->
+        sender = irc_mod.matrix_sender(irc_pid)
+
+        Matrix2051.MatrixClient.Sender.queue_event(
+          sender,
+          room_id,
+          event_type,
+          transaction_id,
+          event
+        )
+
+        {:reply, {:ok, {transaction_id}}, state}
+    end
+  end
+
+  def label_to_transaction_id(label) do
+    case label do
+      nil -> "m51-gen-" <> Base.url_encode64(:crypto.strong_rand_bytes(64))
+      # URI.encode() may be shorter
+      label -> "m51-cl-" <> Base.url_encode64(label)
+    end
+  end
+
+  def transaction_id_to_label(transaction_id) do
+    captures = Regex.named_captures(~r/m51-cl-(?<label>.*)/, transaction_id)
+
+    case captures do
+      %{"label" => label} -> label
+      nil -> nil
+    end
+  end
+
   defp get_base_url(hostname, httpoison) do
     case httpoison.get!("https://" <> hostname <> "/.well-known/matrix/client") do
       %HTTPoison.Response{status_code: 200, body: body} ->
@@ -290,5 +338,15 @@ defmodule Matrix2051.MatrixClient.Client do
 
   def join_room(pid, room_alias) do
     GenServer.call(pid, {:join_room, room_alias})
+  end
+
+  @doc """
+    Sends the given event object.
+    
+    If 'label' is not nil, it will be passed as a 'label' message tagt when
+    the event is seen in the event stream.
+  """
+  def send_event(pid, channel, label, event_type, event) do
+    GenServer.call(pid, {:send_event, channel, event_type, label, event})
   end
 end

@@ -581,6 +581,66 @@ defmodule Matrix2051.IrcConn.Handler do
       {"JOIN", _} ->
         send_needmoreparams.()
 
+      {"PRIVMSG", [channel, text | _]} ->
+        # If the client provided a label, use it as txnId on Matrix's side.
+        # This way we can parse it when receiving the echo from Matrix's event
+        # stream instead of storing state.
+        # Otherwise, generate a random transaction id.
+        {msgtype, body} =
+          case Regex.named_captures(~r/\x01ACTION (?P<body>.*)\x01/, text) do
+            %{"body" => body} -> {"m.emote", body}
+            _ -> {"m.text", text}
+          end
+
+        result =
+          Matrix2051.MatrixClient.Client.send_event(
+            matrix_client,
+            channel,
+            Map.get(command.tags, "label"),
+            "m.room.message",
+            %{msgtype: msgtype, body: body}
+          )
+
+        case result do
+          {:ok, _} ->
+            nil
+
+          {:error, error} ->
+            send.(%Matrix2051.Irc.Command{
+              source: "server",
+              command: "NOTICE",
+              params: [channel, "Error while sending message: " <> Kernel.inspect(error)]
+            })
+        end
+
+      {"PRIVMSG", _} ->
+        send_needmoreparams.()
+
+      {"NOTICE", [channel, text | _]} ->
+        result =
+          Matrix2051.MatrixClient.Client.send_event(
+            matrix_client,
+            channel,
+            Map.get(command.tags, "label"),
+            "m.room.message",
+            %{msgtype: "m.emote", body: text}
+          )
+
+        case result do
+          {:ok, _} ->
+            nil
+
+          {:error, error} ->
+            send.(%Matrix2051.Irc.Command{
+              source: "server",
+              command: "NOTICE",
+              params: [channel, "Error while sending message: " <> Kernel.inspect(error)]
+            })
+        end
+
+      {"NOTICE", _} ->
+        send_needmoreparams.()
+
       _ ->
         send_numeric.("421", [command.command, "Unknown command"])
     end
