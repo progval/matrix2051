@@ -111,8 +111,14 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     assert_line("331 mynick:example.com :#test1:example.org\r\n")
     assert_line(":mynick:example.com JOIN :#test2:example.org\r\n")
     assert_line("331 mynick:example.com :#test2:example.org\r\n")
-    assert_line(":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n")
-    assert_line(":server NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n")
+
+    assert_line(
+      ":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n"
+    )
+
+    assert_line(
+      ":server NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n"
+    )
   end
 
   test "renamed room with name and topic" do
@@ -167,8 +173,14 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     assert_line(":mynick:example.com JOIN :#test2:example.org\r\n")
     assert_line("332 mynick:example.com #test2:example.org :[test] the topic\r\n")
     assert_line("333 mynick:example.com #test2:example.org nick:example.org :1633176350104\r\n")
-    assert_line(":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n")
-    assert_line(":server NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n")
+
+    assert_line(
+      ":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n"
+    )
+
+    assert_line(
+      ":server NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n"
+    )
   end
 
   test "existing members" do
@@ -331,14 +343,22 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "type" => "m.room.message"
       },
       %{
-        "content" => %{"body" => "cat.jpg", "msgtype" => "m.image", "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"},
+        "content" => %{
+          "body" => "cat.jpg",
+          "msgtype" => "m.image",
+          "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"
+        },
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
         "sender" => "@nick:example.org",
         "type" => "m.room.message"
       },
       %{
-        "content" => %{"body" => "chat.jpg", "msgtype" => "m.image", "url" => "https://example.org/chat.jpg"},
+        "content" => %{
+          "body" => "chat.jpg",
+          "msgtype" => "m.image",
+          "url" => "https://example.org/chat.jpg"
+        },
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
         "sender" => "@nick:example.org",
@@ -362,12 +382,22 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     assert_line(":nick:example.org PRIVMSG #test:example.org :first message\r\n")
     assert_line(":nick:example.org PRIVMSG #test:example.org :\x01ACTION is using emotes\x01\r\n")
     assert_line(":nick:example.org NOTICE #test:example.org :this is a notice\r\n")
-    assert_line(":nick:example.org PRIVMSG #test:example.org :cat.jpg https://matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb\r\n")
-    assert_line(":nick:example.org PRIVMSG #test:example.org :chat.jpg https://example.org/chat.jpg\r\n")
+
+    assert_line(
+      ":nick:example.org PRIVMSG #test:example.org :cat.jpg https://matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org PRIVMSG #test:example.org :chat.jpg https://example.org/chat.jpg\r\n"
+    )
   end
 
   test "message with tags" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [:server_time, :message_tags])
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :server_time,
+      :message_tags
+    ])
+
     state_events = [
       %{
         "content" => %{"alias" => "#test:example.org"},
@@ -401,6 +431,9 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
     assert_line("331 mynick:example.com :#test:example.org\r\n")
-    assert_line("@msgid=$event1;server_time=2021-09-29T20:10:33.579Z :nick:example.org PRIVMSG #test:example.org :first message\r\n")
+
+    assert_line(
+      "@msgid=$event1;server_time=2021-09-29T20:10:33.579Z :nick:example.org PRIVMSG #test:example.org :first message\r\n"
+    )
   end
 end
