@@ -623,7 +623,7 @@ defmodule Matrix2051.IrcConn.Handler do
             channel,
             Map.get(command.tags, "label"),
             "m.room.message",
-            %{msgtype: "m.emote", body: text}
+            %{msgtype: "m.notice", body: text}
           )
 
         case result do

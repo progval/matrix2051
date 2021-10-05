@@ -81,7 +81,7 @@ defmodule Matrix2051.MatrixClient.State do
   end
 
   @doc """
-    Returns the {room_id, room} corresponding the to given room, or nil.
+    Returns the {room_id, room} corresponding the to given channel name, or nil.
   """
   def room_from_irc_channel(pid, channel) do
     Agent.get(pid, fn state ->

@@ -1,7 +1,7 @@
 defmodule Matrix2051.MatrixClient.Sender do
   @moduledoc """
     Sends events to the homeserver.
-    
+
     Reads messages and repeatedly tries to send them in order until they succeed.
   """
   use Task, restart: :permanent
@@ -62,7 +62,8 @@ defmodule Matrix2051.MatrixClient.Sender do
                 nb_attempts + 1
               )
             else
-              channel = Matrix2051.MatrixClient.Client.transaction_id_to_label(transaction_id)
+              state = sup_mod.matrix_state(sup_pid)
+              channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
 
               send.(%Matrix2051.Irc.Command{
                 source: "server",

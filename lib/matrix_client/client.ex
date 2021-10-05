@@ -246,6 +246,7 @@ defmodule Matrix2051.MatrixClient.Client do
       irc_pid: irc_pid,
       rooms: rooms
     } = state
+
     matrix_state = irc_mod.matrix_state(irc_pid)
 
     transaction_id = label_to_transaction_id(label)
@@ -269,6 +270,29 @@ defmodule Matrix2051.MatrixClient.Client do
     end
   end
 
+  @doc """
+    Generates a unique transaction id, assuming the 'label' is either a unique string,
+    or 'nil'.
+
+    'transaction_id_to_label' is the inverse of this function.
+
+    # Examples
+
+        iex> Matrix2051.MatrixClient.Client.label_to_transaction_id("foo")
+        "m51-cl-Zm9v"
+        iex> Matrix2051.MatrixClient.Client.label_to_transaction_id("foo")
+        "m51-cl-Zm9v"
+        iex> txid1 = Matrix2051.MatrixClient.Client.label_to_transaction_id(nil)
+        iex> txid2 = Matrix2051.MatrixClient.Client.label_to_transaction_id(nil)
+        iex> txid1 == txid2
+        false
+        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label(
+        ...>   Matrix2051.MatrixClient.Client.label_to_transaction_id("foo")
+        ...> )
+        "foo"
+        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label(txid1)
+        nil
+  """
   def label_to_transaction_id(label) do
     case label do
       nil -> "m51-gen-" <> Base.url_encode64(:crypto.strong_rand_bytes(64))
@@ -277,11 +301,30 @@ defmodule Matrix2051.MatrixClient.Client do
     end
   end
 
+  @doc """
+    Inverse function of 'label_to_transaction_id': recomputes the original label if any,
+    or returns nil.
+
+    # Examples
+
+        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label("m51-cl-Zm9v")
+        "foo"
+        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label("m51-gen-AAAA")
+        nil
+        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label(
+        ...>   Matrix2051.MatrixClient.Client.label_to_transaction_id("foo")
+        ...> )
+        "foo"
+        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label(
+        ...>   Matrix2051.MatrixClient.Client.label_to_transaction_id(nil)
+        ...> )
+        nil
+  """
   def transaction_id_to_label(transaction_id) do
     captures = Regex.named_captures(~r/m51-cl-(?<label>.*)/, transaction_id)
 
     case captures do
-      %{"label" => label} -> label
+      %{"label" => label} -> Base.url_decode64!(label)
       nil -> nil
     end
   end
@@ -342,7 +385,7 @@ defmodule Matrix2051.MatrixClient.Client do
 
   @doc """
     Sends the given event object.
-    
+
     If 'label' is not nil, it will be passed as a 'label' message tagt when
     the event is seen in the event stream.
   """
