@@ -389,9 +389,11 @@ defmodule Matrix2051.IrcConn.Handler do
   # Sends the burst of post-registration messages
   defp send_welcome(sup_mod, sup_pid, command) do
     send = make_send_function(command, sup_mod, sup_pid)
+    state = sup_mod.state(sup_pid)
+    nick = Matrix2051.IrcConn.State.nick(state)
 
     send_numeric = fn numeric, params ->
-      send.(%Matrix2051.Irc.Command{command: numeric, params: ["*" | params]})
+      send.(%Matrix2051.Irc.Command{command: numeric, params: [nick | params]})
     end
 
     # RPL_WELCOME
@@ -493,7 +495,7 @@ defmodule Matrix2051.IrcConn.Handler do
     send = make_send_function(command, sup_mod, sup_pid)
 
     send_numeric = fn numeric, params ->
-      send.(%Matrix2051.Irc.Command{command: numeric, params: ["*" | params]})
+      send.(%Matrix2051.Irc.Command{command: numeric, params: [nick | params]})
     end
 
     send_needmoreparams = fn ->

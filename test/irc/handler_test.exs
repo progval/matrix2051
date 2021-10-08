@@ -111,7 +111,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
   @cap_ls_302 "CAP * LS :account-tag draft/account-registration=before-connect echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
   @cap_ls "CAP * LS :account-tag draft/account-registration echo-message extended-join labeled-response message-tags sasl server-time\r\n"
-  @isupport "005 * * CASEMAPPING=rfc3454 CHANLIMIT= CHANTYPES=#! :TARGMAX=JOIN:1,PART:1\r\n"
+  @isupport "CASEMAPPING=rfc3454 CHANLIMIT= CHANTYPES=#! :TARGMAX=JOIN:1,PART:1\r\n"
 
   setup do
     start_supervised!({Matrix2051.Config, []})
@@ -139,12 +139,12 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_message({:line, line})
   end
 
-  def assert_welcome() do
-    assert_line("001 * * :Welcome to this Matrix bouncer.\r\n")
-    assert_line(@isupport)
-    assert_line("375 * * :- Message of the day\r\n")
-    assert_line("372 * * :Welcome to Matrix2051, a Matrix bouncer.\r\n")
-    assert_line("376 * * :End of /MOTD command.\r\n")
+  def assert_welcome(nick) do
+    assert_line("001 #{nick} * :Welcome to this Matrix bouncer.\r\n")
+    assert_line("005 #{nick} * #{@isupport}")
+    assert_line("375 #{nick} * :- Message of the day\r\n")
+    assert_line("372 #{nick} * :Welcome to Matrix2051, a Matrix bouncer.\r\n")
+    assert_line("376 #{nick} * :End of /MOTD command.\r\n")
   end
 
   def do_connection_registration(handler, capabilities \\ []) do
@@ -175,7 +175,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_line("@label=reg02 903 * :Authentication successful\r\n")
 
     send(handler, cmd("CAP END"))
-    assert_welcome()
+    assert_welcome("foo:example.org")
   end
 
   test "non-IRCv3 connection registration with no authenticate", %{handler: handler} do
@@ -245,7 +245,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_line("903 * :Authentication successful\r\n")
 
     send(handler, cmd("CAP END"))
-    assert_welcome()
+    assert_welcome("foo:example.org")
 
     assert Matrix2051.IrcConn.State.nick(state) == "foo:example.org"
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
@@ -274,7 +274,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_line("903 * :Authentication successful\r\n")
 
     send(handler, cmd("CAP END"))
-    assert_welcome()
+    assert_welcome("initial_nick")
     assert_line(":initial_nick NICK :foo:example.org\r\n")
 
     assert Matrix2051.IrcConn.State.nick(state) == "foo:example.org"
@@ -340,7 +340,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     send(handler, cmd("CAP END"))
 
-    assert_welcome()
+    assert_welcome("foo:bar")
 
     send(handler, cmd("PING sync2"))
     assert_line("PONG :sync2\r\n")
@@ -369,7 +369,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     send(handler, cmd("CAP END"))
 
-    assert_welcome()
+    assert_welcome("user:example.org")
   end
 
   test "Labeled response", %{handler: handler} do
