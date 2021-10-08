@@ -83,7 +83,6 @@ defmodule Matrix2051.IrcConn.Handler do
 
           Matrix2051.IrcConn.State.set_nick(state, nick)
           Matrix2051.IrcConn.State.set_gecos(state, gecos)
-          Matrix2051.IrcConn.State.set_registered(state)
 
           case user_id do
             # all good
@@ -99,6 +98,11 @@ defmodule Matrix2051.IrcConn.Handler do
               send_welcome(sup_mod, sup_pid, command)
               Matrix2051.IrcConn.State.set_nick(state, user_id)
               send.(%Matrix2051.Irc.Command{source: nick, command: "NICK", params: [user_id]})
+
+              Matrix2051.IrcConn.State.set_registered(state)
+
+              matrix_poller = sup_mod.matrix_poller(sup_pid)
+              send(matrix_poller, :start_polling)
           end
         else
           loop_connreg(sup_mod, sup_pid, nick, gecos, user_id, waiting_cap_end)

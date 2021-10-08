@@ -10,7 +10,16 @@ defmodule Matrix2051.MatrixClient.Poller do
 
   def poll(args) do
     {sup_mod, sup_pid} = args
-    loop_poll(sup_mod, sup_pid, nil)
+
+    irc_state = sup_mod.state(sup_pid)
+
+    if Matrix2051.IrcConn.State.registered(irc_state) do
+      loop_poll(sup_mod, sup_pid, nil)
+    else
+      receive do
+        :start_polling -> loop_poll(sup_mod, sup_pid, nil)
+      end
+    end
   end
 
   def loop_poll(sup_mod, sup_pid, since) do
