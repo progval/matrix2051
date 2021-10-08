@@ -34,7 +34,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       }
     ]
 
@@ -54,14 +55,16 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_975,
         "sender" => "@nick:example.org",
-        "type" => "m.room.name"
+        "type" => "m.room.name",
+        "unsigned" => %{}
       },
       %{
         "content" => %{"alias" => "#test:example.org"},
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       }
     ]
 
@@ -82,7 +85,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick1:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       }
     ]
 
@@ -92,7 +96,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick2:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       }
     ]
 
@@ -128,21 +133,24 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick1:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       },
       %{
         "content" => %{"name" => "test"},
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_975,
         "sender" => "@nick:example.org",
-        "type" => "m.room.name"
+        "type" => "m.room.name",
+        "unsigned" => %{}
       },
       %{
         "content" => %{"topic" => "the topic"},
         "event_id" => "$event3",
         "origin_server_ts" => 1_633_176_350_104,
         "sender" => "@nick:example.org",
-        "type" => "m.room.topic"
+        "type" => "m.room.topic",
+        "unsigned" => %{}
       }
     ]
 
@@ -152,7 +160,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event4",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick2:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       }
     ]
 
@@ -190,21 +199,24 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       },
       %{
         "content" => %{"avatar_url" => nil, "displayname" => "Name 2", "membership" => "join"},
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_648_797_438,
         "sender" => "nick2:example.org",
-        "type" => "m.room.member"
+        "type" => "m.room.member",
+        "unsigned" => %{}
       },
       %{
         "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
         "event_id" => "$event3",
         "origin_server_ts" => 1_632_648_797_438,
         "sender" => "mynick:example.org",
-        "type" => "m.room.member"
+        "type" => "m.room.member",
+        "unsigned" => %{}
       }
     ]
 
@@ -227,7 +239,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event3",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       }
     ]
 
@@ -237,14 +250,16 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_648_797_438,
         "sender" => "nick2:example.org",
-        "type" => "m.room.member"
+        "type" => "m.room.member",
+        "unsigned" => %{}
       },
       %{
         "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_648_797_438,
         "sender" => "mynick:example.org",
-        "type" => "m.room.member"
+        "type" => "m.room.member",
+        "unsigned" => %{}
       }
     ]
 
@@ -271,7 +286,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event3",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       }
     ]
 
@@ -281,14 +297,16 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_803,
         "sender" => "@nick:example.org",
-        "type" => "m.room.join_rules"
+        "type" => "m.room.join_rules",
+        "unsigned" => %{}
       },
       %{
         "content" => %{"join_rule" => "invite"},
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_803,
         "sender" => "@nick:example.org",
-        "type" => "m.room.join_rules"
+        "type" => "m.room.join_rules",
+        "unsigned" => %{}
       }
     ]
 
@@ -316,7 +334,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       }
     ]
 
@@ -326,21 +345,24 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
         "sender" => "@nick:example.org",
-        "type" => "m.room.message"
+        "type" => "m.room.message",
+        "unsigned" => %{}
       },
       %{
         "content" => %{"body" => "is using emotes", "msgtype" => "m.emote"},
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
         "sender" => "@nick:example.org",
-        "type" => "m.room.message"
+        "type" => "m.room.message",
+        "unsigned" => %{}
       },
       %{
         "content" => %{"body" => "this is a notice", "msgtype" => "m.notice"},
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
         "sender" => "@nick:example.org",
-        "type" => "m.room.message"
+        "type" => "m.room.message",
+        "unsigned" => %{}
       },
       %{
         "content" => %{
@@ -351,7 +373,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
         "sender" => "@nick:example.org",
-        "type" => "m.room.message"
+        "type" => "m.room.message",
+        "unsigned" => %{}
       },
       %{
         "content" => %{
@@ -362,7 +385,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
         "sender" => "@nick:example.org",
-        "type" => "m.room.message"
+        "type" => "m.room.message",
+        "unsigned" => %{}
       }
     ]
 
@@ -404,7 +428,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
-        "type" => "m.room.canonical_alias"
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
       }
     ]
 
@@ -414,7 +439,8 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
         "sender" => "@nick:example.org",
-        "type" => "m.room.message"
+        "type" => "m.room.message",
+        "unsigned" => %{}
       }
     ]
 
@@ -435,5 +461,133 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     assert_line(
       "@msgid=$event1;server_time=2021-09-29T20:10:33.579Z :nick:example.org PRIVMSG #test:example.org :first message\r\n"
     )
+  end
+
+  test "echo-message" do
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :echo_message,
+      :message_tags,
+      :labeled_response
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event0",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "first message", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{"transaction_id" => "m51-cl-Zm9v"}
+      },
+      %{
+        "content" => %{"body" => "second message", "msgtype" => "m.text"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{"transaction_id" => "m51-gen-bar"}
+      },
+      %{
+        "content" => %{"body" => "third message", "msgtype" => "m.text"},
+        "event_id" => "$event3",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line("331 mynick:example.com :#test:example.org\r\n")
+
+    assert_line(
+      "@label=foo;msgid=$event1 :nick:example.org PRIVMSG #test:example.org :first message\r\n"
+    )
+
+    assert_line("@msgid=$event2 :nick:example.org PRIVMSG #test:example.org :second message\r\n")
+    assert_line("@msgid=$event3 :nick:example.org PRIVMSG #test:example.org :third message\r\n")
+  end
+
+  test "drops echos if echo-message not negotiated" do
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :message_tags,
+      :labeled_response
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event0",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "first message", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{"transaction_id" => "m51-cl-Zm9v"}
+      },
+      %{
+        "content" => %{"body" => "second message", "msgtype" => "m.text"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{"transaction_id" => "m51-gen-bar"}
+      },
+      %{
+        "content" => %{"body" => "third message", "msgtype" => "m.text"},
+        "event_id" => "$event3",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line("331 mynick:example.com :#test:example.org\r\n")
+
+    assert_line("@msgid=$event3 :nick:example.org PRIVMSG #test:example.org :third message\r\n")
   end
 end

@@ -17,6 +17,8 @@ defmodule Matrix2051.IrcConn.Handler do
     "draft/account-registration" => {:account_registration, "before-connect"},
     # https://ircv3.net/specs/extensions/account-tag.html
     "account-tag" => {:account_tag, nil},
+    # https://ircv3.net/specs/extensions/echo-message.html
+    "echo-message" => {:echo_message, nil},
     # https://ircv3.net/specs/extensions/extended-join.html
     "extended-join" => {:extended_join, nil},
     # https://ircv3.net/specs/extensions/labeled-response

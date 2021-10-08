@@ -29,7 +29,7 @@ Non-goals:
 * [x] retrieving the room list and joining clients to it
 * [x] retrieving the member list and sending it to clients
 * [x] support JOIN from clients
-* [ ] sending messages from IRC clients
+* [x] sending messages from IRC clients
 * [ ] receiving messages from Matrix
   * [x] basics
   * [ ] split at 512 bytes
@@ -55,6 +55,9 @@ Non-goals:
   * [ ] IRC -> Matrix
 * [ ] message edition/deletion
 * [ ] invites
+* [ ] translate channel modes / room privileges
+  * [ ] Matrix -> IRC
+  * [ ] IRC -> Matrix
 * [ ] use [channel renaming](https://ircv3.net/specs/extensions/channel-rename)
   * [ ] when the canonical name changes
   * [ ] in case of joining duplicate aliases of the same room?

@@ -1,6 +1,6 @@
 defmodule Matrix2051.Irc.Command do
   @enforce_keys [:command, :params]
-  defstruct [{:tags, %{}}, :source, :command, :params]
+  defstruct [{:tags, %{}}, :source, :command, :params, {:is_echo, false}]
 
   @doc ~S"""
     Parses an IRC line into the `Matrix2051.Irc.Command` structure.
@@ -141,7 +141,12 @@ defmodule Matrix2051.Irc.Command do
             "@" <>
               Enum.join(
                 # TODO: escape
-                Enum.map(Map.to_list(command.tags), fn {key, value} -> key <> "=" <> value end),
+                Enum.map(Map.to_list(command.tags), fn {key, value} ->
+                  case value do
+                    nil -> key
+                    _ -> key <> "=" <> value
+                  end
+                end),
                 ";"
               )
             | tokens
@@ -170,42 +175,65 @@ defmodule Matrix2051.Irc.Command do
 
   """
   def downgrade(command, capabilities) do
-    tags =
-      command.tags
-      |> Map.to_list()
-      |> Enum.filter(fn {key, _value} ->
-        case key do
-          "label" -> Enum.member?(capabilities, :labeled_response)
-          "account" -> Enum.member?(capabilities, :account_tag)
-          "server_time" -> Enum.member?(capabilities, :server_time)
-          "msgid" -> Enum.member?(capabilities, :message_tags)
-          _ -> false
-        end
-      end)
-      |> Enum.filter(&(&1 != nil))
-      |> Map.new()
-
-    command = %Matrix2051.Irc.Command{command | tags: tags}
-
-    case command do
-      %{command: "JOIN", params: params} ->
-        [channel, _account_name, _real_name] = params
-
-        if Enum.member?(capabilities, :extended_join) do
-          command
-        else
-          %{command | params: [channel]}
-        end
-
-      %{command: "ACK"} ->
-        if Enum.member?(capabilities, :labeled_response) do
-          command
-        else
-          nil
-        end
-
-      _ ->
+    # downgrade echo-message
+    command =
+      if Enum.member?(capabilities, :echo_message) do
         command
-    end
+      else
+        case command do
+          %{is_echo: true, command: "PRIVMSG"} -> nil
+          %{is_echo: true, command: "NOTICE"} -> nil
+          %{is_echo: true, command: "TAGMSG"} -> nil
+          _ -> command
+        end
+      end
+
+    # downgrade tags
+    command =
+      if command == nil do
+        command
+      else
+        tags =
+          command.tags
+          |> Map.to_list()
+          |> Enum.filter(fn {key, _value} ->
+            case key do
+              "label" -> Enum.member?(capabilities, :labeled_response)
+              "account" -> Enum.member?(capabilities, :account_tag)
+              "server_time" -> Enum.member?(capabilities, :server_time)
+              "msgid" -> Enum.member?(capabilities, :message_tags)
+              _ -> false
+            end
+          end)
+          |> Enum.filter(&(&1 != nil))
+          |> Map.new()
+
+        %Matrix2051.Irc.Command{command | tags: tags}
+      end
+
+    # downgrade commands
+    command =
+      case command do
+        %{command: "JOIN", params: params} ->
+          [channel, _account_name, _real_name] = params
+
+          if Enum.member?(capabilities, :extended_join) do
+            command
+          else
+            %{command | params: [channel]}
+          end
+
+        %{command: "ACK"} ->
+          if Enum.member?(capabilities, :labeled_response) do
+            command
+          else
+            nil
+          end
+
+        _ ->
+          command
+      end
+
+    command
   end
 end

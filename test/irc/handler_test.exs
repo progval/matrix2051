@@ -109,8 +109,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   use ExUnit.Case
   doctest Matrix2051.IrcConn.Handler
 
-  @cap_ls_302 "CAP * LS :account-tag draft/account-registration=before-connect extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
-  @cap_ls "CAP * LS :account-tag draft/account-registration extended-join labeled-response message-tags sasl server-time\r\n"
+  @cap_ls_302 "CAP * LS :account-tag draft/account-registration=before-connect echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
+  @cap_ls "CAP * LS :account-tag draft/account-registration echo-message extended-join labeled-response message-tags sasl server-time\r\n"
   @isupport "005 * * CASEMAPPING=rfc3454 CHANLIMIT= CHANTYPES=#! :TARGMAX=JOIN:1,PART:1\r\n"
 
   setup do

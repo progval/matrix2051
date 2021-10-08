@@ -117,7 +117,7 @@ defmodule Matrix2051.Irc.CommandTest do
     cmd = %Matrix2051.Irc.Command{
       tags: %{"account" => "abcd"},
       command: "JOIN",
-      params: ["#foo", "account", "realname"]
+      params: ["#foo", "account", "realname"],
     }
 
     assert Matrix2051.Irc.Command.downgrade(cmd, []) == %Matrix2051.Irc.Command{
@@ -140,5 +140,48 @@ defmodule Matrix2051.Irc.CommandTest do
 
     assert Matrix2051.Irc.Command.downgrade(cmd, [:account_tag, :extended_join]) == cmd
     assert Matrix2051.Irc.Command.downgrade(cmd, [:extended_join, :account_tag]) == cmd
+  end
+
+  test "downgrade echo-message and/or label" do
+    cmd = %Matrix2051.Irc.Command{
+      tags: %{"label" => "abcd"},
+      command: "PRIVMSG",
+      params: ["#foo", "bar"],
+      is_echo: true
+    }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, []) == nil
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:labeled_response]) == nil
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:echo_message]) == %Matrix2051.Irc.Command{
+             tags: %{},
+             command: "PRIVMSG",
+             params: ["#foo", "bar"],
+             is_echo: true
+           }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:labeled_response, :echo_message]) == cmd
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:echo_message, :labeled_response]) == cmd
+  end
+
+  test "downgrade echo-message without label" do
+    cmd = %Matrix2051.Irc.Command{
+      command: "PRIVMSG",
+      params: ["#foo", "bar"],
+      is_echo: true
+    }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, []) == nil
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:labeled_response]) == nil
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:echo_message]) == %Matrix2051.Irc.Command{
+             tags: %{},
+             command: "PRIVMSG",
+             params: ["#foo", "bar"],
+             is_echo: true
+           }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:labeled_response, :echo_message]) == cmd
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:echo_message, :labeled_response]) == cmd
   end
 end

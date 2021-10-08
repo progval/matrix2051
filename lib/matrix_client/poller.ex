@@ -491,14 +491,32 @@ defmodule Matrix2051.MatrixClient.Poller do
           nil ->
             cmd
 
-          %{"origin_server_ts" => origin_server_ts, "event_id" => event_id} ->
+          %{
+            "origin_server_ts" => origin_server_ts,
+            "event_id" => event_id,
+            "unsigned" => unsigned
+          } ->
             server_time =
               origin_server_ts |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601()
 
-            %{
-              cmd
-              | tags: Map.merge(cmd.tags, %{"server_time" => server_time, "msgid" => event_id})
-            }
+            new_tags = %{"server_time" => server_time, "msgid" => event_id}
+
+            {is_echo, new_tags} =
+              case unsigned do
+                %{"transaction_id" => transaction_id} ->
+                  label = Matrix2051.MatrixClient.Client.transaction_id_to_label(transaction_id)
+
+                  if label == nil do
+                    {true, new_tags}
+                  else
+                    {true, Map.put(new_tags, "label", label)}
+                  end
+
+                _ ->
+                  {false, new_tags}
+              end
+
+            %{cmd | tags: Map.merge(cmd.tags, new_tags), is_echo: is_echo}
         end
 
       Matrix2051.IrcConn.Writer.write_command(
