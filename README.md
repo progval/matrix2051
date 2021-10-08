@@ -19,6 +19,17 @@ Non-goals:
 3. Connecting to multiple accounts per IRC connect or to other protocols (à la [Bitlbee](https://www.bitlbee.org/)). This conflicts with goals 1 and 4.
 4. Implementing any features not natively by **both** protocols (ie. no need for service bots that you interract with using PRIVMSG)
 
+## Usage
+
+* Install system dependencies. For example, on Debian: `sudo apt install elixir otp erlang-dev erlang-inets`
+* Install Elixir dependencies: `mix deps.get`
+* Run tests to make sure everything is working: `mix test`
+* Run: `mix run --no-halt matrix2051.exs`
+* Connect a client to `localhost:2051`, with the following config:
+  * no SSL/TLS
+  * SASL username: your full matrix ID (`user:homeserver.example.org`)
+  * SASL password: your matrix password
+
 ## Roadmap
 
 * [x] password authentication (using [SASL](https://ircv3.net/specs/extensions/sasl-3.1) on the IRC side)
