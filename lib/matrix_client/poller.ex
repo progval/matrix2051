@@ -47,7 +47,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     # to be in milliseconds)
     options = [recv_timeout: 1_000_000]
 
-    case Matrix2051.Matrix.RawClient.get(raw_client, path, options) do
+    case Matrix2051.Matrix.RawClient.get(raw_client, path, [], options) do
       {:ok, events} ->
         handle_events(sup_mod, sup_pid, events)
         events["next_batch"]
