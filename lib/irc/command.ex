@@ -224,7 +224,7 @@ defmodule Matrix2051.Irc.Command do
           end
 
         %{command: "ACK"} ->
-          if Enum.member?(capabilities, :labeled_response) do
+          if Map.has_key?(command.tags, "label") do
             command
           else
             nil

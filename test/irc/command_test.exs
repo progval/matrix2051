@@ -82,6 +82,17 @@ defmodule Matrix2051.Irc.CommandTest do
     assert Matrix2051.Irc.Command.downgrade(cmd, [:labeled_response]) == cmd
   end
 
+  test "drop ack without label" do
+    cmd = %Matrix2051.Irc.Command{
+      command: "ACK",
+      params: []
+    }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, []) == nil
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:labeled_response]) == nil
+  end
+
   test "downgrade account-tag" do
     cmd = %Matrix2051.Irc.Command{
       tags: %{"account" => "abcd"},
