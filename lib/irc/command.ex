@@ -197,13 +197,17 @@ defmodule Matrix2051.Irc.Command do
           command.tags
           |> Map.to_list()
           |> Enum.filter(fn {key, _value} ->
-            case key do
-              "account" -> Enum.member?(capabilities, :account_tag)
-              "batch" -> Enum.member?(capabilities, :batch)
-              "label" -> Enum.member?(capabilities, :labeled_response)
-              "msgid" -> Enum.member?(capabilities, :message_tags)
-              "time" -> Enum.member?(capabilities, :server_time)
-              _ -> false
+            if String.starts_with?(key, "+") do
+              Enum.member?(capabilities, :message_tags)
+            else
+              case key do
+                "account" -> Enum.member?(capabilities, :account_tag)
+                "batch" -> Enum.member?(capabilities, :batch)
+                "label" -> Enum.member?(capabilities, :labeled_response)
+                "msgid" -> Enum.member?(capabilities, :message_tags)
+                "time" -> Enum.member?(capabilities, :server_time)
+                _ -> false
+              end
             end
           end)
           |> Enum.filter(&(&1 != nil))

@@ -25,8 +25,9 @@ defmodule Matrix2051.IrcConn.Handler do
     "extended-join" => {:extended_join, nil},
     # https://ircv3.net/specs/extensions/labeled-response
     "labeled-response" => {:labeled_response, nil},
-    # https://ircv3.net/specs/extensions/message-ids
-    # https://ircv3.net/specs/extensions/message-tags
+    # https://ircv3.net/specs/extensions/message-tags and enables these too:
+    # * https://ircv3.net/specs/extensions/message-ids
+    # * https://ircv3.net/specs/client-tags/reply
     "message-tags" => {:message_tags, nil},
     # https://ircv3.net/specs/extensions/sasl-3.1
     "sasl" => {:sasl, "PLAIN"},

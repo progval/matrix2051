@@ -62,7 +62,7 @@ Non-goals:
   * [ ] Matrix -> IRC
   * [ ] IRC -> Matrix
 * [ ] [replies](https://ircv3.net/specs/client-tags/reply)
-  * [ ] Matrix -> IRC
+  * [x] Matrix -> IRC
   * [ ] IRC -> Matrix
 * [ ] message edition/deletion
 * [ ] invites

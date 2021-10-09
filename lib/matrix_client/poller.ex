@@ -227,10 +227,34 @@ defmodule Matrix2051.MatrixClient.Poller do
     send = make_send_function(sup_mod, sup_pid, event)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
 
+    tags = %{"account" => sender}
+
+    {reply_to, tags} =
+      case event["content"] do
+        %{"m.relates_to" => %{"m.in_reply_to" => %{"event_id" => reply_to}}} ->
+          {reply_to, Map.put(tags, "+draft/reply", reply_to)}
+
+        _ ->
+          {nil, tags}
+      end
+
     {command, body} =
       case event["content"] do
         %{"msgtype" => "m.text", "body" => body} ->
           # TODO: if "format" key is present, parse the HTML and convert it to IRC formatting
+          body =
+            if reply_to do
+              # Strip the fallback, as described in
+              # https://matrix.org/docs/spec/client_server/r0.6.1#stripping-the-fallback
+              body
+              |> String.split("\n")
+              |> Enum.drop_while(fn line -> String.starts_with?(line, "> ") end)
+              |> Enum.join("\n")
+              |> String.trim_leading("\n")
+            else
+              body
+            end
+
           {"PRIVMSG", body}
 
         %{"msgtype" => "m.emote", "body" => body} ->
@@ -262,7 +286,7 @@ defmodule Matrix2051.MatrixClient.Poller do
       end
 
     send.(%Matrix2051.Irc.Command{
-      tags: %{"account" => sender},
+      tags: tags,
       source: nick2nuh(sender),
       command: command,
       params: [channel, body]

@@ -108,6 +108,23 @@ defmodule Matrix2051.Irc.CommandTest do
     assert Matrix2051.Irc.Command.downgrade(cmd, [:account_tag]) == cmd
   end
 
+  test "downgrade client tags" do
+    cmd = %Matrix2051.Irc.Command{
+      tags: %{"+foo" => "bar"},
+      source: "nick",
+      command: "PRIVMSG",
+      params: ["#foo", "hi"]
+    }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, []) == %Matrix2051.Irc.Command{
+             source: "nick",
+             command: "PRIVMSG",
+             params: ["#foo", "hi"]
+           }
+
+    assert Matrix2051.Irc.Command.downgrade(cmd, [:message_tags]) == cmd
+  end
+
   test "downgrade extended-join" do
     cmd = %Matrix2051.Irc.Command{
       source: "nick",
