@@ -459,7 +459,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     assert_line("331 mynick:example.com :#test:example.org\r\n")
 
     assert_line(
-      "@msgid=$event1;server_time=2021-09-29T20:10:33.579Z :nick:example.org PRIVMSG #test:example.org :first message\r\n"
+      "@msgid=$event1;time=2021-09-29T20:10:33.579Z :nick:example.org PRIVMSG #test:example.org :first message\r\n"
     )
   end
 

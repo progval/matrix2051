@@ -202,7 +202,7 @@ defmodule Matrix2051.Irc.Command do
               "batch" -> Enum.member?(capabilities, :batch)
               "label" -> Enum.member?(capabilities, :labeled_response)
               "msgid" -> Enum.member?(capabilities, :message_tags)
-              "server_time" -> Enum.member?(capabilities, :server_time)
+              "time" -> Enum.member?(capabilities, :server_time)
               _ -> false
             end
           end)

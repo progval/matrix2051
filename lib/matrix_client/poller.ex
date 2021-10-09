@@ -508,7 +508,7 @@ defmodule Matrix2051.MatrixClient.Poller do
             server_time =
               origin_server_ts |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601()
 
-            new_tags = %{"server_time" => server_time, "msgid" => event_id}
+            new_tags = %{"time" => server_time, "msgid" => event_id}
 
             {is_echo, new_tags} =
               case unsigned do
