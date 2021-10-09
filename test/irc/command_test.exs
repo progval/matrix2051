@@ -117,7 +117,7 @@ defmodule Matrix2051.Irc.CommandTest do
     cmd = %Matrix2051.Irc.Command{
       tags: %{"account" => "abcd"},
       command: "JOIN",
-      params: ["#foo", "account", "realname"],
+      params: ["#foo", "account", "realname"]
     }
 
     assert Matrix2051.Irc.Command.downgrade(cmd, []) == %Matrix2051.Irc.Command{

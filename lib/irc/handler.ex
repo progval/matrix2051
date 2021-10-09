@@ -139,7 +139,13 @@ defmodule Matrix2051.IrcConn.Handler do
     send = make_send_function(command, sup_mod, sup_pid)
 
     send_numeric = fn numeric, params ->
-      send.(%Matrix2051.Irc.Command{command: numeric, params: ["*" | params]})
+      first_param =
+        case nick do
+          nil -> "*"
+          _ -> nick
+        end
+
+      send.(%Matrix2051.Irc.Command{command: numeric, params: [first_param | params]})
     end
 
     send_needmoreparams = fn ->
@@ -221,7 +227,7 @@ defmodule Matrix2051.IrcConn.Handler do
         # ERR_INVALIDCAPCMD
         send.(%Matrix2051.Irc.Command{
           command: "410",
-          params: ["*", subcommand, "Invalid CAP subcommand"]
+          params: [subcommand, "Invalid CAP subcommand"]
         })
 
         nil
@@ -230,7 +236,7 @@ defmodule Matrix2051.IrcConn.Handler do
         # ERR_NEEDMOREPARAMS
         send.(%Matrix2051.Irc.Command{
           command: "410",
-          params: ["*", "CAP", "Missing CAP subcommand"]
+          params: ["CAP", "Missing CAP subcommand"]
         })
 
         nil
@@ -266,7 +272,7 @@ defmodule Matrix2051.IrcConn.Handler do
                           {:ok} ->
                             # RPL_LOGGEDIN
                             send_numeric.("900", [
-                              "*",
+                              nick <> "!*@*",
                               user_id,
                               "You are now logged in as " <> user_id
                             ])
@@ -298,7 +304,7 @@ defmodule Matrix2051.IrcConn.Handler do
 
               {:error} ->
                 # RPL_SASLMECHS
-                send_numeric.("907", ["*", "PLAIN", "is the only available SASL mechanism"])
+                send_numeric.("907", ["PLAIN", "is the only available SASL mechanism"])
             end
 
           user_id ->
@@ -317,7 +323,7 @@ defmodule Matrix2051.IrcConn.Handler do
             ])
 
           _ ->
-            register(sup_mod, sup_pid, command, nick, email, password)
+            register(sup_mod, sup_pid, command, nick, nick, email, password)
         end
 
       {"REGISTER", [account_name, email, password | _]} ->
@@ -334,7 +340,7 @@ defmodule Matrix2051.IrcConn.Handler do
             })
 
           ^account_name ->
-            register(sup_mod, sup_pid, command, nick, email, password)
+            register(sup_mod, sup_pid, command, nick, nick, email, password)
 
           _ ->
             send.(%Matrix2051.Irc.Command{
@@ -401,10 +407,9 @@ defmodule Matrix2051.IrcConn.Handler do
     end
 
     # RPL_WELCOME
-    send_numeric.("001", ["*", "Welcome to this Matrix bouncer."])
+    send_numeric.("001", ["Welcome to this Matrix bouncer."])
     # RPL_ISUPPORT
     send_numeric.("005", [
-      "*",
       "CASEMAPPING=rfc3454",
       "CHANLIMIT=",
       "CHANTYPES=#!",
@@ -412,21 +417,21 @@ defmodule Matrix2051.IrcConn.Handler do
     ])
 
     # RPL_MOTDSTART
-    send_numeric.("375", ["*", "- Message of the day"])
+    send_numeric.("375", ["- Message of the day"])
     # RPL_MOTD
-    send_numeric.("372", ["*", "Welcome to Matrix2051, a Matrix bouncer."])
+    send_numeric.("372", ["Welcome to Matrix2051, a Matrix bouncer."])
     # RPL_ENDOFMOTD
-    send_numeric.("376", ["*", "End of /MOTD command."])
+    send_numeric.("376", ["End of /MOTD command."])
   end
 
   # Handles the REGISTER command
-  defp register(sup_mod, sup_pid, command, user_id, _email, password) do
+  defp register(sup_mod, sup_pid, command, nick, user_id, _email, password) do
     matrix_client = sup_mod.matrix_client(sup_pid)
 
     send = make_send_function(command, sup_mod, sup_pid)
 
     send_numeric = fn numeric, params ->
-      send.(%Matrix2051.Irc.Command{command: numeric, params: ["*" | params]})
+      send.(%Matrix2051.Irc.Command{command: numeric, params: [nick | params]})
     end
 
     # This function is only called if the nick matches the user_id, and the
@@ -440,9 +445,7 @@ defmodule Matrix2051.IrcConn.Handler do
           params: ["SUCCESS", user_id, "You are now registered as " <> user_id]
         })
 
-        send_numeric.("900", ["*", user_id, "You are now logged in as " <> user_id])
-
-        # TODO: change nick if it does not match user_id
+        send_numeric.("900", [user_id <> "!*@*", user_id, "You are now logged in as " <> user_id])
 
         {:authenticate, user_id}
 
@@ -529,14 +532,14 @@ defmodule Matrix2051.IrcConn.Handler do
         # ERR_INVALIDCAPCMD
         send.(%Matrix2051.Irc.Command{
           command: "410",
-          params: ["*", subcommand, "Invalid CAP subcommand"]
+          params: [subcommand, "Invalid CAP subcommand"]
         })
 
       {"CAP", []} ->
         # ERR_NEEDMOREPARAMS
         send.(%Matrix2051.Irc.Command{
           command: "410",
-          params: ["*", "CAP", "Missing CAP subcommand"]
+          params: ["CAP", "Missing CAP subcommand"]
         })
 
       {"PING", [cookie]} ->
