@@ -406,24 +406,6 @@ defmodule Matrix2051.MatrixClient.Poller do
       params: [channel, nick, nick]
     })
 
-    # send RPL_NAMREPLY
-    Matrix2051.MatrixClient.State.room_members(state, room_id)
-    |> Enum.map(fn member ->
-      # TODO: group them in lines
-
-      # RPL_NAMREPLY
-      send.(%Matrix2051.Irc.Command{
-        command: "353",
-        params: [nick, "=", channel, member]
-      })
-    end)
-
-    # RPL_ENDOFNAMES
-    send.(%Matrix2051.Irc.Command{
-      command: "366",
-      params: [nick, channel, "End of /NAMES list"]
-    })
-
     case compute_topic(sup_mod, sup_pid, room_id) do
       nil ->
         # RPL_NOTOPIC
@@ -448,6 +430,24 @@ defmodule Matrix2051.MatrixClient.Poller do
             })
         end
     end
+
+    # send RPL_NAMREPLY
+    Matrix2051.MatrixClient.State.room_members(state, room_id)
+    |> Enum.map(fn member ->
+      # TODO: group them in lines
+
+      # RPL_NAMREPLY
+      send.(%Matrix2051.Irc.Command{
+        command: "353",
+        params: [nick, "=", channel, member]
+      })
+    end)
+
+    # RPL_ENDOFNAMES
+    send.(%Matrix2051.Irc.Command{
+      command: "366",
+      params: [nick, channel, "End of /NAMES list"]
+    })
 
     if old_canonical_alias != nil do
       announce_channel_rename(
