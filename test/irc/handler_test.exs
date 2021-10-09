@@ -94,6 +94,10 @@ defmodule MockIrcConnSupervisor do
     pid
   end
 
+  def matrix_poller(_sup) do
+    nil
+  end
+
   def handler(sup) do
     {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Handler, 0)
     pid

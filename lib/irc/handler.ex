@@ -89,6 +89,12 @@ defmodule Matrix2051.IrcConn.Handler do
             ^nick ->
               send_welcome(sup_mod, sup_pid, command)
 
+              matrix_poller = sup_mod.matrix_poller(sup_pid)
+
+              if matrix_poller != nil do
+                send(matrix_poller, :start_polling)
+              end
+
             nil ->
               send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["You must authenticate."]})
               close_connection(sup_mod, sup_pid)
@@ -102,7 +108,10 @@ defmodule Matrix2051.IrcConn.Handler do
               Matrix2051.IrcConn.State.set_registered(state)
 
               matrix_poller = sup_mod.matrix_poller(sup_pid)
-              send(matrix_poller, :start_polling)
+
+              if matrix_poller != nil do
+                send(matrix_poller, :start_polling)
+              end
           end
         else
           loop_connreg(sup_mod, sup_pid, nick, gecos, user_id, waiting_cap_end)
