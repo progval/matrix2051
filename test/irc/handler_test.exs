@@ -275,6 +275,38 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
   end
 
+  test "Connection registration with AUTHENTICATE before NICK", %{state: state, handler: handler} do
+    send(handler, cmd("CAP LS 302"))
+    assert_line(@cap_ls_302)
+
+    send(handler, cmd("CAP REQ sasl"))
+    assert_line("CAP * ACK :sasl\r\n")
+
+    send(handler, cmd("AUTHENTICATE PLAIN"))
+    assert_line("AUTHENTICATE :+\r\n")
+
+    # foo:example.org\x00foo:example.org\x00correct password
+    send(
+      handler,
+      cmd("AUTHENTICATE Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk")
+    )
+
+    assert_line(
+      "900 * * foo:example.org :You are now logged in as foo:example.org\r\n"
+    )
+
+    assert_line("903 * :Authentication successful\r\n")
+
+    send(handler, cmd("NICK foo:example.org"))
+    send(handler, cmd("USER ident * * :My GECOS"))
+
+    send(handler, cmd("CAP END"))
+    assert_welcome("foo:example.org")
+
+    assert Matrix2051.IrcConn.State.nick(state) == "foo:example.org"
+    assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
+  end
+
   test "Registration with mismatched nick", %{state: state, handler: handler} do
     send(handler, cmd("CAP LS 302"))
     assert_line(@cap_ls_302)

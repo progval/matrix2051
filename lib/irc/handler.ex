@@ -331,8 +331,12 @@ defmodule Matrix2051.IrcConn.Handler do
                              ) do
                           {:ok} ->
                             # RPL_LOGGEDIN
+                            nuh = case nick do
+                              nil -> "*"
+                              _ -> nick <> "!*@*"
+                            end
                             send_numeric.("900", [
-                              "*",
+                              nuh,
                               user_id,
                               "You are now logged in as " <> user_id
                             ])
