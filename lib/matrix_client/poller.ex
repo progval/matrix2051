@@ -436,7 +436,7 @@ defmodule Matrix2051.MatrixClient.Poller do
             # RPL_TOPICWHOTIME
             send.(%Matrix2051.Irc.Command{
               command: "333",
-              params: [nick, channel, who, Integer.to_string(time)]
+              params: [nick, channel, who, Integer.to_string(div(time, 1000))]
             })
         end
     end
