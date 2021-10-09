@@ -216,5 +216,4 @@ defmodule Matrix2051.MatrixClient.StateTest do
       msg -> assert msg == {:synced2, "!room:example.org"}
     end
   end
-
 end

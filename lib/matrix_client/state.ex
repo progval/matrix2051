@@ -30,16 +30,24 @@ defmodule Matrix2051.MatrixClient.State do
       room = %{room | canonical_alias: new_canonical_alias}
 
       remaining_callbacks = state.channel_sync_callbacks
-      remaining_callbacks = if room.synced do
-        {room_callbacks, remaining_callbacks} =
-          Map.pop(remaining_callbacks, room.canonical_alias, [])
-        room_callbacks |> Enum.map(fn cb -> cb.(room_id, room) end)
-        remaining_callbacks
-      else
-        remaining_callbacks
-      end
 
-      {old_canonical_alias, %{state | rooms: Map.put(state.rooms, room_id, room), channel_sync_callbacks: remaining_callbacks}}
+      remaining_callbacks =
+        if room.synced do
+          {room_callbacks, remaining_callbacks} =
+            Map.pop(remaining_callbacks, room.canonical_alias, [])
+
+          room_callbacks |> Enum.map(fn cb -> cb.(room_id, room) end)
+          remaining_callbacks
+        else
+          remaining_callbacks
+        end
+
+      {old_canonical_alias,
+       %{
+         state
+         | rooms: Map.put(state.rooms, room_id, room),
+           channel_sync_callbacks: remaining_callbacks
+       }}
     end)
   end
 
@@ -131,9 +139,9 @@ defmodule Matrix2051.MatrixClient.State do
           %{
             state
             | channel_sync_callbacks:
-                Map.put(state.channel_sync_callbacks, channel,
-                  [callback | Map.get(state.channel_sync_callbacks, channel, [])]
-                )
+                Map.put(state.channel_sync_callbacks, channel, [
+                  callback | Map.get(state.channel_sync_callbacks, channel, [])
+                ])
           }
       end
     end)

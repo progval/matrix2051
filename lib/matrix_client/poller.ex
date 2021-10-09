@@ -180,7 +180,7 @@ defmodule Matrix2051.MatrixClient.Poller do
 
       send.(%Matrix2051.Irc.Command{
         tags: %{"account" => sender},
-        source: sender,
+        source: nick2nuh(sender),
         command: "MODE",
         params: [channel, mode]
       })
@@ -206,7 +206,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     if !state_event && !was_already_member do
       send.(%Matrix2051.Irc.Command{
         tags: %{"account" => sender},
-        source: sender,
+        source: nick2nuh(sender),
         command: "JOIN",
         params: [channel, sender, sender]
       })
@@ -263,7 +263,7 @@ defmodule Matrix2051.MatrixClient.Poller do
 
     send.(%Matrix2051.Irc.Command{
       tags: %{"account" => sender},
-      source: sender,
+      source: nick2nuh(sender),
       command: command,
       params: [channel, body]
     })
@@ -292,7 +292,11 @@ defmodule Matrix2051.MatrixClient.Poller do
           {topic, _whotime} -> topic
         end
 
-      send.(%Matrix2051.Irc.Command{source: sender, command: "TOPIC", params: [channel, topic]})
+      send.(%Matrix2051.Irc.Command{
+        source: nick2nuh(sender),
+        command: "TOPIC",
+        params: [channel, topic]
+      })
     end
 
     nil
@@ -323,7 +327,11 @@ defmodule Matrix2051.MatrixClient.Poller do
           {topic, _whotime} -> topic
         end
 
-      send.(%Matrix2051.Irc.Command{source: sender, command: "TOPIC", params: [channel, topic]})
+      send.(%Matrix2051.Irc.Command{
+        source: nick2nuh(sender),
+        command: "TOPIC",
+        params: [channel, topic]
+      })
     end
 
     nil
@@ -393,7 +401,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     # Join the new channel
     send.(%Matrix2051.Irc.Command{
       tags: %{"account" => nick},
-      source: nick,
+      source: nick2nuh(nick),
       command: "JOIN",
       params: [channel, nick, nick]
     })
@@ -469,7 +477,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     # this is a known room that got renamed; part the old channel.
     send.(%Matrix2051.Irc.Command{
       tags: %{"account" => nick},
-      source: nick,
+      source: nick2nuh(nick),
       command: "PART",
       params: [
         old_canonical_alias,
@@ -543,5 +551,10 @@ defmodule Matrix2051.MatrixClient.Poller do
         Matrix2051.Irc.Command.downgrade(cmd, capabilities)
       )
     end
+  end
+
+  defp nick2nuh(nick) do
+    [local_name, hostname] = String.split(nick, ":", parts: 2)
+    "#{nick}!#{local_name}@#{hostname}"
   end
 end

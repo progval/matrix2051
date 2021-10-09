@@ -105,7 +105,12 @@ defmodule Matrix2051.IrcConn.Handler do
               # Nick does not match the matrix user id, forcefully change it.
               send_welcome(sup_mod, sup_pid, command)
               Matrix2051.IrcConn.State.set_nick(state, user_id)
-              send.(%Matrix2051.Irc.Command{source: nick, command: "NICK", params: [user_id]})
+
+              send.(%Matrix2051.Irc.Command{
+                source: nick <> "!*@*",
+                command: "NICK",
+                params: [user_id]
+              })
 
               Matrix2051.IrcConn.State.set_registered(state)
 

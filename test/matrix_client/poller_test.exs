@@ -45,7 +45,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
   end
 
   test "new room with disordered events" do
@@ -74,7 +74,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line("332 mynick:example.com #test:example.org :[test]\r\n")
   end
@@ -113,15 +113,15 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test1:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test1:example.org\r\n")
     assert_line("366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
     assert_line("331 mynick:example.com :#test1:example.org\r\n")
-    assert_line(":mynick:example.com JOIN :#test2:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test2:example.org\r\n")
     assert_line("366 mynick:example.com #test2:example.org :End of /NAMES list\r\n")
     assert_line("331 mynick:example.com :#test2:example.org\r\n")
 
     assert_line(
-      ":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n"
+      ":mynick:example.com!mynick@example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n"
     )
 
     assert_line(
@@ -179,17 +179,17 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test1:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test1:example.org\r\n")
     assert_line("366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
     assert_line("332 mynick:example.com #test1:example.org :[test] the topic\r\n")
     assert_line("333 mynick:example.com #test1:example.org nick:example.org :1633176350\r\n")
-    assert_line(":mynick:example.com JOIN :#test2:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test2:example.org\r\n")
     assert_line("366 mynick:example.com #test2:example.org :End of /NAMES list\r\n")
     assert_line("332 mynick:example.com #test2:example.org :[test] the topic\r\n")
     assert_line("333 mynick:example.com #test2:example.org nick:example.org :1633176350\r\n")
 
     assert_line(
-      ":mynick:example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n"
+      ":mynick:example.com!mynick@example.com PART #test1:example.org :nick2:example.org renamed this room to #test2:example.org\r\n"
     )
 
     assert_line(
@@ -231,7 +231,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line("353 mynick:example.com = #test:example.org :mynick:example.org\r\n")
     assert_line("353 mynick:example.com = #test:example.org :nick2:example.org\r\n")
     assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
@@ -280,10 +280,10 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line("331 mynick:example.com :#test:example.org\r\n")
-    assert_line(":nick2:example.org JOIN :#test:example.org\r\n")
+    assert_line(":nick2:example.org!nick2@example.org JOIN :#test:example.org\r\n")
   end
 
   test "join_rules" do
@@ -328,11 +328,11 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line("331 mynick:example.com :#test:example.org\r\n")
-    assert_line(":nick:example.org MODE #test:example.org :-i\r\n")
-    assert_line(":nick:example.org MODE #test:example.org :+i\r\n")
+    assert_line(":nick:example.org!nick@example.org MODE #test:example.org :-i\r\n")
+    assert_line(":nick:example.org!nick@example.org MODE #test:example.org :+i\r\n")
   end
 
   test "messages" do
@@ -409,19 +409,25 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line("331 mynick:example.com :#test:example.org\r\n")
-    assert_line(":nick:example.org PRIVMSG #test:example.org :first message\r\n")
-    assert_line(":nick:example.org PRIVMSG #test:example.org :\x01ACTION is using emotes\x01\r\n")
-    assert_line(":nick:example.org NOTICE #test:example.org :this is a notice\r\n")
+    assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n")
 
     assert_line(
-      ":nick:example.org PRIVMSG #test:example.org :cat.jpg https://matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb\r\n"
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :\x01ACTION is using emotes\x01\r\n"
     )
 
     assert_line(
-      ":nick:example.org PRIVMSG #test:example.org :chat.jpg https://example.org/chat.jpg\r\n"
+      ":nick:example.org!nick@example.org NOTICE #test:example.org :this is a notice\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :cat.jpg https://matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :chat.jpg https://example.org/chat.jpg\r\n"
     )
   end
 
@@ -464,12 +470,12 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line("331 mynick:example.com :#test:example.org\r\n")
 
     assert_line(
-      "@msgid=$event1;time=2021-09-29T20:10:33.579Z :nick:example.org PRIVMSG #test:example.org :first message\r\n"
+      "@msgid=$event1;time=2021-09-29T20:10:33.579Z :nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n"
     )
   end
 
@@ -529,16 +535,21 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line("331 mynick:example.com :#test:example.org\r\n")
 
     assert_line(
-      "@label=foo;msgid=$event1 :nick:example.org PRIVMSG #test:example.org :first message\r\n"
+      "@label=foo;msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n"
     )
 
-    assert_line("@msgid=$event2 :nick:example.org PRIVMSG #test:example.org :second message\r\n")
-    assert_line("@msgid=$event3 :nick:example.org PRIVMSG #test:example.org :third message\r\n")
+    assert_line(
+      "@msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #test:example.org :second message\r\n"
+    )
+
+    assert_line(
+      "@msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #test:example.org :third message\r\n"
+    )
   end
 
   test "drops echos if echo-message not negotiated" do
@@ -596,10 +607,12 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com JOIN :#test:example.org\r\n")
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line("331 mynick:example.com :#test:example.org\r\n")
 
-    assert_line("@msgid=$event3 :nick:example.org PRIVMSG #test:example.org :third message\r\n")
+    assert_line(
+      "@msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #test:example.org :third message\r\n"
+    )
   end
 end

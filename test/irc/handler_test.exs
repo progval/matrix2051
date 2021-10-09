@@ -332,7 +332,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     send(handler, cmd("CAP END"))
     assert_welcome("initial_nick")
-    assert_line(":initial_nick NICK :foo:example.org\r\n")
+    assert_line(":initial_nick!*@* NICK :foo:example.org\r\n")
 
     assert Matrix2051.IrcConn.State.nick(state) == "foo:example.org"
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
@@ -554,9 +554,13 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l1 BATCH +#{batch_id} :labeled-response\r\n"
 
-    assert_line("@batch=#{batch_id} 352 foo:example.org * * * * otheruser:example.org H :0 otheruser:example.org\r\n")
+    assert_line(
+      "@batch=#{batch_id} 352 foo:example.org * * * * otheruser:example.org H :0 otheruser:example.org\r\n"
+    )
 
-    assert_line("@batch=#{batch_id} 315 foo:example.org otheruser:example.org :End of WHO list\r\n")
+    assert_line(
+      "@batch=#{batch_id} 315 foo:example.org otheruser:example.org :End of WHO list\r\n"
+    )
 
     assert_line("BATCH :-#{batch_id}\r\n")
   end
