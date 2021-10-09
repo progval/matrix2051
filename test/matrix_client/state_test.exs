@@ -130,4 +130,91 @@ defmodule Matrix2051.MatrixClient.StateTest do
              "!roomid:example.org"
            ) == nil
   end
+
+  test "runs callbacks on sync" do
+    pid = self()
+
+    Matrix2051.MatrixClient.State.queue_on_channel_sync(
+      :process_matrix_state,
+      "!room:example.org",
+      fn room_id, _room -> send(pid, {:synced1, room_id}) end
+    )
+
+    Matrix2051.MatrixClient.State.queue_on_channel_sync(
+      :process_matrix_state,
+      "#chan:example.org",
+      fn room_id, _room -> send(pid, {:synced2, room_id}) end
+    )
+
+    Matrix2051.MatrixClient.State.set_room_canonical_alias(
+      :process_matrix_state,
+      "!room:example.org",
+      "#chan:example.org"
+    )
+
+    Matrix2051.MatrixClient.State.mark_synced(:process_matrix_state, "!room:example.org")
+
+    receive do
+      msg -> assert msg == {:synced1, "!room:example.org"}
+    end
+
+    receive do
+      msg -> assert msg == {:synced2, "!room:example.org"}
+    end
+  end
+
+  test "runs callbacks immediately when already synced" do
+    pid = self()
+
+    Matrix2051.MatrixClient.State.mark_synced(:process_matrix_state, "!room:example.org")
+
+    Matrix2051.MatrixClient.State.set_room_canonical_alias(
+      :process_matrix_state,
+      "!room:example.org",
+      "#chan:example.org"
+    )
+
+    Matrix2051.MatrixClient.State.queue_on_channel_sync(
+      :process_matrix_state,
+      "!room:example.org",
+      fn room_id, _room -> send(pid, {:synced1, room_id}) end
+    )
+
+    receive do
+      msg -> assert msg == {:synced1, "!room:example.org"}
+    end
+
+    Matrix2051.MatrixClient.State.queue_on_channel_sync(
+      :process_matrix_state,
+      "#chan:example.org",
+      fn room_id, _room -> send(pid, {:synced2, room_id}) end
+    )
+
+    receive do
+      msg -> assert msg == {:synced2, "!room:example.org"}
+    end
+  end
+
+  test "runs callbacks on canonical alias when already synced" do
+    pid = self()
+
+    Matrix2051.MatrixClient.State.queue_on_channel_sync(
+      :process_matrix_state,
+      "#chan:example.org",
+      fn room_id, _room -> send(pid, {:synced2, room_id}) end
+    )
+
+    Matrix2051.MatrixClient.State.mark_synced(:process_matrix_state, "!room:example.org")
+
+    Matrix2051.MatrixClient.State.set_room_canonical_alias(
+      :process_matrix_state,
+      "!room:example.org",
+      "#chan:example.org"
+    )
+
+    receive do
+      msg -> assert msg == {:synced2, "!room:example.org"}
+    end
+  end
+
 end

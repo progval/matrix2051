@@ -97,6 +97,8 @@ defmodule Matrix2051.MatrixClient.Poller do
       end)
 
     # Send self JOIN, RPL_TOPIC/RPL_NOTOPIC, RPL_NAMREPLY
+    state = sup_mod.matrix_state(sup_pid)
+
     new_rooms
     |> Enum.filter(fn room -> room != nil end)
     # dedup
@@ -111,6 +113,8 @@ defmodule Matrix2051.MatrixClient.Poller do
         old_canonical_alias,
         nil
       )
+
+      Matrix2051.MatrixClient.State.mark_synced(state, room_id)
     end)
 
     room_event

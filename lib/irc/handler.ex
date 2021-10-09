@@ -331,10 +331,12 @@ defmodule Matrix2051.IrcConn.Handler do
                              ) do
                           {:ok} ->
                             # RPL_LOGGEDIN
-                            nuh = case nick do
-                              nil -> "*"
-                              _ -> nick <> "!*@*"
-                            end
+                            nuh =
+                              case nick do
+                                nil -> "*"
+                                _ -> nick <> "!*@*"
+                              end
+
                             send_numeric.("900", [
                               nuh,
                               user_id,
@@ -738,23 +740,23 @@ defmodule Matrix2051.IrcConn.Handler do
         # TODO: check target is a valid channel name
         channel = target
 
-        commands =
-          case Matrix2051.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
-            nil ->
-              []
-
-            {_room_id, room} ->
+        Matrix2051.MatrixClient.State.queue_on_channel_sync(
+          matrix_state,
+          channel,
+          fn _room_id, room ->
+            commands =
               room.members
-              |> Enum.map(fn member ->
+              |> Stream.map(fn member ->
                 # RPL_WHOREPLY
                 make_numeric.("352", [target, "*", "*", "*", member, "H", "0 " <> member])
               end)
+
+            # RPL_ENDOFWHO
+            last_command = make_numeric.(315, [target, "End of WHO list"])
+
+            send_label_batch.(Stream.concat(commands, [last_command]))
           end
-
-        # RPL_ENDOFWHO
-        last_command = make_numeric.(315, [target, "End of WHO list"])
-
-        send_label_batch.(commands ++ [last_command])
+        )
 
       {"WHO", _} ->
         send_needmoreparams.()

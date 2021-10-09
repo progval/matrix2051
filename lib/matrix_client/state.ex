@@ -3,7 +3,9 @@ defmodule Matrix2051.MatrixClient.State do
     Stores the state of a Matrix client (access token, joined rooms, ...)
   """
 
-  defstruct [:rooms]
+  # channel_sync_callbacks is a map from channel names to lists of callbacks to run
+  # when a room with that channel name is completely synced
+  defstruct [:rooms, channel_sync_callbacks: Map.new()]
 
   use Agent
 
@@ -26,7 +28,18 @@ defmodule Matrix2051.MatrixClient.State do
       room = Map.get(state.rooms, room_id, @emptyroom)
       old_canonical_alias = room.canonical_alias
       room = %{room | canonical_alias: new_canonical_alias}
-      {old_canonical_alias, %{state | rooms: Map.put(state.rooms, room_id, room)}}
+
+      remaining_callbacks = state.channel_sync_callbacks
+      remaining_callbacks = if room.synced do
+        {room_callbacks, remaining_callbacks} =
+          Map.pop(remaining_callbacks, room.canonical_alias, [])
+        room_callbacks |> Enum.map(fn cb -> cb.(room_id, room) end)
+        remaining_callbacks
+      else
+        remaining_callbacks
+      end
+
+      {old_canonical_alias, %{state | rooms: Map.put(state.rooms, room_id, room), channel_sync_callbacks: remaining_callbacks}}
     end)
   end
 
@@ -85,15 +98,80 @@ defmodule Matrix2051.MatrixClient.State do
   """
   def room_from_irc_channel(pid, channel) do
     Agent.get(pid, fn state ->
-      state.rooms
-      |> Map.to_list()
-      |> Enum.find_value(fn {room_id, room} ->
-        if room.canonical_alias == channel || room_id == channel do
-          {room_id, room}
-        else
-          nil
+      _room_from_irc_channel(state, channel)
+    end)
+  end
+
+  defp _room_from_irc_channel(state, channel) do
+    state.rooms
+    |> Map.to_list()
+    |> Enum.find_value(fn {room_id, room} ->
+      if room.canonical_alias == channel || room_id == channel do
+        {room_id, room}
+      else
+        nil
+      end
+    end)
+  end
+
+  @doc """
+    Takes a callback to run as soon as the room matching the given channel name
+    is completely synced.
+  """
+  def queue_on_channel_sync(pid, channel, callback) do
+    Agent.update(pid, fn state ->
+      case _room_from_irc_channel(state, channel) do
+        {room_id, %Matrix2051.Matrix.RoomState{synced: true} = room} ->
+          # We already have the room, call immediately
+          callback.(room_id, room)
+          state
+
+        _ ->
+          # We don't have the member list yet, queue it.
+          %{
+            state
+            | channel_sync_callbacks:
+                Map.put(state.channel_sync_callbacks, channel,
+                  [callback | Map.get(state.channel_sync_callbacks, channel, [])]
+                )
+          }
+      end
+    end)
+  end
+
+  @doc """
+    Updates the state to mark a room is completely synced, and runs all callbacks
+    that were waiting on it being synced.
+  """
+  def mark_synced(pid, room_id) do
+    Agent.update(pid, fn state ->
+      room = Map.get(state.rooms, room_id, @emptyroom)
+      room = %{room | synced: true}
+      remaining_callbacks = state.channel_sync_callbacks
+
+      # Run callbacks registered for the room_id itself
+      {room_callbacks, remaining_callbacks} = Map.pop(remaining_callbacks, room_id, [])
+      room_callbacks |> Enum.map(fn cb -> cb.(room_id, room) end)
+
+      # Run callbacks registered for the canonical alias
+      remaining_callbacks =
+        case room.canonical_alias do
+          nil ->
+            remaining_callbacks
+
+          _ ->
+            {room_callbacks, remaining_callbacks} =
+              Map.pop(remaining_callbacks, room.canonical_alias, [])
+
+            room_callbacks |> Enum.map(fn cb -> cb.(room_id, room) end)
+            remaining_callbacks
         end
-      end)
+
+      %{
+        state
+        | rooms: Map.put(state.rooms, room_id, room),
+          channel_sync_callbacks: remaining_callbacks
+      }
     end)
   end
 end

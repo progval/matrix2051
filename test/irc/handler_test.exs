@@ -291,9 +291,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
       cmd("AUTHENTICATE Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk")
     )
 
-    assert_line(
-      "900 * * foo:example.org :You are now logged in as foo:example.org\r\n"
-    )
+    assert_line("900 * * foo:example.org :You are now logged in as foo:example.org\r\n")
 
     assert_line("903 * :Authentication successful\r\n")
 
@@ -502,14 +500,9 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l1 WHO #nonexistant_room:example.org"))
 
-    {batch_id, line} = assert_open_batch()
-    assert line == "@label=l1 BATCH +#{batch_id} :labeled-response\r\n"
-
-    assert_line(
-      "@batch=#{batch_id} 315 foo:example.org #nonexistant_room:example.org :End of WHO list\r\n"
-    )
-
-    assert_line("BATCH :-#{batch_id}\r\n")
+    # No reply because the room is not synced (and never will be)
+    send(handler, cmd("PING sync1"))
+    assert_line("PONG :sync1\r\n")
 
     send(handler, cmd("@label=l2 WHO #existing_room:example.org"))
 
@@ -536,7 +529,9 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     send(handler, cmd("WHO #nonexistant_room:example.org"))
 
-    assert_line("315 foo:example.org #nonexistant_room:example.org :End of WHO list\r\n")
+    # No reply because the room is not synced (and never will be)
+    send(handler, cmd("PING sync1"))
+    assert_line("PONG :sync1\r\n")
 
     send(handler, cmd("WHO #existing_room:example.org"))
 
