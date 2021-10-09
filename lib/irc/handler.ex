@@ -17,6 +17,8 @@ defmodule Matrix2051.IrcConn.Handler do
     "draft/account-registration" => {:account_registration, "before-connect"},
     # https://ircv3.net/specs/extensions/account-tag.html
     "account-tag" => {:account_tag, nil},
+    # https://ircv3.net/specs/extensions/batch
+    "batch" => {:batch, nil},
     # https://ircv3.net/specs/extensions/echo-message.html
     "echo-message" => {:echo_message, nil},
     # https://ircv3.net/specs/extensions/extended-join.html
@@ -138,6 +140,41 @@ defmodule Matrix2051.IrcConn.Handler do
         writer,
         Matrix2051.Irc.Command.downgrade(cmd, capabilities)
       )
+    end
+  end
+
+  # Returns a function that can be used to reply to the given command with multiple replies
+  defp make_send_batch_function(command, sup_mod, sup_pid) do
+    writer = sup_mod.writer(sup_pid)
+    state = sup_mod.state(sup_pid)
+    capabilities = Matrix2051.IrcConn.State.capabilities(state)
+
+    fn commands, type ->
+      batch_id =
+        :crypto.strong_rand_bytes(20)
+        |> Base.url_encode64(padding: false)
+        |> String.replace(~r"_", "")
+
+      open_batch = %Matrix2051.Irc.Command{
+        tags: %{"label" => Map.get(command.tags, "label", nil)},
+        command: "BATCH",
+        params: ["+" <> batch_id, type]
+      }
+
+      close_batch = %Matrix2051.Irc.Command{command: "BATCH", params: ["-" <> batch_id]}
+
+      Stream.concat([
+        [open_batch],
+        commands |> Stream.map(fn cmd -> %{cmd | tags: Map.put(cmd.tags, "batch", batch_id)} end),
+        [close_batch]
+      ])
+      |> Stream.map(fn cmd ->
+        Matrix2051.IrcConn.Writer.write_command(
+          writer,
+          Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+        )
+      end)
+      |> Stream.run()
     end
   end
 
@@ -505,13 +542,25 @@ defmodule Matrix2051.IrcConn.Handler do
   # Handles a command (after connection registration is finished)
   defp handle(sup_mod, sup_pid, command) do
     state = sup_mod.state(sup_pid)
+    matrix_state = sup_mod.matrix_state(sup_pid)
     matrix_client = sup_mod.matrix_client(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(state)
 
     send = make_send_function(command, sup_mod, sup_pid)
+    send_batch = make_send_batch_function(command, sup_mod, sup_pid)
+
+    make_numeric = fn numeric, params ->
+      first_param =
+        case nick do
+          nil -> "*"
+          _ -> nick
+        end
+
+      %Matrix2051.Irc.Command{command: numeric, params: [first_param | params]}
+    end
 
     send_numeric = fn numeric, params ->
-      send.(%Matrix2051.Irc.Command{command: numeric, params: [nick | params]})
+      send.(make_numeric.(numeric, params))
     end
 
     send_needmoreparams = fn ->
@@ -659,6 +708,37 @@ defmodule Matrix2051.IrcConn.Handler do
         end
 
       {"NOTICE", _} ->
+        send_needmoreparams.()
+
+      {"WHO", [target, "o" | _]} ->
+        # no RPL_WHOREPLY because no operators
+
+        # RPL_ENDOFWHO
+        send_numeric.(315, [target, "End of WHO list"])
+
+      {"WHO", [target | _]} ->
+        # TODO: check target is a valid channel name
+        channel = target
+
+        commands =
+          case Matrix2051.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+            nil ->
+              []
+
+            {_room_id, room} ->
+              room.members
+              |> Enum.map(fn member ->
+                # RPL_WHOREPLY
+                make_numeric.("352", [target, "*", "*", "*", member, "H", "0 " <> member])
+              end)
+          end
+
+        # RPL_ENDOFWHO
+        last_command = make_numeric.(315, [target, "End of WHO list"])
+
+        send_batch.(commands ++ [last_command], "labeled-response")
+
+      {"WHO", _} ->
         send_needmoreparams.()
 
       _ ->

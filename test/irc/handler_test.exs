@@ -78,7 +78,8 @@ defmodule MockIrcConnSupervisor do
       {MockMatrixClient, {MockIrcConnSupervisor, parent}},
       {Matrix2051.IrcConn.State, {MockIrcConnSupervisor, self()}},
       {Matrix2051.IrcConn.Handler, {MockIrcConnSupervisor, self()}},
-      {MockIrcConnWriter, {parent}}
+      {MockIrcConnWriter, {parent}},
+      {MockMatrixState, {parent}}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
@@ -98,6 +99,11 @@ defmodule MockIrcConnSupervisor do
     nil
   end
 
+  def matrix_state(sup) do
+    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), MockMatrixState, 0)
+    pid
+  end
+
   def handler(sup) do
     {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Handler, 0)
     pid
@@ -113,8 +119,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   use ExUnit.Case
   doctest Matrix2051.IrcConn.Handler
 
-  @cap_ls_302 "CAP * LS :account-tag draft/account-registration=before-connect echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
-  @cap_ls "CAP * LS :account-tag draft/account-registration echo-message extended-join labeled-response message-tags sasl server-time\r\n"
+  @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
+  @cap_ls "CAP * LS :account-tag batch draft/account-registration echo-message extended-join labeled-response message-tags sasl server-time\r\n"
   @isupport "CASEMAPPING=rfc3454 CHANLIMIT= CHANTYPES=#! :TARGMAX=JOIN:1,PART:1\r\n"
 
   setup do
@@ -143,6 +149,16 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_message({:line, line})
   end
 
+  defp assert_open_batch() do
+    receive do
+      msg -> {:line, line} = msg
+        {:ok, cmd} = Matrix2051.Irc.Command.parse(line)
+        %Matrix2051.Irc.Command{command: "BATCH", params: [param1 | _]} = cmd
+        batch_id = String.slice(param1, 1, String.length(param1))
+        {batch_id, line}
+    end
+  end
+
   def assert_welcome(nick) do
     assert_line("001 #{nick} :Welcome to this Matrix bouncer.\r\n")
     assert_line("005 #{nick} #{@isupport}")
@@ -155,7 +171,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP LS 302"))
     assert_line(@cap_ls_302)
 
-    joined_caps = Enum.join(["sasl", "labeled-response"] ++ capabilities, " ")
+    joined_caps = Enum.join(["batch", "labeled-response", "sasl"] ++ capabilities, " ")
     send(handler, cmd("CAP REQ :" <> joined_caps))
     assert_line("CAP * ACK :" <> joined_caps <> "\r\n")
 
@@ -432,5 +448,55 @@ defmodule Matrix2051.IrcConn.HandlerTest do
       {:send_event, "#existing_room:example.org", "m.room.message", "foo",
        %{body: "hello world", msgtype: "m.text"}}
     )
+  end
+
+  test "WHO o", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=l1 WHO #nonexistant_room:example.org o"))
+
+    assert_line(
+      "@label=l1 315 foo:example.org #nonexistant_room:example.org :End of WHO list\r\n"
+    )
+
+    send(handler, cmd("@label=l2 WHO #existing_room:example.org o"))
+
+    assert_line(
+      "@label=l2 315 foo:example.org #existing_room:example.org :End of WHO list\r\n"
+    )
+  end
+
+  test "WHO", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=l1 WHO #nonexistant_room:example.org"))
+
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l1 BATCH +#{batch_id} :labeled-response\r\n"
+
+    assert_line(
+      "@batch=#{batch_id} 315 foo:example.org #nonexistant_room:example.org :End of WHO list\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+
+    send(handler, cmd("@label=l2 WHO #existing_room:example.org"))
+
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l2 BATCH +#{batch_id} :labeled-response\r\n"
+
+    assert_line(
+       "@batch=#{batch_id} 352 foo:example.org #existing_room:example.org * * * user1:example.org H :0 user1:example.org\r\n"
+    )
+
+    assert_line(
+       "@batch=#{batch_id} 352 foo:example.org #existing_room:example.org * * * user2:example.com H :0 user2:example.com\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id} 315 foo:example.org #existing_room:example.org :End of WHO list\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
   end
 end

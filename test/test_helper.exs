@@ -40,3 +40,20 @@ defmodule MockIrcConnWriter do
     {:reply, :ok, state}
   end
 end
+
+defmodule MockMatrixState do
+  use Agent
+
+  def start_link(_args) do
+    Agent.start_link(fn ->
+      %Matrix2051.MatrixClient.State{
+        rooms: %{
+          "!room_id:example.org" => %Matrix2051.Matrix.RoomState{
+            canonical_alias: "#existing_room:example.org",
+            members: MapSet.new(["user1:example.org", "user2:example.com"])
+          }
+        }
+      }
+    end)
+  end
+end

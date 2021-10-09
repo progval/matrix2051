@@ -394,7 +394,7 @@ defmodule Matrix2051.MatrixClient.Poller do
       params: [channel, nick, nick]
     })
 
-    # RPL_NAMREPLY
+    # send RPL_NAMREPLY
     Matrix2051.MatrixClient.State.room_members(state, room_id)
     |> Enum.map(fn member ->
       # TODO: group them in lines

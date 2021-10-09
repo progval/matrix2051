@@ -198,10 +198,11 @@ defmodule Matrix2051.Irc.Command do
           |> Map.to_list()
           |> Enum.filter(fn {key, _value} ->
             case key do
-              "label" -> Enum.member?(capabilities, :labeled_response)
               "account" -> Enum.member?(capabilities, :account_tag)
-              "server_time" -> Enum.member?(capabilities, :server_time)
+              "batch" -> Enum.member?(capabilities, :batch)
+              "label" -> Enum.member?(capabilities, :labeled_response)
               "msgid" -> Enum.member?(capabilities, :message_tags)
+              "server_time" -> Enum.member?(capabilities, :server_time)
               _ -> false
             end
           end)
@@ -225,6 +226,13 @@ defmodule Matrix2051.Irc.Command do
 
         %{command: "ACK"} ->
           if Map.has_key?(command.tags, "label") do
+            command
+          else
+            nil
+          end
+
+        %{command: "BATCH"} ->
+          if Enum.member?(capabilities, :batch) do
             command
           else
             nil
