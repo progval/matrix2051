@@ -481,7 +481,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     )
   end
 
-  test "WHO o", %{handler: handler} do
+  test "WHO o on channel", %{handler: handler} do
     do_connection_registration(handler)
 
     send(handler, cmd("@label=l1 WHO #nonexistant_room:example.org o"))
@@ -495,7 +495,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_line("@label=l2 315 foo:example.org #existing_room:example.org :End of WHO list\r\n")
   end
 
-  test "WHO", %{handler: handler} do
+  test "WHO on channel", %{handler: handler} do
     do_connection_registration(handler)
 
     send(handler, cmd("@label=l1 WHO #nonexistant_room:example.org"))
@@ -524,7 +524,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_line("BATCH :-#{batch_id}\r\n")
   end
 
-  test "WHO without label", %{handler: handler} do
+  test "WHO on channel without label", %{handler: handler} do
     do_connection_registration(handler)
 
     send(handler, cmd("WHO #nonexistant_room:example.org"))
@@ -544,5 +544,20 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     )
 
     assert_line("315 foo:example.org #existing_room:example.org :End of WHO list\r\n")
+  end
+
+  test "WHO on user", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=l1 WHO otheruser:example.org"))
+
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l1 BATCH +#{batch_id} :labeled-response\r\n"
+
+    assert_line("@batch=#{batch_id} 352 foo:example.org * * * * otheruser:example.org H :0 otheruser:example.org\r\n")
+
+    assert_line("@batch=#{batch_id} 315 foo:example.org otheruser:example.org :End of WHO list\r\n")
+
+    assert_line("BATCH :-#{batch_id}\r\n")
   end
 end

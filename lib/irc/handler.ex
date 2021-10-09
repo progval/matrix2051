@@ -737,26 +737,33 @@ defmodule Matrix2051.IrcConn.Handler do
         send_numeric.(315, [target, "End of WHO list"])
 
       {"WHO", [target | _]} ->
-        # TODO: check target is a valid channel name
-        channel = target
+        if Enum.member?(["#", "!"], String.slice(target, 0, 1)) do
+          channel = target
 
-        Matrix2051.MatrixClient.State.queue_on_channel_sync(
-          matrix_state,
-          channel,
-          fn _room_id, room ->
-            commands =
-              room.members
-              |> Stream.map(fn member ->
-                # RPL_WHOREPLY
-                make_numeric.("352", [target, "*", "*", "*", member, "H", "0 " <> member])
-              end)
+          Matrix2051.MatrixClient.State.queue_on_channel_sync(
+            matrix_state,
+            channel,
+            fn _room_id, room ->
+              commands =
+                room.members
+                |> Stream.map(fn member ->
+                  # RPL_WHOREPLY
+                  make_numeric.("352", [target, "*", "*", "*", member, "H", "0 " <> member])
+                end)
 
-            # RPL_ENDOFWHO
-            last_command = make_numeric.(315, [target, "End of WHO list"])
+              # RPL_ENDOFWHO
+              last_command = make_numeric.(315, [target, "End of WHO list"])
 
-            send_label_batch.(Stream.concat(commands, [last_command]))
-          end
-        )
+              send_label_batch.(Stream.concat(commands, [last_command]))
+            end
+          )
+        else
+          # target is a nick
+          send_label_batch.([
+            make_numeric.("352", ["*", "*", "*", "*", target, "H", "0 " <> target]),
+            make_numeric.(315, [target, "End of WHO list"])
+          ])
+        end
 
       {"WHO", _} ->
         send_needmoreparams.()

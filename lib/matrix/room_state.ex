@@ -3,5 +3,5 @@ defmodule Matrix2051.Matrix.RoomState do
     Stores the state of a Matrix client (access token, joined rooms, ...)
   """
 
-  defstruct [:synced, :canonical_alias, :name, :topic, members: MapSet.new()]
+  defstruct [:canonical_alias, :name, :topic, members: MapSet.new(), synced: false]
 end
