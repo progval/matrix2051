@@ -151,7 +151,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
   defp assert_open_batch() do
     receive do
-      msg -> {:line, line} = msg
+      msg ->
+        {:line, line} = msg
         {:ok, cmd} = Matrix2051.Irc.Command.parse(line)
         %Matrix2051.Irc.Command{command: "BATCH", params: [param1 | _]} = cmd
         batch_id = String.slice(param1, 1, String.length(param1))
@@ -461,9 +462,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l2 WHO #existing_room:example.org o"))
 
-    assert_line(
-      "@label=l2 315 foo:example.org #existing_room:example.org :End of WHO list\r\n"
-    )
+    assert_line("@label=l2 315 foo:example.org #existing_room:example.org :End of WHO list\r\n")
   end
 
   test "WHO", %{handler: handler} do
@@ -486,11 +485,11 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert line == "@label=l2 BATCH +#{batch_id} :labeled-response\r\n"
 
     assert_line(
-       "@batch=#{batch_id} 352 foo:example.org #existing_room:example.org * * * user1:example.org H :0 user1:example.org\r\n"
+      "@batch=#{batch_id} 352 foo:example.org #existing_room:example.org * * * user1:example.org H :0 user1:example.org\r\n"
     )
 
     assert_line(
-       "@batch=#{batch_id} 352 foo:example.org #existing_room:example.org * * * user2:example.com H :0 user2:example.com\r\n"
+      "@batch=#{batch_id} 352 foo:example.org #existing_room:example.org * * * user2:example.com H :0 user2:example.com\r\n"
     )
 
     assert_line(
@@ -498,5 +497,25 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     )
 
     assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
+  test "WHO without label", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("WHO #nonexistant_room:example.org"))
+
+    assert_line("315 foo:example.org #nonexistant_room:example.org :End of WHO list\r\n")
+
+    send(handler, cmd("WHO #existing_room:example.org"))
+
+    assert_line(
+      "352 foo:example.org #existing_room:example.org * * * user1:example.org H :0 user1:example.org\r\n"
+    )
+
+    assert_line(
+      "352 foo:example.org #existing_room:example.org * * * user2:example.com H :0 user2:example.com\r\n"
+    )
+
+    assert_line("315 foo:example.org #existing_room:example.org :End of WHO list\r\n")
   end
 end
