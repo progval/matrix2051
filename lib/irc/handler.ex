@@ -332,7 +332,7 @@ defmodule Matrix2051.IrcConn.Handler do
                           {:ok} ->
                             # RPL_LOGGEDIN
                             send_numeric.("900", [
-                              nick <> "!*@*",
+                              "*",
                               user_id,
                               "You are now logged in as " <> user_id
                             ])
