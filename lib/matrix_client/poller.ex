@@ -410,6 +410,12 @@ defmodule Matrix2051.MatrixClient.Poller do
       })
     end)
 
+    # RPL_ENDOFNAMES
+    send.(%Matrix2051.Irc.Command{
+      command: "366",
+      params: [nick, channel, "End of /NAMES list"]
+    })
+
     case compute_topic(sup_mod, sup_pid, room_id) do
       nil ->
         # RPL_NOTOPIC
