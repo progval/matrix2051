@@ -4,74 +4,61 @@ defmodule Matrix2051.IrcConn.State do
   """
   defstruct [:sup_mod, :sup_pid, :registered, :nick, :gecos, :capabilities]
 
-  use GenServer
+  use Agent
 
   def start_link(args) do
-    GenServer.start_link(__MODULE__, args)
-  end
-
-  def init(args) do
     {sup_mod, sup_pid} = args
 
-    {:ok,
-     %Matrix2051.IrcConn.State{
-       sup_mod: sup_mod,
-       sup_pid: sup_pid,
-       registered: false,
-       nick: nil,
-       gecos: nil,
-       capabilities: []
-     }}
-  end
-
-  def handle_call({:get, name}, _from, state) do
-    {:reply, Map.get(state, name), state}
-  end
-
-  def handle_call({:set, name, value}, _from, state) do
-    {:reply, value, Map.put(state, name, value)}
-  end
-
-  def handle_call({:dump_state}, _from, state) do
-    {:reply, state, state}
+    Agent.start_link(fn ->
+      %Matrix2051.IrcConn.State{
+        sup_mod: sup_mod,
+        sup_pid: sup_pid,
+        registered: false,
+        nick: nil,
+        gecos: nil,
+        capabilities: []
+      }
+    end)
   end
 
   def dump_state(pid) do
-    GenServer.call(pid, {:dump_state})
+    Agent.get(pid, fn state -> state end)
   end
 
   @doc """
     Return {local_name, hostname}. Must be joined with ":" to get the actual nick.
   """
   def nick(pid) do
-    GenServer.call(pid, {:get, :nick})
+    Agent.get(pid, fn state -> state.nick end)
   end
 
   def set_nick(pid, nick) do
-    GenServer.call(pid, {:set, :nick, nick})
+    Agent.update(pid, fn state -> %{state | nick: nick} end)
   end
 
   def registered(pid) do
-    GenServer.call(pid, {:get, :registered})
+    Agent.get(pid, fn state -> state.registered end)
   end
 
   def set_registered(pid) do
-    GenServer.call(pid, {:set, :registered, true})
+    Agent.update(pid, fn state -> %{state | registered: true} end)
   end
 
   def gecos(pid) do
-    GenServer.call(pid, {:get, :gecos})
+    Agent.get(pid, fn state -> state.gecos end)
   end
 
   def set_gecos(pid, gecos) do
-    GenServer.call(pid, {:set, :gecos, gecos})
+    Agent.update(pid, fn state -> %{state | gecos: gecos} end)
   end
 
   def capabilities(pid) do
-    GenServer.call(pid, {:get, :capabilities})
+    Agent.get(pid, fn state -> state.capabilities end)
   end
 
   def add_capabilities(pid, new_capabilities) do
-    GenServer.call(pid, {:set, :capabilities, new_capabilities ++ capabilities(pid)})
+    Agent.update(pid, fn state ->
+      %{state | capabilities: new_capabilities ++ state.capabilities}
+    end)
   end
 end
