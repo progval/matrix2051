@@ -721,6 +721,12 @@ defmodule Matrix2051.IrcConn.Handler do
       {"NOTICE", _} ->
         send_needmoreparams.()
 
+      {"TAGMSG", [_channel | _]} ->
+        nil
+
+      {"TAGMSG", _} ->
+        send_needmoreparams.()
+
       {"WHO", [target, "o" | _]} ->
         # no RPL_WHOREPLY because no operators
 

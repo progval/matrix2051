@@ -445,6 +445,15 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_line("@label=abcd ACK\r\n")
   end
 
+  test "ignores TAGMSG", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("TAGMSG #"))
+
+    send(handler, cmd("PING sync1"))
+    assert_line("PONG :sync1\r\n")
+  end
+
   test "sending privmsg", %{handler: handler} do
     do_connection_registration(handler)
 
