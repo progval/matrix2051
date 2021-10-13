@@ -57,7 +57,7 @@ Non-goals:
 * [ ] connection via [websockets](https://github.com/ircv3/ircv3-specifications/pull/342)
 * [ ] [multiline](https://ircv3.net/specs/extensions/multiline) messages
   * [ ] Matrix -> IRC
-  * [ ] IRC -> Matrix
+  * [x] IRC -> Matrix
 * [ ] [reacts](https://ircv3.net/specs/client-tags/reply)
   * [ ] Matrix -> IRC
   * [ ] IRC -> Matrix

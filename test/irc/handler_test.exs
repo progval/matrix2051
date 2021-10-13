@@ -119,8 +119,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   use ExUnit.Case
   doctest Matrix2051.IrcConn.Handler
 
-  @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
-  @cap_ls "CAP * LS :account-tag batch draft/account-registration echo-message extended-join labeled-response message-tags sasl server-time\r\n"
+  @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
+  @cap_ls "CAP * LS :account-tag batch draft/account-registration draft/multiline echo-message extended-join labeled-response message-tags sasl server-time\r\n"
   @isupport "CASEMAPPING=rfc3454 CHANLIMIT= CHANTYPES=#! :TARGMAX=JOIN:1,PART:1\r\n"
 
   setup do
@@ -445,7 +445,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_line("@label=abcd ACK\r\n")
   end
 
-  test "sending privmsg or notice", %{handler: handler} do
+  test "sending privmsg", %{handler: handler} do
     do_connection_registration(handler)
 
     send(handler, cmd("PRIVMSG #existing_room:example.org :hello world"))
@@ -454,6 +454,10 @@ defmodule Matrix2051.IrcConn.HandlerTest do
       {:send_event, "#existing_room:example.org", "m.room.message", nil,
        %{body: "hello world", msgtype: "m.text"}}
     )
+  end
+
+  test "sending privmsg + ACTION", %{handler: handler} do
+    do_connection_registration(handler)
 
     send(handler, cmd("PRIVMSG #existing_room:example.org :\x01ACTION says hello\x01"))
 
@@ -461,6 +465,10 @@ defmodule Matrix2051.IrcConn.HandlerTest do
       {:send_event, "#existing_room:example.org", "m.room.message", nil,
        %{body: "says hello", msgtype: "m.emote"}}
     )
+  end
+
+  test "sending notice", %{handler: handler} do
+    do_connection_registration(handler)
 
     send(handler, cmd("NOTICE #existing_room:example.org :hello world"))
 
@@ -478,6 +486,71 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_message(
       {:send_event, "#existing_room:example.org", "m.room.message", "foo",
        %{body: "hello world", msgtype: "m.text"}}
+    )
+  end
+
+  test "sending multiline privmsg", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("BATCH +tag draft/multiline #existing_room:example.org"))
+    send(handler, cmd("@batch=tag PRIVMSG #existing_room:example.org :hello"))
+    send(handler, cmd("@batch=tag PRIVMSG #existing_room:example.org :world"))
+    send(handler, cmd("@batch=tag;draft/multiline-concat PRIVMSG #existing_room:example.org :!"))
+    send(handler, cmd("BATCH -tag"))
+
+    assert_message(
+      {:send_event, "#existing_room:example.org", "m.room.message", nil,
+       %{body: "hello\nworld!", msgtype: "m.text"}}
+    )
+  end
+
+  test "sending multiline privmsg + ACTION", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("BATCH +tag draft/multiline #existing_room:example.org"))
+    send(handler, cmd("@batch=tag PRIVMSG #existing_room:example.org :\x01ACTION says"))
+    send(handler, cmd("@batch=tag PRIVMSG #existing_room:example.org :hello"))
+
+    send(
+      handler,
+      cmd("@batch=tag;draft/multiline-concat PRIVMSG #existing_room:example.org :!\x01")
+    )
+
+    send(handler, cmd("BATCH -tag"))
+
+    assert_message(
+      {:send_event, "#existing_room:example.org", "m.room.message", nil,
+       %{body: "says\nhello!", msgtype: "m.emote"}}
+    )
+  end
+
+  test "sending multiline notice", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("BATCH +tag draft/multiline #existing_room:example.org"))
+    send(handler, cmd("@batch=tag NOTICE #existing_room:example.org :hello"))
+    send(handler, cmd("@batch=tag NOTICE #existing_room:example.org :world"))
+    send(handler, cmd("@batch=tag;draft/multiline-concat NOTICE #existing_room:example.org :!"))
+    send(handler, cmd("BATCH -tag"))
+
+    assert_message(
+      {:send_event, "#existing_room:example.org", "m.room.message", nil,
+       %{body: "hello\nworld!", msgtype: "m.notice"}}
+    )
+  end
+
+  test "sending multiline privmsg with label", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=foo BATCH +tag draft/multiline #existing_room:example.org"))
+    send(handler, cmd("@batch=tag PRIVMSG #existing_room:example.org :hello"))
+    send(handler, cmd("@batch=tag PRIVMSG #existing_room:example.org :world"))
+    send(handler, cmd("@batch=tag;draft/multiline-concat PRIVMSG #existing_room:example.org :!"))
+    send(handler, cmd("BATCH -tag"))
+
+    assert_message(
+      {:send_event, "#existing_room:example.org", "m.room.message", "foo",
+       %{body: "hello\nworld!", msgtype: "m.text"}}
     )
   end
 

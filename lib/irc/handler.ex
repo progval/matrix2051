@@ -10,30 +10,50 @@ defmodule Matrix2051.IrcConn.Handler do
     Task.start_link(__MODULE__, :run, [sup_mod, sup_pid])
   end
 
+  # the max-bytes value is completely arbitrary, as I can't find a way for
+  # Matrix clients to figure out the actual limit from
+  # https://matrix.org/docs/spec/client_server/r0.6.1#size-limits
+  # 8kB should be a reasonable limit to remain under the allowed 65kB even
+  # with large signatures and many escapes.
+  @multiline_max_bytes 8192
+
   # set of capabilities that we will show in CAP LS and accept with ACK;
   # along with their value (shown in CAP LS 302)
   @capabilities %{
     # https://github.com/ircv3/ircv3-specifications/pull/435
     "draft/account-registration" => {:account_registration, "before-connect"},
+
     # https://ircv3.net/specs/extensions/account-tag.html
     "account-tag" => {:account_tag, nil},
+
     # https://ircv3.net/specs/extensions/batch
     "batch" => {:batch, nil},
+
     # https://ircv3.net/specs/extensions/echo-message.html
     "echo-message" => {:echo_message, nil},
+
     # https://ircv3.net/specs/extensions/extended-join.html
     "extended-join" => {:extended_join, nil},
+
     # https://ircv3.net/specs/extensions/labeled-response
     "labeled-response" => {:labeled_response, nil},
+
     # https://ircv3.net/specs/extensions/message-tags and enables these too:
     # * https://ircv3.net/specs/extensions/message-ids
     # * https://ircv3.net/specs/client-tags/reply
     "message-tags" => {:message_tags, nil},
+
+    # https://ircv3.net/specs/extensions/multiline
+    "draft/multiline" => {:multiline, "max-bytes=#{@multiline_max_bytes}"},
+
     # https://ircv3.net/specs/extensions/sasl-3.1
     "sasl" => {:sasl, "PLAIN"},
+
     # https://ircv3.net/specs/extensions/server-time
     "server-time" => {:server_time, nil}
   }
+
+  @valid_batch_types ["draft/multiline"]
 
   @doc """
     Main loop.
@@ -568,6 +588,19 @@ defmodule Matrix2051.IrcConn.Handler do
   # Handles a command (after connection registration is finished)
   defp handle(sup_mod, sup_pid, command) do
     state = sup_mod.state(sup_pid)
+
+    case command.tags do
+      %{"batch" => reference_tag} ->
+        Matrix2051.IrcConn.State.add_batch_command(state, reference_tag, command)
+
+      _ ->
+        handle_unbatched(sup_mod, sup_pid, command)
+    end
+  end
+
+  # Called by handle/3 when the command isn't part of a batch
+  defp handle_unbatched(sup_mod, sup_pid, command) do
+    state = sup_mod.state(sup_pid)
     matrix_state = sup_mod.matrix_state(sup_pid)
     matrix_client = sup_mod.matrix_client(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(state)
@@ -677,61 +710,13 @@ defmodule Matrix2051.IrcConn.Handler do
         send_needmoreparams.()
 
       {"PRIVMSG", [channel, text | _]} ->
-        # If the client provided a label, use it as txnId on Matrix's side.
-        # This way we can parse it when receiving the echo from Matrix's event
-        # stream instead of storing state.
-        # Otherwise, generate a random transaction id.
-        {msgtype, body} =
-          case Regex.named_captures(~r/\x01ACTION (?P<body>.*)\x01/, text) do
-            %{"body" => body} -> {"m.emote", body}
-            _ -> {"m.text", text}
-          end
-
-        result =
-          Matrix2051.MatrixClient.Client.send_event(
-            matrix_client,
-            channel,
-            Map.get(command.tags, "label"),
-            "m.room.message",
-            %{msgtype: msgtype, body: body}
-          )
-
-        case result do
-          {:ok, _} ->
-            nil
-
-          {:error, error} ->
-            send.(%Matrix2051.Irc.Command{
-              source: "server",
-              command: "NOTICE",
-              params: [channel, "Error while sending message: " <> Kernel.inspect(error)]
-            })
-        end
+        send_message(sup_mod, sup_pid, Map.get(command.tags, "label"), :privmsg, channel, text)
 
       {"PRIVMSG", _} ->
         send_needmoreparams.()
 
       {"NOTICE", [channel, text | _]} ->
-        result =
-          Matrix2051.MatrixClient.Client.send_event(
-            matrix_client,
-            channel,
-            Map.get(command.tags, "label"),
-            "m.room.message",
-            %{msgtype: "m.notice", body: text}
-          )
-
-        case result do
-          {:ok, _} ->
-            nil
-
-          {:error, error} ->
-            send.(%Matrix2051.Irc.Command{
-              source: "server",
-              command: "NOTICE",
-              params: [channel, "Error while sending message: " <> Kernel.inspect(error)]
-            })
-        end
+        send_message(sup_mod, sup_pid, Map.get(command.tags, "label"), :notice, channel, text)
 
       {"NOTICE", _} ->
         send_needmoreparams.()
@@ -774,8 +759,180 @@ defmodule Matrix2051.IrcConn.Handler do
       {"WHO", _} ->
         send_needmoreparams.()
 
+      {"BATCH", [first_param | params]} ->
+        {first_char, reference_tag} = String.split_at(first_param, 1)
+
+        case {first_char, params} do
+          {"+", [type | _other_params]} ->
+            # Opening batch
+            if Enum.member?(@valid_batch_types, type) do
+              Matrix2051.IrcConn.State.create_batch(state, reference_tag, command)
+            else
+              # Ignore the batch.
+            end
+
+          {"-", []} ->
+            # Closing batch
+            handle_batch(
+              sup_mod,
+              sup_pid,
+              reference_tag,
+              Matrix2051.IrcConn.State.pop_batch(state, reference_tag)
+            )
+
+          _ ->
+            send.(%Matrix2051.Irc.Command{
+              command: "ERROR",
+              params: ["Invalid BATCH arguments: " <> Enum.join(command.params, " ")]
+            })
+
+            close_connection(sup_mod, sup_pid)
+        end
+
+      {"BATCH", _} ->
+        send_needmoreparams.()
+
       _ ->
         send_numeric.("421", [command.command, "Unknown command"])
+    end
+  end
+
+  defp handle_batch(_sup_mod, _sup_pid, _reference_tag, nil) do
+    # Closing a non-existing batch; just ignore it.
+  end
+
+  defp handle_batch(sup_mod, sup_pid, _reference_tag, {opening_command, commands}) do
+    send = make_send_function(opening_command, sup_mod, sup_pid)
+
+    inner_commands =
+      commands |> Enum.map(fn msg -> msg.command end) |> MapSet.new() |> Enum.to_list()
+
+    type_and_channel =
+      case {opening_command.params, inner_commands} do
+        {[], _} ->
+          # Missing tag, should have been caught earlier.
+          nil
+
+        {[_tag], _} ->
+          send.(%Matrix2051.Irc.Command{
+            command: "ERROR",
+            params: ["multiline batch is missing a type and a target."]
+          })
+
+          close_connection(sup_mod, sup_pid)
+          nil
+
+        {[_tag, _type], _} ->
+          send.(%Matrix2051.Irc.Command{
+            command: "ERROR",
+            params: ["multiline batch is missing a target."]
+          })
+
+          close_connection(sup_mod, sup_pid)
+          nil
+
+        {[_tag, _type, channel | _], ["PRIVMSG"]} ->
+          {:privmsg, channel}
+
+        {[_tag, _type, channel | _], ["NOTICE"]} ->
+          {:notice, channel}
+
+        {_, [command]} ->
+          send.(%Matrix2051.Irc.Command{
+            command: "ERROR",
+            params: ["command #{command} not allowed in multiline batches."]
+          })
+
+          close_connection(sup_mod, sup_pid)
+          nil
+
+        {_, []} ->
+          # Empty multiline batch; just ignore it.
+          nil
+
+        {_, commands} ->
+          send.(%Matrix2051.Irc.Command{
+            command: "ERROR",
+            params: ["inconsistent commands in multiline batch: " <> Kernel.inspect(commands)]
+          })
+
+          close_connection(sup_mod, sup_pid)
+          nil
+      end
+
+    case type_and_channel do
+      nil ->
+        nil
+
+      {type, channel} ->
+        text =
+          commands
+          |> Enum.map(fn command ->
+            case command do
+              %Matrix2051.Irc.Command{
+                tags: %{"draft/multiline-concat" => _},
+                params: [_target, text | _]
+              } ->
+                text
+
+              %Matrix2051.Irc.Command{params: [_target, text | _]} ->
+                "\n" <> text
+            end
+          end)
+          |> Enum.join("")
+          |> String.replace_leading("\n", "")
+
+        send_message(
+          sup_mod,
+          sup_pid,
+          Map.get(opening_command.tags, "label"),
+          type,
+          channel,
+          text
+        )
+    end
+  end
+
+  defp send_message(sup_mod, sup_pid, label, type, channel, text) do
+    writer = sup_mod.writer(sup_pid)
+    matrix_client = sup_mod.matrix_client(sup_pid)
+    send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
+
+    # If the client provided a label, use it as txnId on Matrix's side.
+    # This way we can parse it when receiving the echo from Matrix's event
+    # stream instead of storing state.
+    # Otherwise, generate a random transaction id.
+    {msgtype, body} =
+      case type do
+        :privmsg ->
+          case Regex.named_captures(~r/\x01ACTION (?P<body>.*)\x01/s, text) do
+            %{"body" => body} -> {"m.emote", body}
+            _ -> {"m.text", text}
+          end
+
+        :notice ->
+          {"m.notice", text}
+      end
+
+    result =
+      Matrix2051.MatrixClient.Client.send_event(
+        matrix_client,
+        channel,
+        label,
+        "m.room.message",
+        %{msgtype: msgtype, body: body}
+      )
+
+    case result do
+      {:ok, _} ->
+        nil
+
+      {:error, error} ->
+        send.(%Matrix2051.Irc.Command{
+          source: "server",
+          command: "NOTICE",
+          params: [channel, "Error while sending message: " <> Kernel.inspect(error)]
+        })
     end
   end
 
