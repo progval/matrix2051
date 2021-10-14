@@ -290,8 +290,10 @@ defmodule Matrix2051.IrcConn.Handler do
           caps
           |> String.split(" ", trim: true)
           |> Enum.map(fn cap ->
-            {atom, _} = Map.get(@capabilities, cap)
-            atom
+            case Map.get(@capabilities, cap) do
+              {atom, _} -> atom
+              nil -> nil
+            end
           end)
 
         all_caps_known = Enum.all?(cap_atoms, fn atom -> atom != nil end)

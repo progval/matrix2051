@@ -306,6 +306,7 @@ defmodule Matrix2051.MatrixClient.Poller do
         # open batch
         send.(%Matrix2051.Irc.Command{
           tags: tags,
+          source: nick2nuh(sender),
           command: "BATCH",
           params: ["+" <> batch_reference_tag, "draft/multiline", channel]
         })
