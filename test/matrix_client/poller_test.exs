@@ -684,4 +684,124 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       "@+draft/reply=$event1;msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #test:example.org :second message\r\n"
     )
   end
+
+  test "multiline" do
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :multiline,
+      :batch,
+      :message_tags
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "a\nb", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line("331 mynick:example.com :#test:example.org\r\n")
+    assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_line("@msgid=$event1 BATCH +ERSXMZLOOQYQ draft/multiline :#test:example.org\r\n")
+    assert_line("@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :a\r\n")
+    assert_line("@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :b\r\n")
+    assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
+  end
+
+  test "replies and multiline" do
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :multiline,
+      :batch,
+      :account,
+      :message_tags
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "a\nb", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "> <@pinkie:matrix.org> a\n> b\n\nc\nd",
+          "format" => "org.matrix.custom.html",
+          "m.relates_to" => %{
+            "m.in_reply_to" => %{
+              "event_id" => "$event1"
+            }
+          },
+          "msgtype" => "m.text"
+        },
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_633_808_172_505,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line("331 mynick:example.com :#test:example.org\r\n")
+    assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_line("@msgid=$event1 BATCH +ERSXMZLOOQYQ draft/multiline :#test:example.org\r\n")
+    assert_line("@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :a\r\n")
+    assert_line("@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :b\r\n")
+    assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
+    assert_line("@+draft/reply=$event1;msgid=$event2 BATCH +ERSXMZLOOQZA draft/multiline :#test:example.org\r\n")
+    assert_line("@batch=ERSXMZLOOQZA :nick:example.org!nick@example.org PRIVMSG #test:example.org :c\r\n")
+    assert_line("@batch=ERSXMZLOOQZA :nick:example.org!nick@example.org PRIVMSG #test:example.org :d\r\n")
+    assert_line("BATCH :-ERSXMZLOOQZA\r\n")
+  end
 end

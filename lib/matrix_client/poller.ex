@@ -285,12 +285,57 @@ defmodule Matrix2051.MatrixClient.Poller do
           {"PRIVMSG", body}
       end
 
-    send.(%Matrix2051.Irc.Command{
-      tags: tags,
-      source: nick2nuh(sender),
-      command: command,
-      params: [channel, body]
-    })
+    case String.split(body, "\n") do
+      [] ->
+        nil
+
+      [line] ->
+        send.(%Matrix2051.Irc.Command{
+          tags: tags,
+          source: nick2nuh(sender),
+          command: command,
+          params: [channel, line]
+        })
+
+      lines ->
+        writer = sup_mod.writer(sup_pid)
+        irc_state = sup_mod.state(sup_pid)
+        capabilities = Matrix2051.IrcConn.State.capabilities(irc_state)
+        batch_reference_tag = Base.encode32(event["event_id"], padding: false)
+
+        # open batch
+        send.(%Matrix2051.Irc.Command{
+          tags: tags,
+          command: "BATCH",
+          params: ["+" <> batch_reference_tag, "draft/multiline", channel]
+        })
+
+        # send content
+        Enum.map(lines, fn line ->
+          cmd = %Matrix2051.Irc.Command{
+            tags: %{"batch" => batch_reference_tag},
+            source: nick2nuh(sender),
+            command: command,
+            params: [channel, line]
+          }
+
+          Matrix2051.IrcConn.Writer.write_command(
+            writer,
+            Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+          )
+        end)
+
+        # close batch
+        cmd = %Matrix2051.Irc.Command{
+          command: "BATCH",
+          params: ["-" <> batch_reference_tag]
+        }
+
+        Matrix2051.IrcConn.Writer.write_command(
+          writer,
+          Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+        )
+    end
 
     nil
   end

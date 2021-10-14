@@ -55,8 +55,8 @@ Non-goals:
 * [ ] [display names](https://github.com/ircv3/ircv3-specifications/pull/452)
 * [ ] [chat history](https://ircv3.net/specs/extensions/chathistory)
 * [ ] connection via [websockets](https://github.com/ircv3/ircv3-specifications/pull/342)
-* [ ] [multiline](https://ircv3.net/specs/extensions/multiline) messages
-  * [ ] Matrix -> IRC
+* [x] [multiline](https://ircv3.net/specs/extensions/multiline) messages
+  * [x] Matrix -> IRC
   * [x] IRC -> Matrix
 * [ ] [reacts](https://ircv3.net/specs/client-tags/reply)
   * [ ] Matrix -> IRC
