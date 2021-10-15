@@ -16,13 +16,13 @@ defmodule Matrix2051.IrcConn.Supervisor do
     {sock} = args
 
     children = [
-      {Matrix2051.IrcConn.State, {__MODULE__, self()}},
+      {Matrix2051.IrcConn.State, {self()}},
       {Matrix2051.IrcConn.Writer, {self(), sock}},
-      {Matrix2051.MatrixClient.State, {__MODULE__, self()}},
-      {Matrix2051.MatrixClient.Client, {__MODULE__, self(), []}},
-      {Matrix2051.MatrixClient.Sender, {__MODULE__, self()}},
-      {Matrix2051.MatrixClient.Poller, {__MODULE__, self()}},
-      {Matrix2051.IrcConn.Handler, {__MODULE__, self()}},
+      {Matrix2051.MatrixClient.State, {self()}},
+      {Matrix2051.MatrixClient.Client, {self(), []}},
+      {Matrix2051.MatrixClient.Sender, {self()}},
+      {Matrix2051.MatrixClient.Poller, {self()}},
+      {Matrix2051.IrcConn.Handler, {self()}},
       {Matrix2051.IrcConn.Reader, {self(), sock}}
     ]
 
@@ -31,57 +31,41 @@ defmodule Matrix2051.IrcConn.Supervisor do
 
   @doc "Returns the pid of the Matrix2051.IrcConn.State child."
   def state(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.State, 0)
-    pid
+    {:via, Registry, {Matrix2051.Registry, {sup, :irc_state}}}
   end
 
   @doc "Returns the pid of the Matrix2051.IrcConn.Writer child."
   def writer(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Writer, 0)
-    pid
+    {:via, Registry, {Matrix2051.Registry, {sup, :irc_writer}}}
   end
 
   @doc "Returns the pid of the Matrix2051.MatrixClient.Client child."
   def matrix_client(sup) do
-    {_, pid, _, _} =
-      List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.Client, 0)
-
-    pid
+    {:via, Registry, {Matrix2051.Registry, {sup, :matrix_client}}}
   end
 
   @doc "Returns the pid of the Matrix2051.MatrixClient.Sender child."
   def matrix_sender(sup) do
-    {_, pid, _, _} =
-      List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.Sender, 0)
-
-    pid
+    {:via, Registry, {Matrix2051.Registry, {sup, :matrix_sender}}}
   end
 
   @doc "Returns the pid of the Matrix2051.MatrixClient.State child."
   def matrix_state(sup) do
-    {_, pid, _, _} =
-      List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.State, 0)
-
-    pid
+    {:via, Registry, {Matrix2051.Registry, {sup, :matrix_state}}}
   end
 
   @doc "Returns the pid of the Matrix2051.MatrixClient.Poller child."
   def matrix_poller(sup) do
-    {_, pid, _, _} =
-      List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.Poller, 0)
-
-    pid
+    {:via, Registry, {Matrix2051.Registry, {sup, :matrix_poller}}}
   end
 
   @doc "Returns the pid of the Matrix2051.IrcConn.Handler child."
   def handler(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Handler, 0)
-    pid
+    {:via, Registry, {Matrix2051.Registry, {sup, :irc_handler}}}
   end
 
   @doc "Returns the pid of the Matrix2051.IrcConn.Reader child."
   def reader(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Reader, 0)
-    pid
+    {:via, Registry, {Matrix2051.Registry, {sup, :irc_reader}}}
   end
 end

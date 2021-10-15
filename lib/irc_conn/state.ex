@@ -2,25 +2,27 @@ defmodule Matrix2051.IrcConn.State do
   @moduledoc """
     Stores the state of an open IRC connection.
   """
-  defstruct [:sup_mod, :sup_pid, :registered, :nick, :gecos, :capabilities, :batches]
+  defstruct [:sup_pid, :registered, :nick, :gecos, :capabilities, :batches]
 
   use Agent
 
   def start_link(args) do
-    {sup_mod, sup_pid} = args
+    {sup_pid} = args
 
-    Agent.start_link(fn ->
-      %Matrix2051.IrcConn.State{
-        sup_mod: sup_mod,
-        sup_pid: sup_pid,
-        registered: false,
-        nick: nil,
-        gecos: nil,
-        capabilities: [],
-        # %{id => {type, args, reversed_messages}}
-        batches: Map.new()
-      }
-    end)
+    Agent.start_link(
+      fn ->
+        %Matrix2051.IrcConn.State{
+          sup_pid: sup_pid,
+          registered: false,
+          nick: nil,
+          gecos: nil,
+          capabilities: [],
+          # %{id => {type, args, reversed_messages}}
+          batches: Map.new()
+        }
+      end,
+      name: {:via, Registry, {Matrix2051.Registry, {sup_pid, :irc_state}}}
+    )
   end
 
   def dump_state(pid) do

@@ -3,10 +3,12 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   doctest Matrix2051.MatrixClient.Poller
 
   setup do
-    start_supervised!({Matrix2051.IrcConn.State, {nil, nil}})
+    start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
+
+    start_supervised!({Matrix2051.IrcConn.State, {self()}})
     |> Process.register(:process_ircconn_state)
 
-    start_supervised!({Matrix2051.MatrixClient.State, []})
+    start_supervised!({Matrix2051.MatrixClient.State, {self()}})
     |> Process.register(:process_matrix_state)
 
     start_supervised!({MockIrcConnWriter, {self()}})
@@ -24,7 +26,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "no events" do
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{})
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{})
   end
 
   test "new room" do
@@ -39,7 +41,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
       }
@@ -68,7 +70,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
       }
@@ -102,7 +104,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -168,7 +170,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -225,7 +227,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
       }
@@ -269,7 +271,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -317,7 +319,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -398,7 +400,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -459,7 +461,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -524,7 +526,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -596,7 +598,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -661,7 +663,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -714,7 +716,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -728,9 +730,19 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line("331 mynick:example.com :#test:example.org\r\n")
     assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
-    assert_line("@msgid=$event1 :nick:example.org!nick@example.org BATCH +ERSXMZLOOQYQ draft/multiline :#test:example.org\r\n")
-    assert_line("@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :a\r\n")
-    assert_line("@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :b\r\n")
+
+    assert_line(
+      "@msgid=$event1 :nick:example.org!nick@example.org BATCH +ERSXMZLOOQYQ draft/multiline :#test:example.org\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :a\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :b\r\n"
+    )
+
     assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
   end
 
@@ -781,7 +793,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(MockIrcSupervisor, self(), %{
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -795,13 +807,33 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line("331 mynick:example.com :#test:example.org\r\n")
     assert_line("366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
-    assert_line("@msgid=$event1 :nick:example.org!nick@example.org BATCH +ERSXMZLOOQYQ draft/multiline :#test:example.org\r\n")
-    assert_line("@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :a\r\n")
-    assert_line("@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :b\r\n")
+
+    assert_line(
+      "@msgid=$event1 :nick:example.org!nick@example.org BATCH +ERSXMZLOOQYQ draft/multiline :#test:example.org\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :a\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :b\r\n"
+    )
+
     assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
-    assert_line("@+draft/reply=$event1;msgid=$event2 :nick:example.org!nick@example.org BATCH +ERSXMZLOOQZA draft/multiline :#test:example.org\r\n")
-    assert_line("@batch=ERSXMZLOOQZA :nick:example.org!nick@example.org PRIVMSG #test:example.org :c\r\n")
-    assert_line("@batch=ERSXMZLOOQZA :nick:example.org!nick@example.org PRIVMSG #test:example.org :d\r\n")
+
+    assert_line(
+      "@+draft/reply=$event1;msgid=$event2 :nick:example.org!nick@example.org BATCH +ERSXMZLOOQZA draft/multiline :#test:example.org\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQZA :nick:example.org!nick@example.org PRIVMSG #test:example.org :c\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQZA :nick:example.org!nick@example.org PRIVMSG #test:example.org :d\r\n"
+    )
+
     assert_line("BATCH :-ERSXMZLOOQZA\r\n")
   end
 end

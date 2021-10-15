@@ -10,8 +10,6 @@ defmodule Matrix2051.MatrixClient.Client do
     :state,
     # extra keyword list passed to init/1
     :args,
-    # IrcConnSupervisor
-    :irc_mod,
     # pid of IrcConnSupervisor
     :irc_pid,
     # Matrix2051.Matrix.RawClient structure
@@ -23,17 +21,20 @@ defmodule Matrix2051.MatrixClient.Client do
   ]
 
   def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts)
+    {sup_pid, _extra_args} = opts
+
+    GenServer.start_link(__MODULE__, opts,
+      name: {:via, Registry, {Matrix2051.Registry, {sup_pid, :matrix_client}}}
+    )
   end
 
   @impl true
   def init(args) do
-    {irc_mod, irc_pid, extra_args} = args
+    {irc_pid, extra_args} = args
 
     {:ok,
      %Matrix2051.MatrixClient.Client{
        state: :initial_state,
-       irc_mod: irc_mod,
        irc_pid: irc_pid,
        args: extra_args
      }}
@@ -49,7 +50,6 @@ defmodule Matrix2051.MatrixClient.Client do
     case state do
       %Matrix2051.MatrixClient.Client{
         state: :initial_state,
-        irc_mod: irc_mod,
         irc_pid: irc_pid,
         args: args
       } ->
@@ -101,7 +101,6 @@ defmodule Matrix2051.MatrixClient.Client do
 
                 state = %Matrix2051.MatrixClient.Client{
                   state: :connected,
-                  irc_mod: irc_mod,
                   irc_pid: irc_pid,
                   raw_client: raw_client,
                   rooms: Map.new(),
@@ -109,8 +108,7 @@ defmodule Matrix2051.MatrixClient.Client do
                   hostname: hostname
                 }
 
-                poller = irc_mod.matrix_poller(irc_pid)
-                send(poller, :connected)
+                Registry.send({Matrix2051.Registry, {irc_pid, :matrix_poller}}, :connected)
 
                 {:reply, {:ok}, state}
 
@@ -134,7 +132,6 @@ defmodule Matrix2051.MatrixClient.Client do
     case state do
       %Matrix2051.MatrixClient.Client{
         state: :initial_state,
-        irc_mod: irc_mod,
         irc_pid: irc_pid,
         args: args
       } ->
@@ -168,7 +165,6 @@ defmodule Matrix2051.MatrixClient.Client do
 
             state = %Matrix2051.MatrixClient.Client{
               state: :connected,
-              irc_mod: irc_mod,
               irc_pid: irc_pid,
               raw_client: raw_client,
               rooms: Map.new(),
@@ -176,8 +172,7 @@ defmodule Matrix2051.MatrixClient.Client do
               hostname: hostname
             }
 
-            poller = irc_mod.matrix_poller(irc_pid)
-            send(poller, :connected)
+            Registry.send({Matrix2051.Registry, {irc_pid, :matrix_poller}}, :connected)
 
             {:reply, {:ok, user_id}, state}
 
@@ -242,12 +237,11 @@ defmodule Matrix2051.MatrixClient.Client do
   def handle_call({:send_event, channel, event_type, label, event}, _from, state) do
     %Matrix2051.MatrixClient.Client{
       state: :connected,
-      irc_mod: irc_mod,
       irc_pid: irc_pid,
       rooms: rooms
     } = state
 
-    matrix_state = irc_mod.matrix_state(irc_pid)
+    matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(irc_pid)
 
     transaction_id = label_to_transaction_id(label)
 
@@ -256,10 +250,8 @@ defmodule Matrix2051.MatrixClient.Client do
         {:reply, {:error, {:room_not_found, channel, rooms}}, state}
 
       {room_id, _room} ->
-        sender = irc_mod.matrix_sender(irc_pid)
-
         Matrix2051.MatrixClient.Sender.queue_event(
-          sender,
+          irc_pid,
           room_id,
           event_type,
           transaction_id,

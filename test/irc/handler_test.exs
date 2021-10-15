@@ -2,15 +2,16 @@ defmodule MockMatrixClient do
   use GenServer
 
   def start_link(args) do
-    GenServer.start_link(__MODULE__, args)
+    {sup_pid} = args
+    name = {:via, Registry, {Matrix2051.Registry, {sup_pid, :matrix_client}}}
+    GenServer.start_link(__MODULE__, args, name: name)
   end
 
   @impl true
-  def init({sup_mod, sup_pid}) do
+  def init({sup_pid}) do
     {:ok,
      %Matrix2051.MatrixClient.Client{
        state: :initial_state,
-       irc_mod: sup_mod,
        irc_pid: sup_pid,
        args: []
      }}
@@ -63,60 +64,8 @@ defmodule MockMatrixClient do
   end
 end
 
-defmodule MockIrcConnSupervisor do
-  use Supervisor
-
-  def start_link(args) do
-    Supervisor.start_link(__MODULE__, args)
-  end
-
-  @impl true
-  def init(args) do
-    {parent} = args
-
-    children = [
-      {MockMatrixClient, {MockIrcConnSupervisor, parent}},
-      {Matrix2051.IrcConn.State, {MockIrcConnSupervisor, self()}},
-      {Matrix2051.IrcConn.Handler, {MockIrcConnSupervisor, self()}},
-      {MockIrcConnWriter, {parent}},
-      {MockMatrixState, {parent}}
-    ]
-
-    Supervisor.init(children, strategy: :one_for_one)
-  end
-
-  def state(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.State, 0)
-    pid
-  end
-
-  def matrix_client(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), MockMatrixClient, 0)
-    pid
-  end
-
-  def matrix_poller(_sup) do
-    nil
-  end
-
-  def matrix_state(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), MockMatrixState, 0)
-    pid
-  end
-
-  def handler(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), Matrix2051.IrcConn.Handler, 0)
-    pid
-  end
-
-  def writer(sup) do
-    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), MockIrcConnWriter, 0)
-    pid
-  end
-end
-
 defmodule Matrix2051.IrcConn.HandlerTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
   doctest Matrix2051.IrcConn.Handler
 
   @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
@@ -124,13 +73,19 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   @isupport "CASEMAPPING=rfc3454 CHANLIMIT= CHANTYPES=#! :TARGMAX=JOIN:1,PART:1\r\n"
 
   setup do
+    start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
     start_supervised!({Matrix2051.Config, []})
-    supervisor = start_supervised!({MockIrcConnSupervisor, {self()}})
+    start_supervised!({MockMatrixClient, {self()}})
+    state = start_supervised!({Matrix2051.IrcConn.State, {self()}})
+
+    handler = start_supervised!({Matrix2051.IrcConn.Handler, {self()}})
+
+    start_supervised!({MockIrcConnWriter, {self()}})
+    start_supervised!({MockMatrixState, {self()}})
 
     %{
-      supervisor: supervisor,
-      state: MockIrcConnSupervisor.state(supervisor),
-      handler: MockIrcConnSupervisor.handler(supervisor)
+      state: state,
+      handler: handler
     }
   end
 

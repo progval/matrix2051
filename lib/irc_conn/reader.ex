@@ -20,8 +20,7 @@ defmodule Matrix2051.IrcConn.Reader do
     case :gen_tcp.recv(sock, 0) do
       {:ok, line} ->
         {:ok, command} = Matrix2051.Irc.Command.parse(line)
-        handler = Matrix2051.IrcConn.Supervisor.handler(supervisor)
-        send(handler, command)
+        Registry.send({Matrix2051.Registry, {supervisor, :irc_handler}}, command)
         loop_serve(supervisor, sock)
 
       {:error, :closed} ->

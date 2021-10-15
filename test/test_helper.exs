@@ -3,29 +3,13 @@ ExUnit.start(timeout: 5000)
 
 Mox.defmock(MockHTTPoison, for: HTTPoison.Base)
 
-defmodule MockIrcSupervisor do
-  def matrix_poller(pid) do
-    pid
-  end
-
-  def state(_pid) do
-    :process_ircconn_state
-  end
-
-  def matrix_state(_pid) do
-    :process_matrix_state
-  end
-
-  def writer(_pid) do
-    MockIrcConnWriter
-  end
-end
-
 defmodule MockIrcConnWriter do
   use GenServer
 
   def start_link(args) do
-    GenServer.start_link(__MODULE__, args)
+    {test_pid} = args
+    name = {:via, Registry, {Matrix2051.Registry, {test_pid, :irc_writer}}}
+    GenServer.start_link(__MODULE__, args, name: name)
   end
 
   @impl true
@@ -44,17 +28,22 @@ end
 defmodule MockMatrixState do
   use Agent
 
-  def start_link(_args) do
-    Agent.start_link(fn ->
-      %Matrix2051.MatrixClient.State{
-        rooms: %{
-          "!room_id:example.org" => %Matrix2051.Matrix.RoomState{
-            synced: true,
-            canonical_alias: "#existing_room:example.org",
-            members: MapSet.new(["user1:example.org", "user2:example.com"])
+  def start_link(args) do
+    {test_pid} = args
+
+    Agent.start_link(
+      fn ->
+        %Matrix2051.MatrixClient.State{
+          rooms: %{
+            "!room_id:example.org" => %Matrix2051.Matrix.RoomState{
+              synced: true,
+              canonical_alias: "#existing_room:example.org",
+              members: MapSet.new(["user1:example.org", "user2:example.com"])
+            }
           }
         }
-      }
-    end)
+      end,
+      name: {:via, Registry, {Matrix2051.Registry, {test_pid, :matrix_state}}}
+    )
   end
 end

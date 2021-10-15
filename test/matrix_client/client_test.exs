@@ -7,7 +7,9 @@ defmodule Matrix2051.MatrixClient.ClientTest do
   setup :verify_on_exit!
 
   setup do
+    start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
     config = start_supervised!({Matrix2051.Config, []})
+    Registry.register(Matrix2051.Registry, {self(), :matrix_poller}, self())
     %{config: config, irc_pid: self()}
   end
 
@@ -50,17 +52,12 @@ defmodule Matrix2051.MatrixClient.ClientTest do
   end
 
   test "initialization", %{irc_pid: irc_pid} do
-    irc_mod = MockIrcSupervisor
-
     client =
-      start_supervised!(
-        {Matrix2051.MatrixClient.Client, {irc_mod, irc_pid, [httpoison: MockHTTPoison]}}
-      )
+      start_supervised!({Matrix2051.MatrixClient.Client, {irc_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:dump_state}) ==
              %Matrix2051.MatrixClient.Client{
                state: :initial_state,
-               irc_mod: irc_mod,
                irc_pid: irc_pid,
                args: [httpoison: MockHTTPoison]
              }
@@ -115,19 +112,14 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    irc_mod = MockIrcSupervisor
-
     client =
-      start_supervised!(
-        {Matrix2051.MatrixClient.Client, {irc_mod, irc_pid, [httpoison: MockHTTPoison]}}
-      )
+      start_supervised!({Matrix2051.MatrixClient.Client, {irc_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) == {:ok}
 
     assert GenServer.call(client, {:dump_state}) ==
              %Matrix2051.MatrixClient.Client{
                state: :connected,
-               irc_mod: irc_mod,
                irc_pid: irc_pid,
                raw_client: %Matrix2051.Matrix.RawClient{
                  base_url: "https://matrix.example.org",
@@ -200,19 +192,14 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    irc_mod = MockIrcSupervisor
-
     client =
-      start_supervised!(
-        {Matrix2051.MatrixClient.Client, {irc_mod, irc_pid, [httpoison: MockHTTPoison]}}
-      )
+      start_supervised!({Matrix2051.MatrixClient.Client, {irc_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) == {:ok}
 
     assert GenServer.call(client, {:dump_state}) ==
              %Matrix2051.MatrixClient.Client{
                state: :connected,
-               irc_mod: irc_mod,
                irc_pid: irc_pid,
                raw_client: %Matrix2051.Matrix.RawClient{
                  base_url: "https://matrix.example.com",
@@ -260,12 +247,8 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    irc_mod = MockIrcSupervisor
-
     client =
-      start_supervised!(
-        {Matrix2051.MatrixClient.Client, {irc_mod, irc_pid, [httpoison: MockHTTPoison]}}
-      )
+      start_supervised!({Matrix2051.MatrixClient.Client, {irc_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) ==
              {:error, :no_password_flow, "No password flow"}
@@ -273,7 +256,6 @@ defmodule Matrix2051.MatrixClient.ClientTest do
     assert GenServer.call(client, {:dump_state}) ==
              %Matrix2051.MatrixClient.Client{
                state: :initial_state,
-               irc_mod: irc_mod,
                irc_pid: irc_pid,
                args: [httpoison: MockHTTPoison]
              }
@@ -326,12 +308,8 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    irc_mod = MockIrcSupervisor
-
     client =
-      start_supervised!(
-        {Matrix2051.MatrixClient.Client, {irc_mod, irc_pid, [httpoison: MockHTTPoison]}}
-      )
+      start_supervised!({Matrix2051.MatrixClient.Client, {irc_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) ==
              {:error, :denied, "Invalid password"}
@@ -339,7 +317,6 @@ defmodule Matrix2051.MatrixClient.ClientTest do
     assert GenServer.call(client, {:dump_state}) ==
              %Matrix2051.MatrixClient.Client{
                state: :initial_state,
-               irc_mod: irc_mod,
                irc_pid: irc_pid,
                args: [httpoison: MockHTTPoison]
              }
@@ -374,12 +351,8 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    irc_mod = MockIrcSupervisor
-
     client =
-      start_supervised!(
-        {Matrix2051.MatrixClient.Client, {irc_mod, irc_pid, [httpoison: MockHTTPoison]}}
-      )
+      start_supervised!({Matrix2051.MatrixClient.Client, {irc_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:register, "user", "matrix.example.org", "p4ssw0rd"}) ==
              {:ok, "user:matrix.example.org"}
@@ -387,7 +360,6 @@ defmodule Matrix2051.MatrixClient.ClientTest do
     assert GenServer.call(client, {:dump_state}) ==
              %Matrix2051.MatrixClient.Client{
                state: :connected,
-               irc_mod: irc_mod,
                irc_pid: irc_pid,
                raw_client: %Matrix2051.Matrix.RawClient{
                  base_url: "https://matrix.example.org",
@@ -419,12 +391,8 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       %HTTPoison.Response{status_code: 200, body: "{\"room_id\": \"!abc:matrix.example.net\"}"}
     end)
 
-    irc_mod = MockIrcSupervisor
-
     client =
-      start_supervised!(
-        {Matrix2051.MatrixClient.Client, {irc_mod, irc_pid, [httpoison: MockHTTPoison]}}
-      )
+      start_supervised!({Matrix2051.MatrixClient.Client, {irc_pid, [httpoison: MockHTTPoison]}})
 
     assert Matrix2051.MatrixClient.Client.connect(
              client,

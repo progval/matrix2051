@@ -3,7 +3,8 @@ defmodule Matrix2051.IrcConn.StateTest do
   doctest Matrix2051.IrcConn.State
 
   test "batches" do
-    state = start_supervised!({Matrix2051.IrcConn.State, {nil, nil}})
+    start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
+    state = start_supervised!({Matrix2051.IrcConn.State, {nil}})
 
     opening_command = %Matrix2051.Irc.Command{
       command: "BATCH",

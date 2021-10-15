@@ -11,8 +11,12 @@ defmodule Matrix2051.MatrixClient.State do
 
   @emptyroom %Matrix2051.Matrix.RoomState{}
 
-  def start_link(_opts) do
-    Agent.start_link(fn -> %Matrix2051.MatrixClient.State{rooms: %{}} end)
+  def start_link(opts) do
+    {sup_pid} = opts
+
+    Agent.start_link(fn -> %Matrix2051.MatrixClient.State{rooms: %{}} end,
+      name: {:via, Registry, {Matrix2051.Registry, {sup_pid, :matrix_state}}}
+    )
   end
 
   defp update_room(pid, room_id, fun) do

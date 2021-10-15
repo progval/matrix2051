@@ -6,7 +6,11 @@ defmodule Matrix2051.IrcConn.Writer do
   use GenServer
 
   def start_link(args) do
-    GenServer.start_link(__MODULE__, args)
+    {sup_pid, _sock} = args
+
+    GenServer.start_link(__MODULE__, args,
+      name: {:via, Registry, {Matrix2051.Registry, {sup_pid, :irc_writer}}}
+    )
   end
 
   @impl true

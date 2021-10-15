@@ -14,28 +14,29 @@ defmodule Matrix2051.MatrixClient.Sender do
   end
 
   def poll(args) do
-    {sup_mod, sup_pid} = args
-    loop_poll(sup_mod, sup_pid)
+    {sup_pid} = args
+    Registry.register(Matrix2051.Registry, {sup_pid, :matrix_sender}, nil)
+    loop_poll(sup_pid)
   end
 
-  defp loop_poll(sup_mod, sup_pid) do
+  defp loop_poll(sup_pid) do
     receive do
       {:send, room_id, event_type, transaction_id, event} ->
-        loop_send(sup_mod, sup_pid, room_id, event_type, transaction_id, event)
+        loop_send(sup_pid, room_id, event_type, transaction_id, event)
     end
 
-    loop_poll(sup_mod, sup_pid)
+    loop_poll(sup_pid)
   end
 
-  defp loop_send(sup_mod, sup_pid, room_id, event_type, transaction_id, event, nb_attempts \\ 0) do
-    client = sup_mod.matrix_client(sup_pid)
-    send = make_send_function(sup_mod, sup_pid, transaction_id)
+  defp loop_send(sup_pid, room_id, event_type, transaction_id, event, nb_attempts \\ 0) do
+    client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
+    send = make_send_function(sup_pid, transaction_id)
 
     case Matrix2051.MatrixClient.Client.raw_client(client) do
       nil ->
         # Wait for it to be initialized
         Process.sleep(100)
-        loop_send(sup_mod, sup_pid, room_id, event_type, transaction_id, event)
+        loop_send(sup_pid, room_id, event_type, transaction_id, event)
 
       raw_client ->
         path = "/_matrix/client/r0/rooms/#{room_id}/send/#{event_type}/#{transaction_id}"
@@ -48,12 +49,10 @@ defmodule Matrix2051.MatrixClient.Sender do
 
           {:error, error} ->
             if nb_attempts < @max_attempts do
-              IO.inspect(error, label: "error while sending")
               backoff_delay = :math.pow(2, nb_attempts)
               Process.sleep(backoff_delay * 1000)
 
               loop_send(
-                sup_mod,
                 sup_pid,
                 room_id,
                 event_type,
@@ -62,7 +61,7 @@ defmodule Matrix2051.MatrixClient.Sender do
                 nb_attempts + 1
               )
             else
-              state = sup_mod.matrix_state(sup_pid)
+              state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
               channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
 
               send.(%Matrix2051.Irc.Command{
@@ -76,9 +75,9 @@ defmodule Matrix2051.MatrixClient.Sender do
   end
 
   # Returns a function that can be used to send messages
-  defp make_send_function(sup_mod, sup_pid, transaction_id) do
-    writer = sup_mod.writer(sup_pid)
-    state = sup_mod.state(sup_pid)
+  defp make_send_function(sup_pid, transaction_id) do
+    writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
+    state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
     capabilities = Matrix2051.IrcConn.State.capabilities(state)
     label = Matrix2051.MatrixClient.Client.transaction_id_to_label(transaction_id)
 
@@ -96,7 +95,10 @@ defmodule Matrix2051.MatrixClient.Sender do
     end
   end
 
-  def queue_event(pid, room_id, event_type, transaction_id, event) do
-    send(pid, {:send, room_id, event_type, transaction_id, event})
+  def queue_event(sup_pid, room_id, event_type, transaction_id, event) do
+    Registry.send(
+      {Matrix2051.Registry, {sup_pid, :matrix_sender}},
+      {:send, room_id, event_type, transaction_id, event}
+    )
   end
 end

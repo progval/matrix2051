@@ -13,6 +13,7 @@ defmodule Matrix2051.Supervisor do
   @impl true
   def init(args) do
     children = [
+      {Registry, keys: :unique, name: Matrix2051.Registry},
       {Matrix2051.Config, args},
       Matrix2051.IrcServer
     ]

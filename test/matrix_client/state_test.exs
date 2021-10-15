@@ -3,7 +3,9 @@ defmodule Matrix2051.MatrixClient.StateTest do
   doctest Matrix2051.MatrixClient.State
 
   setup do
-    start_supervised!({Matrix2051.MatrixClient.State, {}})
+    start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
+
+    start_supervised!({Matrix2051.MatrixClient.State, {nil}})
     |> Process.register(:process_matrix_state)
 
     :ok
