@@ -385,7 +385,9 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":inviter:example.org!inviter@example.org INVITE mynick:example.com :!testid:example.org\r\n")
+    assert_line(
+      ":inviter:example.org!inviter@example.org INVITE mynick:example.com :!testid:example.org\r\n"
+    )
   end
 
   test "messages" do

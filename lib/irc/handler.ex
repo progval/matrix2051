@@ -65,7 +65,12 @@ defmodule Matrix2051.IrcConn.Handler do
   def run(args) do
     {sup_pid} = args
     Registry.register(Matrix2051.Registry, {sup_pid, :irc_handler}, nil)
-    loop_connreg(sup_pid)
+    state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
+
+    if !Matrix2051.IrcConn.State.registered(state) do
+      loop_connreg(sup_pid)
+    end
+
     loop(sup_pid)
   end
 
