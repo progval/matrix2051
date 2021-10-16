@@ -511,7 +511,8 @@ defmodule Matrix2051.IrcConn.Handler do
       "CHANLIMIT=",
       "CHANTYPES=#!",
       "TARGMAX=JOIN:1,PART:1",
-      "UTF8ONLY"
+      "UTF8ONLY",
+      "are supported by this server"
     ])
 
     # RPL_MOTDSTART

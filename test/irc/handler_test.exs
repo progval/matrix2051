@@ -70,7 +70,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
   @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
   @cap_ls "CAP * LS :account-tag batch draft/account-registration draft/multiline echo-message extended-join labeled-response message-tags sasl server-time\r\n"
-  @isupport "CASEMAPPING=rfc3454 CHANLIMIT= CHANTYPES=#! TARGMAX=JOIN:1,PART:1 :UTF8ONLY\r\n"
+  @isupport "CASEMAPPING=rfc3454 CHANLIMIT= CHANTYPES=#! TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
     start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
