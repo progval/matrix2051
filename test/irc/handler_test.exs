@@ -145,7 +145,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     )
 
     assert_line(
-      "@label=reg02 900 foo:example.org foo:example.org!*@* foo:example.org :You are now logged in as foo:example.org\r\n"
+      "@label=reg02 900 foo:example.org foo:example.org!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
     )
 
     assert_line("@label=reg02 903 foo:example.org :Authentication successful\r\n")
@@ -218,7 +218,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     )
 
     assert_line(
-      "900 foo:example.org foo:example.org!*@* foo:example.org :You are now logged in as foo:example.org\r\n"
+      "900 foo:example.org foo:example.org!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
     )
 
     assert_line("903 foo:example.org :Authentication successful\r\n")
@@ -280,14 +280,14 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     )
 
     assert_line(
-      "900 initial_nick initial_nick!*@* foo:example.org :You are now logged in as foo:example.org\r\n"
+      "900 initial_nick initial_nick!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
     )
 
     assert_line("903 initial_nick :Authentication successful\r\n")
 
     send(handler, cmd("CAP END"))
     assert_welcome("initial_nick")
-    assert_line(":initial_nick!*@* NICK :foo:example.org\r\n")
+    assert_line(":initial_nick!foo@example.org NICK :foo:example.org\r\n")
 
     assert Matrix2051.IrcConn.State.nick(state) == "foo:example.org"
     assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
@@ -345,7 +345,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     try_userid.(
       "foo:bar",
-      "900 foo:bar foo:bar!*@* foo:bar :You are now logged in as foo:bar\r\n"
+      "900 foo:bar foo:bar!foo@bar foo:bar :You are now logged in as foo:bar\r\n"
     )
 
     assert_line("903 foo:bar :Authentication successful\r\n")
@@ -378,7 +378,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     )
 
     assert_line(
-      "900 user:example.org user:example.org!*@* user:example.org :You are now logged in as user:example.org\r\n"
+      "900 user:example.org user:example.org!user@example.org user:example.org :You are now logged in as user:example.org\r\n"
     )
 
     send(handler, cmd("CAP END"))

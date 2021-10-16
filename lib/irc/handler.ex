@@ -132,7 +132,7 @@ defmodule Matrix2051.IrcConn.Handler do
               Matrix2051.IrcConn.State.set_nick(state, user_id)
 
               send.(%Matrix2051.Irc.Command{
-                source: nick <> "!*@*",
+                source: nick <> "!" <> String.replace(user_id, ~r/:/, "@"),
                 command: "NICK",
                 params: [user_id]
               })
@@ -365,7 +365,7 @@ defmodule Matrix2051.IrcConn.Handler do
                             nuh =
                               case nick do
                                 nil -> "*"
-                                _ -> nick <> "!*@*"
+                                _ -> "#{nick}!#{local_name}@#{hostname}"
                               end
 
                             send_numeric.("900", [
@@ -544,7 +544,7 @@ defmodule Matrix2051.IrcConn.Handler do
           params: ["SUCCESS", user_id, "You are now registered as " <> user_id]
         })
 
-        send_numeric.("900", [user_id <> "!*@*", user_id, "You are now logged in as " <> user_id])
+        send_numeric.("900", [nick2nuh(user_id), user_id, "You are now logged in as " <> user_id])
 
         {:authenticate, user_id}
 
@@ -951,5 +951,10 @@ defmodule Matrix2051.IrcConn.Handler do
     writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
     Matrix2051.IrcConn.Writer.close(writer)
     Matrix2051.IrcConn.Supervisor.terminate(sup_pid)
+  end
+
+  defp nick2nuh(nick) do
+    [local_name, hostname] = String.split(nick, ":", parts: 2)
+    "#{nick}!#{local_name}@#{hostname}"
   end
 end
