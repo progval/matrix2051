@@ -79,6 +79,12 @@ defmodule Matrix2051.MatrixClient.Poller do
     |> Map.get("leave", %{})
     |> Map.to_list()
     |> Enum.map(fn {room_id, event} -> handle_left_room(sup_pid, room_id, event) end)
+
+    events
+    |> Map.get("rooms", %{})
+    |> Map.get("invite", %{})
+    |> Map.to_list()
+    |> Enum.map(fn {room_id, event} -> handle_invited_room(sup_pid, room_id, event) end)
   end
 
   defp handle_joined_room(sup_pid, room_id, room_event) do
@@ -433,6 +439,38 @@ defmodule Matrix2051.MatrixClient.Poller do
     # TODO
   end
 
+  defp handle_invited_room(sup_pid, room_id, room_event) do
+    irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
+    nick = Matrix2051.IrcConn.State.nick(irc_state)
+
+    room_event
+    |> Map.get("invite_state", %{})
+    |> Map.get("events", [])
+    # oldest first
+    |> Enum.map(fn event ->
+      send = make_send_function(sup_pid, event)
+
+      sender =
+        case Map.get(event, "sender") do
+          nil -> nil
+          sender -> String.replace_prefix(sender, "@", "")
+        end
+
+      case event do
+        %{"type" => "m.room.member"} ->
+          send.(%Matrix2051.Irc.Command{
+            tags: %{"account" => sender},
+            source: nick2nuh(sender),
+            command: "INVITE",
+            params: [nick, room_id]
+          })
+
+        _ ->
+          nil
+      end
+    end)
+  end
+
   defp compute_topic(sup_pid, room_id) do
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     name = Matrix2051.MatrixClient.State.room_name(state, room_id)
@@ -581,18 +619,29 @@ defmodule Matrix2051.MatrixClient.Poller do
           nil ->
             cmd
 
-          %{
-            "origin_server_ts" => origin_server_ts,
-            "event_id" => event_id,
-            "unsigned" => unsigned
-          } ->
-            server_time =
-              origin_server_ts |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601()
+          _ ->
+            new_tags = %{}
 
-            new_tags = %{"time" => server_time, "msgid" => event_id}
+            new_tags =
+              case Map.get(event, "origin_server_ts") do
+                nil ->
+                  new_tags
+
+                origin_server_ts ->
+                  time =
+                    origin_server_ts |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601()
+
+                  Map.put(new_tags, "time", time)
+              end
+
+            new_tags =
+              case Map.get(event, "event_id") do
+                nil -> new_tags
+                event_id -> Map.put(new_tags, "msgid", event_id)
+              end
 
             {is_echo, new_tags} =
-              case unsigned do
+              case Map.get(event, "unsigned") do
                 %{"transaction_id" => transaction_id} ->
                   label = Matrix2051.MatrixClient.Client.transaction_id_to_label(transaction_id)
 

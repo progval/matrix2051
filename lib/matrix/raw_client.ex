@@ -12,6 +12,7 @@ defmodule Matrix2051.Matrix.RawClient do
         {:ok, Jason.decode!(body)}
 
       %HTTPoison.Response{status_code: status_code, body: body} ->
+        IO.inspect(body)
         {:error, status_code, Jason.decode!(body)}
     end
   end

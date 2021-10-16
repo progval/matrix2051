@@ -337,6 +337,57 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     assert_line(":nick:example.org!nick@example.org MODE #test:example.org :+i\r\n")
   end
 
+  test "invited to room" do
+    state_events = [
+      %{
+        "content" => %{
+          "creator" => "@inviter:example.org",
+          "room_version" => "6"
+        },
+        "sender" => "@inviter:example.org",
+        "state_key" => "",
+        "type" => "m.room.create"
+      },
+      %{
+        "content" => %{"join_rule" => "invite"},
+        "sender" => "@inviter:example.org",
+        "state_key" => "",
+        "type" => "m.room.join_rules"
+      },
+      %{
+        "content" => %{"displayname" => "invited user", "membership" => "join"},
+        "sender" => "@inviter:example.org",
+        "state_key" => "@inviter:example.org",
+        "type" => "m.room.member"
+      },
+      %{
+        "content" => %{
+          "displayname" => "valtest",
+          "is_direct" => true,
+          "membership" => "invite"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_634_330_707_082,
+        "sender" => "@inviter:example.org",
+        "state_key" => "invited:example.com",
+        "type" => "m.room.member",
+        "unsigned" => %{"age" => 54}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "invite" => %{
+          "!testid:example.org" => %{
+            "invite_state" => %{"events" => state_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":inviter:example.org!inviter@example.org INVITE mynick:example.com :!testid:example.org\r\n")
+  end
+
   test "messages" do
     state_events = [
       %{
