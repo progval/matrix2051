@@ -457,7 +457,7 @@ defmodule Matrix2051.MatrixClient.Poller do
         end
 
       case event do
-        %{"type" => "m.room.member"} ->
+        %{"type" => "m.room.member", "content" => %{"membership" => "invite"}} ->
           send.(%Matrix2051.Irc.Command{
             tags: %{"account" => sender},
             source: nick2nuh(sender),
