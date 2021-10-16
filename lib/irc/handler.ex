@@ -117,6 +117,8 @@ defmodule Matrix2051.IrcConn.Handler do
             ^nick ->
               send_welcome(sup_pid, command)
 
+              Matrix2051.IrcConn.State.set_registered(state)
+
               case Registry.lookup(Matrix2051.Registry, {sup_pid, :matrix_poller}) do
                 [{matrix_poller, _}] -> send(matrix_poller, :start_polling)
                 [] -> nil
