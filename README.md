@@ -62,9 +62,9 @@ Non-goals:
 * [ ] [reacts](https://ircv3.net/specs/client-tags/reply)
   * [ ] Matrix -> IRC
   * [ ] IRC -> Matrix
-* [ ] [replies](https://ircv3.net/specs/client-tags/reply)
+* [x] [replies](https://ircv3.net/specs/client-tags/reply)
   * [x] Matrix -> IRC
-  * [ ] IRC -> Matrix
+  * [x] IRC -> Matrix
 * [ ] message edition/deletion
 * [ ] invites
 * [ ] translate channel modes / room privileges

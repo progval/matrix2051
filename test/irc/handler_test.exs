@@ -70,7 +70,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
   @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
   @cap_ls "CAP * LS :account-tag batch draft/account-registration draft/multiline echo-message extended-join labeled-response message-tags sasl server-time\r\n"
-  @isupport "CASEMAPPING=rfc3454 CHANLIMIT= CHANTYPES=#! TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
+  @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/reply CHANLIMIT= CHANTYPES=#! TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
     start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
@@ -386,7 +386,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_welcome("user:example.org")
   end
 
-  test "Labeled response", %{handler: handler} do
+  test "labeled response", %{handler: handler} do
     do_connection_registration(handler)
 
     send(handler, cmd("@label=abcd PING sync1"))
@@ -416,7 +416,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_message(
       {:send_event, "#existing_room:example.org", "m.room.message", nil,
-       %{body: "hello world", msgtype: "m.text"}}
+       %{"body" => "hello world", "msgtype" => "m.text"}}
     )
   end
 
@@ -427,7 +427,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_message(
       {:send_event, "#existing_room:example.org", "m.room.message", nil,
-       %{body: "says hello", msgtype: "m.emote"}}
+       %{"body" => "says hello", "msgtype" => "m.emote"}}
     )
   end
 
@@ -438,7 +438,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_message(
       {:send_event, "#existing_room:example.org", "m.room.message", nil,
-       %{body: "hello world", msgtype: "m.notice"}}
+       %{"body" => "hello world", "msgtype" => "m.notice"}}
     )
   end
 
@@ -449,7 +449,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_message(
       {:send_event, "#existing_room:example.org", "m.room.message", "foo",
-       %{body: "hello world", msgtype: "m.text"}}
+       %{"body" => "hello world", "msgtype" => "m.text"}}
     )
   end
 
@@ -464,7 +464,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_message(
       {:send_event, "#existing_room:example.org", "m.room.message", nil,
-       %{body: "hello\nworld!", msgtype: "m.text"}}
+       %{"body" => "hello\nworld!", "msgtype" => "m.text"}}
     )
   end
 
@@ -484,7 +484,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_message(
       {:send_event, "#existing_room:example.org", "m.room.message", nil,
-       %{body: "says\nhello!", msgtype: "m.emote"}}
+       %{"body" => "says\nhello!", "msgtype" => "m.emote"}}
     )
   end
 
@@ -499,7 +499,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_message(
       {:send_event, "#existing_room:example.org", "m.room.message", nil,
-       %{body: "hello\nworld!", msgtype: "m.notice"}}
+       %{"body" => "hello\nworld!", "msgtype" => "m.notice"}}
     )
   end
 
@@ -514,7 +514,94 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_message(
       {:send_event, "#existing_room:example.org", "m.room.message", "foo",
-       %{body: "hello\nworld!", msgtype: "m.text"}}
+       %{"body" => "hello\nworld!", "msgtype" => "m.text"}}
+    )
+  end
+
+  test "sending privmsg reply", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@+draft/reply=$event1 PRIVMSG #existing_room:example.org :hello world"))
+
+    assert_message(
+      {:send_event, "#existing_room:example.org", "m.room.message", nil,
+       %{
+         "body" => "hello world",
+         "msgtype" => "m.text",
+         "m.relates_to" => %{
+           "m.in_reply_to" => %{
+             "event_id" => "$event1"
+           }
+         }
+       }}
+    )
+  end
+
+  test "sending privmsg + ACTION reply", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(
+      handler,
+      cmd("@+draft/reply=$event1 PRIVMSG #existing_room:example.org :\x01ACTION says hello\x01")
+    )
+
+    assert_message(
+      {:send_event, "#existing_room:example.org", "m.room.message", nil,
+       %{
+         "body" => "says hello",
+         "msgtype" => "m.emote",
+         "m.relates_to" => %{
+           "m.in_reply_to" => %{
+             "event_id" => "$event1"
+           }
+         }
+       }}
+    )
+  end
+
+  test "sending notice reply", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@+draft/reply=$event1 NOTICE #existing_room:example.org :hello world"))
+
+    assert_message(
+      {:send_event, "#existing_room:example.org", "m.room.message", nil,
+       %{
+         "body" => "hello world",
+         "msgtype" => "m.notice",
+         "m.relates_to" => %{
+           "m.in_reply_to" => %{
+             "event_id" => "$event1"
+           }
+         }
+       }}
+    )
+  end
+
+  test "sending multiline privmsg reply", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(
+      handler,
+      cmd("@+draft/reply=$event1 BATCH +tag draft/multiline #existing_room:example.org")
+    )
+
+    send(handler, cmd("@batch=tag PRIVMSG #existing_room:example.org :hello"))
+    send(handler, cmd("@batch=tag PRIVMSG #existing_room:example.org :world"))
+    send(handler, cmd("@batch=tag;draft/multiline-concat PRIVMSG #existing_room:example.org :!"))
+    send(handler, cmd("BATCH -tag"))
+
+    assert_message(
+      {:send_event, "#existing_room:example.org", "m.room.message", nil,
+       %{
+         "body" => "hello\nworld!",
+         "msgtype" => "m.text",
+         "m.relates_to" => %{
+           "m.in_reply_to" => %{
+             "event_id" => "$event1"
+           }
+         }
+       }}
     )
   end
 

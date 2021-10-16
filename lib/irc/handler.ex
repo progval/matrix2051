@@ -510,6 +510,7 @@ defmodule Matrix2051.IrcConn.Handler do
     # RPL_ISUPPORT
     send_numeric.("005", [
       "CASEMAPPING=rfc3454",
+      "CLIENTTAGDENY=*,-draft/reply",
       "CHANLIMIT=",
       "CHANTYPES=#!",
       "TARGMAX=JOIN:1,PART:1",
@@ -719,13 +720,27 @@ defmodule Matrix2051.IrcConn.Handler do
         send_needmoreparams.()
 
       {"PRIVMSG", [channel, text | _]} ->
-        send_message(sup_pid, Map.get(command.tags, "label"), :privmsg, channel, text)
+        send_message(
+          sup_pid,
+          Map.get(command.tags, "+draft/reply"),
+          Map.get(command.tags, "label"),
+          :privmsg,
+          channel,
+          text
+        )
 
       {"PRIVMSG", _} ->
         send_needmoreparams.()
 
       {"NOTICE", [channel, text | _]} ->
-        send_message(sup_pid, Map.get(command.tags, "label"), :notice, channel, text)
+        send_message(
+          sup_pid,
+          Map.get(command.tags, "+draft/reply"),
+          Map.get(command.tags, "label"),
+          :notice,
+          channel,
+          text
+        )
 
       {"NOTICE", _} ->
         send_needmoreparams.()
@@ -909,6 +924,7 @@ defmodule Matrix2051.IrcConn.Handler do
 
         send_message(
           sup_pid,
+          Map.get(opening_command.tags, "+draft/reply"),
           Map.get(opening_command.tags, "label"),
           type,
           channel,
@@ -917,7 +933,7 @@ defmodule Matrix2051.IrcConn.Handler do
     end
   end
 
-  defp send_message(sup_pid, label, type, channel, text) do
+  defp send_message(sup_pid, reply_to, label, type, channel, text) do
     writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
     matrix_client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
     send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
@@ -938,13 +954,28 @@ defmodule Matrix2051.IrcConn.Handler do
           {"m.notice", text}
       end
 
+    event = %{"msgtype" => msgtype, "body" => body}
+
+    event =
+      case reply_to do
+        nil ->
+          event
+
+        _ ->
+          Map.put(event, "m.relates_to", %{
+            "m.in_reply_to" => %{
+              "event_id" => reply_to
+            }
+          })
+      end
+
     result =
       Matrix2051.MatrixClient.Client.send_event(
         matrix_client,
         channel,
         label,
         "m.room.message",
-        %{msgtype: msgtype, body: body}
+        event
       )
 
     case result do
