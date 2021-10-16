@@ -6,7 +6,7 @@ defmodule Matrix2051.Matrix.RawClient do
 
   def get(client, path, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
-    options = options |> Keyword.put_new(:timeout, 10000)
+    options = options |> Keyword.put_new(:timeout, 20000)
 
     case client.httpoison.get(client.base_url <> path, headers, options) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
@@ -22,7 +22,7 @@ defmodule Matrix2051.Matrix.RawClient do
 
   def post(client, path, body, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
-    options = options |> Keyword.put_new(:timeout, 10000)
+    options = options |> Keyword.put_new(:timeout, 20000)
 
     case client.httpoison.post(client.base_url <> path, body, headers, options) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
@@ -38,7 +38,7 @@ defmodule Matrix2051.Matrix.RawClient do
 
   def put(client, path, body, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
-    options = options |> Keyword.put_new(:timeout, 10000)
+    options = options |> Keyword.put_new(:timeout, 20000)
 
     case client.httpoison.put(client.base_url <> path, body, headers, options) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->

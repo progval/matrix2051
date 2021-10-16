@@ -337,7 +337,7 @@ defmodule Matrix2051.MatrixClient.Client do
   end
 
   def connect(pid, local_name, hostname, password) do
-    GenServer.call(pid, {:connect, local_name, hostname, password})
+    GenServer.call(pid, {:connect, local_name, hostname, password}, 20000)
   end
 
   def raw_client(pid) do
