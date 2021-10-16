@@ -9,14 +9,15 @@ Goals:
 2. Support existing relay bots, to allows relays that behave better on IRC than
    existing IRC/Matrix bridges
 3. Bleeding-edge IRCv3 implementation
-4. As little configuration and database as possible (ideally zero)
-5. For me personally: learning Elixir and Matrix
+4. Very easy to install. This means:
+   1. as little configuration and database as possible (ideally zero)
+   2. small set of depenencies.
 
 Non-goals:
 
-1. Being a hosted service (it would require spam countermeasures)
+1. Being a hosted service (it would require spam countermeasures, and that's a lot of work).
 2. TLS support (see previous point). Just run it on localhost. If you really need it to be remote, access it via a VPN or a reverse proxy.
-3. Connecting to multiple accounts per IRC connect or to other protocols (à la [Bitlbee](https://www.bitlbee.org/)). This conflicts with goals 1 and 4.
+3. Connecting to multiple accounts per IRC connection or to other protocols (à la [Bitlbee](https://www.bitlbee.org/)). This conflicts with goals 1 and 4.
 4. Implementing any features not natively by **both** protocols (ie. no need for service bots that you interract with using PRIVMSG)
 
 ## Usage
