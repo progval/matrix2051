@@ -510,7 +510,8 @@ defmodule Matrix2051.IrcConn.Handler do
       "CASEMAPPING=rfc3454",
       "CHANLIMIT=",
       "CHANTYPES=#!",
-      "TARGMAX=JOIN:1,PART:1"
+      "TARGMAX=JOIN:1,PART:1",
+      "UTF8ONLY"
     ])
 
     # RPL_MOTDSTART
