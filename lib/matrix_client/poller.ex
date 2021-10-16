@@ -42,7 +42,7 @@ defmodule Matrix2051.MatrixClient.Poller do
   defp poll_one(sup_pid, since, raw_client) do
     query = %{
       # Completely arbitrary value. Just make sure it's lower than recv_timeout below
-      "timeout" => "600"
+      "timeout" => "600000"
     }
 
     query =
@@ -53,8 +53,7 @@ defmodule Matrix2051.MatrixClient.Poller do
 
     path = "/_matrix/client/r0/sync?" <> URI.encode_query(query)
 
-    # Need to be larger than the timeout above (time 1000 because this ones seems
-    # to be in milliseconds)
+    # Need to be larger than the timeout above (both in milliseconds)
     options = [recv_timeout: 1_000_000]
 
     case Matrix2051.Matrix.RawClient.get(raw_client, path, [], options) do
