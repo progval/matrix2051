@@ -44,6 +44,7 @@ defmodule Matrix2051.MatrixClient.Sender do
         body = Jason.encode!(event)
 
         IO.inspect(body, label: "sending")
+
         case Matrix2051.Matrix.RawClient.put(raw_client, path, body) do
           {:ok, _body} ->
             nil

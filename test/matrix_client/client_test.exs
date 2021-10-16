@@ -388,7 +388,9 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                "https://matrix.example.org/_matrix/client/r0/join/%23testroom%3Amatrix.example.com"
 
       assert Jason.decode!(body) == %{}
-      {:ok, %HTTPoison.Response{status_code: 200, body: "{\"room_id\": \"!abc:matrix.example.net\"}"}}
+
+      {:ok,
+       %HTTPoison.Response{status_code: 200, body: "{\"room_id\": \"!abc:matrix.example.net\"}"}}
     end)
 
     client =

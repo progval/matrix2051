@@ -751,8 +751,17 @@ defmodule Matrix2051.IrcConn.Handler do
               commands =
                 room.members
                 |> Stream.map(fn member ->
+                  [local_name, hostname] = String.split(nick, ":", parts: 2)
                   # RPL_WHOREPLY
-                  make_numeric.("352", [target, "*", "*", "*", member, "H", "0 " <> member])
+                  make_numeric.("352", [
+                    target,
+                    local_name,
+                    hostname,
+                    "*",
+                    member,
+                    "H",
+                    "0 " <> member
+                  ])
                 end)
 
               # RPL_ENDOFWHO
@@ -763,8 +772,9 @@ defmodule Matrix2051.IrcConn.Handler do
           )
         else
           # target is a nick
+          [local_name, hostname] = String.split(target, ":", parts: 2)
           send_label_batch.([
-            make_numeric.("352", ["*", "*", "*", "*", target, "H", "0 " <> target]),
+            make_numeric.("352", ["*", local_name, hostname, "*", target, "H", "0 " <> target]),
             make_numeric.(315, [target, "End of WHO list"])
           ])
         end

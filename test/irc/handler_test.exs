@@ -547,11 +547,11 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert line == "@label=l2 BATCH +#{batch_id} :labeled-response\r\n"
 
     assert_line(
-      "@batch=#{batch_id} 352 foo:example.org #existing_room:example.org * * * user1:example.org H :0 user1:example.org\r\n"
+      "@batch=#{batch_id} 352 foo:example.org #existing_room:example.org foo example.org * user1:example.org H :0 user1:example.org\r\n"
     )
 
     assert_line(
-      "@batch=#{batch_id} 352 foo:example.org #existing_room:example.org * * * user2:example.com H :0 user2:example.com\r\n"
+      "@batch=#{batch_id} 352 foo:example.org #existing_room:example.org foo example.org * user2:example.com H :0 user2:example.com\r\n"
     )
 
     assert_line(
@@ -573,11 +573,11 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("WHO #existing_room:example.org"))
 
     assert_line(
-      "352 foo:example.org #existing_room:example.org * * * user1:example.org H :0 user1:example.org\r\n"
+      "352 foo:example.org #existing_room:example.org foo example.org * user1:example.org H :0 user1:example.org\r\n"
     )
 
     assert_line(
-      "352 foo:example.org #existing_room:example.org * * * user2:example.com H :0 user2:example.com\r\n"
+      "352 foo:example.org #existing_room:example.org foo example.org * user2:example.com H :0 user2:example.com\r\n"
     )
 
     assert_line("315 foo:example.org #existing_room:example.org :End of WHO list\r\n")
@@ -592,7 +592,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert line == "@label=l1 BATCH +#{batch_id} :labeled-response\r\n"
 
     assert_line(
-      "@batch=#{batch_id} 352 foo:example.org * * * * otheruser:example.org H :0 otheruser:example.org\r\n"
+      "@batch=#{batch_id} 352 foo:example.org * otheruser example.org * otheruser:example.org H :0 otheruser:example.org\r\n"
     )
 
     assert_line(
