@@ -381,14 +381,14 @@ defmodule Matrix2051.MatrixClient.ClientTest do
   test "joining a room", %{irc_pid: irc_pid} do
     MockHTTPoison
     |> expect_login
-    |> expect(:post!, fn url, body, headers, _options ->
+    |> expect(:post, fn url, body, headers, _options ->
       assert headers == [Authorization: "Bearer t0ken"]
 
       assert url ==
                "https://matrix.example.org/_matrix/client/r0/join/%23testroom%3Amatrix.example.com"
 
       assert Jason.decode!(body) == %{}
-      %HTTPoison.Response{status_code: 200, body: "{\"room_id\": \"!abc:matrix.example.net\"}"}
+      {:ok, %HTTPoison.Response{status_code: 200, body: "{\"room_id\": \"!abc:matrix.example.net\"}"}}
     end)
 
     client =

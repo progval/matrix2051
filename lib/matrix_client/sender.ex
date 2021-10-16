@@ -43,31 +43,34 @@ defmodule Matrix2051.MatrixClient.Sender do
 
         body = Jason.encode!(event)
 
+        IO.inspect(body, label: "sending")
         case Matrix2051.Matrix.RawClient.put(raw_client, path, body) do
           {:ok, _body} ->
             nil
 
-          {:error, error} ->
+          {:error, _status_code, reason} ->
             if nb_attempts < @max_attempts do
+              IO.inspect(reason, label: "error while sending event, retrying")
               backoff_delay = :math.pow(2, nb_attempts)
-              Process.sleep(backoff_delay * 1000)
+              Process.sleep(round(backoff_delay * 1000))
 
               loop_send(
                 sup_pid,
                 room_id,
                 event_type,
                 transaction_id,
-                event_type,
+                event,
                 nb_attempts + 1
               )
             else
+              IO.inspect(reason, label: "error while sending event, giving up")
               state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
               channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
 
               send.(%Matrix2051.Irc.Command{
                 source: "server",
                 command: "NOTICE",
-                params: [channel, "Error while sending message: " <> Kernel.inspect(error)]
+                params: [channel, "Error while sending message: " <> Kernel.inspect(reason)]
               })
             end
         end

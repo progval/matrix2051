@@ -7,37 +7,45 @@ defmodule Matrix2051.Matrix.RawClient do
   def get(client, path, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
 
-    case client.httpoison.get!(client.base_url <> path, headers, options) do
-      %HTTPoison.Response{status_code: 200, body: body} ->
+    case client.httpoison.get(client.base_url <> path, headers, options) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         {:ok, Jason.decode!(body)}
 
-      %HTTPoison.Response{status_code: status_code, body: body} ->
-        IO.inspect(body)
+      {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         {:error, status_code, Jason.decode!(body)}
+
+      {:error, %HTTPoison.Error{reason: reason}} ->
+        {:error, nil, reason}
     end
   end
 
   def post(client, path, body, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
 
-    case client.httpoison.post!(client.base_url <> path, body, headers, options) do
-      %HTTPoison.Response{status_code: 200, body: body} ->
+    case client.httpoison.post(client.base_url <> path, body, headers, options) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         {:ok, Jason.decode!(body)}
 
-      %HTTPoison.Response{status_code: status_code, body: body} ->
+      {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         {:error, status_code, Jason.decode!(body)}
+
+      {:error, %HTTPoison.Error{reason: reason}} ->
+        {:error, nil, reason}
     end
   end
 
   def put(client, path, body, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
 
-    case client.httpoison.put!(client.base_url <> path, body, headers, options) do
-      %HTTPoison.Response{status_code: 200, body: body} ->
+    case client.httpoison.put(client.base_url <> path, body, headers, options) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         {:ok, Jason.decode!(body)}
 
-      %HTTPoison.Response{status_code: status_code, body: body} ->
+      {:ok, %HTTPoison.Response{status_code: status_code, body: body}} ->
         {:error, status_code, Jason.decode!(body)}
+
+      {:error, %HTTPoison.Error{reason: reason}} ->
+        {:error, nil, reason}
     end
   end
 end
