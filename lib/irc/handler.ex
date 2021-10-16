@@ -775,6 +775,7 @@ defmodule Matrix2051.IrcConn.Handler do
         else
           # target is a nick
           [local_name, hostname] = String.split(target, ":", parts: 2)
+
           send_label_batch.([
             make_numeric.("352", ["*", local_name, hostname, "*", target, "H", "0 " <> target]),
             make_numeric.(315, [target, "End of WHO list"])

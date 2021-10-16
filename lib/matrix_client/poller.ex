@@ -13,18 +13,24 @@ defmodule Matrix2051.MatrixClient.Poller do
     Registry.register(Matrix2051.Registry, {sup_pid, :matrix_poller}, nil)
 
     irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
+    state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
+
+    # If we are being restarted, pick up from where the last process stopped.
+    since = Matrix2051.MatrixClient.State.poll_since_marker(state)
+    handled_event_ids = Matrix2051.MatrixClient.State.handled_events(state)
 
     if Matrix2051.IrcConn.State.registered(irc_state) do
-      loop_poll(sup_pid, nil)
+      loop_poll(sup_pid, since, handled_event_ids)
     else
       receive do
-        :start_polling -> loop_poll(sup_pid, nil)
+        :start_polling -> loop_poll(sup_pid, since, handled_event_ids)
       end
     end
   end
 
-  def loop_poll(sup_pid, since) do
+  def loop_poll(sup_pid, since, handled_event_ids \\ MapSet.new()) do
     client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
+    state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
 
     case Matrix2051.MatrixClient.Client.raw_client(client) do
       nil ->
@@ -34,12 +40,14 @@ defmodule Matrix2051.MatrixClient.Poller do
         end
 
       raw_client ->
-        since = poll_one(sup_pid, since, raw_client)
+        since = poll_one(sup_pid, since, handled_event_ids, raw_client)
+        Matrix2051.MatrixClient.State.update_poll_since_marker(state, since)
+        # do not pass handled_event_ids, no longer needed
         loop_poll(sup_pid, since)
     end
   end
 
-  defp poll_one(sup_pid, since, raw_client) do
+  defp poll_one(sup_pid, since, handled_event_ids, raw_client) do
     query = %{
       # Completely arbitrary value. Just make sure it's lower than recv_timeout below
       "timeout" => "600000"
@@ -58,7 +66,7 @@ defmodule Matrix2051.MatrixClient.Poller do
 
     case Matrix2051.Matrix.RawClient.get(raw_client, path, [], options) do
       {:ok, events} ->
-        handle_events(sup_pid, events)
+        handle_events(sup_pid, handled_event_ids, events)
         events["next_batch"]
     end
   end
@@ -66,45 +74,58 @@ defmodule Matrix2051.MatrixClient.Poller do
   @doc """
     Internal method that dispatches event; public only so it can be unit-tested.
   """
-  def handle_events(sup_pid, events) do
+  def handle_events(sup_pid, handled_event_ids \\ MapSet.new(), events) do
     events
     |> Map.get("rooms", %{})
     |> Map.get("join", %{})
     |> Map.to_list()
-    |> Enum.map(fn {room_id, event} -> handle_joined_room(sup_pid, room_id, event) end)
+    |> Enum.map(fn {room_id, event} ->
+      handle_joined_room(sup_pid, handled_event_ids, room_id, event)
+    end)
 
     events
     |> Map.get("rooms", %{})
     |> Map.get("leave", %{})
     |> Map.to_list()
-    |> Enum.map(fn {room_id, event} -> handle_left_room(sup_pid, room_id, event) end)
+    |> Enum.map(fn {room_id, event} ->
+      handle_left_room(sup_pid, handled_event_ids, room_id, event)
+    end)
 
     events
     |> Map.get("rooms", %{})
     |> Map.get("invite", %{})
     |> Map.to_list()
-    |> Enum.map(fn {room_id, event} -> handle_invited_room(sup_pid, room_id, event) end)
+    |> Enum.map(fn {room_id, event} ->
+      handle_invited_room(sup_pid, handled_event_ids, room_id, event)
+    end)
   end
 
-  defp handle_joined_room(sup_pid, room_id, room_event) do
+  defp handle_joined_room(sup_pid, handled_event_ids, room_id, room_event) do
+    state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
+
     new_rooms =
       room_event
       |> Map.get("state", %{})
       |> Map.get("events", [])
       # oldest first
       |> Enum.map(fn event ->
-        sender =
-          case Map.get(event, "sender") do
-            nil -> nil
-            sender -> String.replace_prefix(sender, "@", "")
-          end
+        event_id = Map.get(event, "event_id")
 
-        handle_event(sup_pid, room_id, sender, true, event)
+        if !MapSet.member?(handled_event_ids, event_id) do
+          sender =
+            case Map.get(event, "sender") do
+              nil -> nil
+              sender -> String.replace_prefix(sender, "@", "")
+            end
+
+          handle_event(sup_pid, room_id, sender, true, event)
+          # Don't mark it handled right now, there is still some processing to
+          # do below.
+          # Matrix2051.MatrixClient.State.mark_handled_event(state, event_id)
+        end
       end)
 
     # Send self JOIN, RPL_TOPIC/RPL_NOTOPIC, RPL_NAMREPLY
-    state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
-
     new_rooms
     |> Enum.filter(fn room -> room != nil end)
     # dedup
@@ -127,13 +148,19 @@ defmodule Matrix2051.MatrixClient.Poller do
     |> Map.get("events", [])
     # oldest first
     |> Enum.map(fn event ->
-      sender =
-        case Map.get(event, "sender") do
-          nil -> nil
-          sender -> String.replace_prefix(sender, "@", "")
-        end
+      event_id = Map.get(event, "event_id")
 
-      handle_event(sup_pid, room_id, sender, false, event)
+      if !MapSet.member?(handled_event_ids, event_id) do
+        sender =
+          case Map.get(event, "sender") do
+            nil -> nil
+            sender -> String.replace_prefix(sender, "@", "")
+          end
+
+        handle_event(sup_pid, room_id, sender, false, event)
+
+        Matrix2051.MatrixClient.State.mark_handled_event(state, event_id)
+      end
     end)
   end
 
@@ -432,14 +459,15 @@ defmodule Matrix2051.MatrixClient.Poller do
     nil
   end
 
-  defp handle_left_room(sup_pid, _room_id, _event) do
+  defp handle_left_room(sup_pid, _handled_event_ids, _room_id, _event) do
     _state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     _writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
     # TODO
   end
 
-  defp handle_invited_room(sup_pid, room_id, room_event) do
+  defp handle_invited_room(sup_pid, handled_event_ids, room_id, room_event) do
     irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
+    state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(irc_state)
 
     room_event
@@ -447,25 +475,31 @@ defmodule Matrix2051.MatrixClient.Poller do
     |> Map.get("events", [])
     # oldest first
     |> Enum.map(fn event ->
-      send = make_send_function(sup_pid, event)
+      event_id = Map.get(event, "event_id")
 
-      sender =
-        case Map.get(event, "sender") do
-          nil -> nil
-          sender -> String.replace_prefix(sender, "@", "")
+      if !MapSet.member?(handled_event_ids, event_id) do
+        send = make_send_function(sup_pid, event)
+
+        sender =
+          case Map.get(event, "sender") do
+            nil -> nil
+            sender -> String.replace_prefix(sender, "@", "")
+          end
+
+        case event do
+          %{"type" => "m.room.member", "content" => %{"membership" => "invite"}} ->
+            send.(%Matrix2051.Irc.Command{
+              tags: %{"account" => sender},
+              source: nick2nuh(sender),
+              command: "INVITE",
+              params: [nick, room_id]
+            })
+
+          _ ->
+            nil
         end
 
-      case event do
-        %{"type" => "m.room.member", "content" => %{"membership" => "invite"}} ->
-          send.(%Matrix2051.Irc.Command{
-            tags: %{"account" => sender},
-            source: nick2nuh(sender),
-            command: "INVITE",
-            params: [nick, room_id]
-          })
-
-        _ ->
-          nil
+        Matrix2051.MatrixClient.State.mark_handled_event(state, event_id)
       end
     end)
   end
