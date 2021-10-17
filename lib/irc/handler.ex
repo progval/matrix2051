@@ -141,7 +141,11 @@ defmodule Matrix2051.IrcConn.Handler do
               end
 
             nil ->
-              send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["You must authenticate."]})
+              send.(%Matrix2051.Irc.Command{
+                command: "FAIL",
+                params: ["*", "ACCOUNT_REQUIRED", "You must authenticate."]
+              })
+
               close_connection(sup_pid)
 
             _ ->

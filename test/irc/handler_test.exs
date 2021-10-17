@@ -177,7 +177,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_line("PONG :sync1\r\n")
 
     send(handler, cmd("USER ident * * :My GECOS"))
-    assert_line("ERROR :You must authenticate.\r\n")
+    assert_line("FAIL * ACCOUNT_REQUIRED :You must authenticate.\r\n")
     assert_message({:close})
   end
 
@@ -192,7 +192,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("USER ident * * :My GECOS"))
 
     send(handler, cmd("CAP END"))
-    assert_line("ERROR :You must authenticate.\r\n")
+    assert_line("FAIL * ACCOUNT_REQUIRED :You must authenticate.\r\n")
     assert_message({:close})
   end
 
@@ -210,7 +210,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("USER ident * * :My GECOS"))
 
     send(handler, cmd("CAP END"))
-    assert_line("ERROR :You must authenticate.\r\n")
+    assert_line("FAIL * ACCOUNT_REQUIRED :You must authenticate.\r\n")
     assert_message({:close})
   end
 
