@@ -1,4 +1,4 @@
-{parsed, []} =
+{_parsed, []} =
   OptionParser.parse!(
     System.argv(),
     strict: []

@@ -983,7 +983,7 @@ defmodule Matrix2051.IrcConn.Handler do
   defp close_connection(sup_pid) do
     writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
     Matrix2051.IrcConn.Writer.close(writer)
-    Matrix2051.IrcConn.Supervisor.terminate(sup_pid)
+    DynamicSupervisor.terminate_child(Matrix2051.IrcServer, sup_pid)
   end
 
   defp nick2nuh(nick) do
