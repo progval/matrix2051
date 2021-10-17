@@ -318,19 +318,13 @@ defmodule Matrix2051.IrcConn.Handler do
 
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD
-        send.(%Matrix2051.Irc.Command{
-          command: "410",
-          params: [subcommand, "Invalid CAP subcommand"]
-        })
+        send_numeric.("410", [subcommand, "Invalid CAP subcommand"])
 
         nil
 
       {"CAP", []} ->
         # ERR_NEEDMOREPARAMS
-        send.(%Matrix2051.Irc.Command{
-          command: "410",
-          params: ["CAP", "Missing CAP subcommand"]
-        })
+        send_numeric.("461", ["CAP", "Missing CAP subcommand"])
 
         nil
 
