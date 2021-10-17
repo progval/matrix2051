@@ -236,7 +236,11 @@ defmodule Matrix2051.IrcConn.Handler do
           _ -> nick
         end
 
-      send.(%Matrix2051.Irc.Command{command: numeric, params: [first_param | params]})
+      send.(%Matrix2051.Irc.Command{
+        source: "server",
+        command: numeric,
+        params: [first_param | params]
+      })
     end
 
     send_needmoreparams = fn ->
@@ -496,7 +500,7 @@ defmodule Matrix2051.IrcConn.Handler do
     nick = Matrix2051.IrcConn.State.nick(state)
 
     send_numeric = fn numeric, params ->
-      send.(%Matrix2051.Irc.Command{command: numeric, params: [nick | params]})
+      send.(%Matrix2051.Irc.Command{source: "server", command: numeric, params: [nick | params]})
     end
 
     # RPL_WELCOME
@@ -527,7 +531,7 @@ defmodule Matrix2051.IrcConn.Handler do
     send = make_send_function(command, sup_pid)
 
     send_numeric = fn numeric, params ->
-      send.(%Matrix2051.Irc.Command{command: numeric, params: [nick | params]})
+      send.(%Matrix2051.Irc.Command{source: "server", command: numeric, params: [nick | params]})
     end
 
     # This function is only called if the nick matches the user_id, and the
@@ -619,7 +623,7 @@ defmodule Matrix2051.IrcConn.Handler do
           _ -> nick
         end
 
-      %Matrix2051.Irc.Command{command: numeric, params: [first_param | params]}
+      %Matrix2051.Irc.Command{source: "server", command: numeric, params: [first_param | params]}
     end
 
     send_numeric = fn numeric, params ->
@@ -635,10 +639,7 @@ defmodule Matrix2051.IrcConn.Handler do
     case {command.command, command.params} do
       {"NICK", [new_nick | _]} ->
         # ERR_ERRONEUSNICKNAME; only the MatrixID is allowed as nick
-        send.(%Matrix2051.Irc.Command{
-          command: "432",
-          params: [nick, new_nick, "You may not change your nickname."]
-        })
+        send_numeric.("432", [new_nick, "You may not change your nickname."])
 
       {"NICK", _} ->
         send_needmoreparams.()
@@ -651,17 +652,11 @@ defmodule Matrix2051.IrcConn.Handler do
 
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD
-        send.(%Matrix2051.Irc.Command{
-          command: "410",
-          params: [subcommand, "Invalid CAP subcommand"]
-        })
+        send_numeric.("410", [subcommand, "Invalid CAP subcommand"])
 
       {"CAP", []} ->
         # ERR_NEEDMOREPARAMS
-        send.(%Matrix2051.Irc.Command{
-          command: "410",
-          params: ["CAP", "Missing CAP subcommand"]
-        })
+        send_numeric.("410", ["CAP", "Missing CAP subcommand"])
 
       {"PING", [cookie]} ->
         send.(%Matrix2051.Irc.Command{command: "PONG", params: [cookie]})

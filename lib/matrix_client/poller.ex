@@ -532,6 +532,10 @@ defmodule Matrix2051.MatrixClient.Poller do
 
     send = make_send_function(sup_pid, event)
 
+    send_numeric = fn numeric, params ->
+      send.(%Matrix2051.Irc.Command{source: "server", command: numeric, params: [nick | params]})
+    end
+
     # Join the new channel
     send.(%Matrix2051.Irc.Command{
       tags: %{"account" => nick},
@@ -543,14 +547,11 @@ defmodule Matrix2051.MatrixClient.Poller do
     case compute_topic(sup_pid, room_id) do
       nil ->
         # RPL_NOTOPIC
-        send.(%Matrix2051.Irc.Command{command: "331", params: [nick, channel]})
+        send_numeric.("331", [channel])
 
       {topic, whotime} ->
         # RPL_TOPIC
-        send.(%Matrix2051.Irc.Command{
-          command: "332",
-          params: [nick, channel, topic]
-        })
+        send_numeric.("332", [channel, topic])
 
         case whotime do
           nil ->
@@ -558,10 +559,7 @@ defmodule Matrix2051.MatrixClient.Poller do
 
           {who, time} ->
             # RPL_TOPICWHOTIME
-            send.(%Matrix2051.Irc.Command{
-              command: "333",
-              params: [nick, channel, who, Integer.to_string(div(time, 1000))]
-            })
+            send_numeric.("333", [channel, who, Integer.to_string(div(time, 1000))])
         end
     end
 
@@ -571,17 +569,11 @@ defmodule Matrix2051.MatrixClient.Poller do
       # TODO: group them in lines
 
       # RPL_NAMREPLY
-      send.(%Matrix2051.Irc.Command{
-        command: "353",
-        params: [nick, "=", channel, member]
-      })
+      send_numeric.("353", ["=", channel, member])
     end)
 
     # RPL_ENDOFNAMES
-    send.(%Matrix2051.Irc.Command{
-      command: "366",
-      params: [nick, channel, "End of /NAMES list"]
-    })
+    send_numeric.("366", [channel, "End of /NAMES list"])
 
     if old_canonical_alias != nil do
       announce_channel_rename(
