@@ -42,9 +42,9 @@ Non-goals:
 * [x] retrieving the member list and sending it to clients
 * [x] support JOIN from clients
 * [x] sending messages from IRC clients
-* [ ] receiving messages from Matrix
+* [x] receiving messages from Matrix
   * [x] basics
-  * [ ] split at 512 bytes
+  * [x] split at 512 bytes
 * [ ] support PART from IRC clients
 * [ ] direct messages
 * [ ] rewrite mentions/highlights

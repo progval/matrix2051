@@ -897,4 +897,130 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     assert_line("BATCH :-ERSXMZLOOQZA\r\n")
   end
+
+  test "multiline-concat" do
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :multiline,
+      :batch,
+      :message_tags
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => String.duplicate("abcde ", 100), "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+
+    assert_line(
+      "@msgid=$event1 :nick:example.org!nick@example.org BATCH +ERSXMZLOOQYQ draft/multiline :#test:example.org\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :" <>
+        String.duplicate("abcde ", 74) <> "\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQYQ;draft/multiline-concat :nick:example.org!nick@example.org PRIVMSG #test:example.org :" <>
+        String.duplicate("abcde ", 26) <> "\r\n"
+    )
+
+    assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
+  end
+
+  test "multiline and multiline-concat" do
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :multiline,
+      :batch,
+      :message_tags
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "a\n" <> String.duplicate("abcde ", 100), "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+
+    assert_line(
+      "@msgid=$event1 :nick:example.org!nick@example.org BATCH +ERSXMZLOOQYQ draft/multiline :#test:example.org\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :a\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQYQ :nick:example.org!nick@example.org PRIVMSG #test:example.org :" <>
+        String.duplicate("abcde ", 74) <> "\r\n"
+    )
+
+    assert_line(
+      "@batch=ERSXMZLOOQYQ;draft/multiline-concat :nick:example.org!nick@example.org PRIVMSG #test:example.org :" <>
+        String.duplicate("abcde ", 26) <> "\r\n"
+    )
+
+    assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
+  end
 end

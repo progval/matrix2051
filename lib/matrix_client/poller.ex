@@ -318,51 +318,53 @@ defmodule Matrix2051.MatrixClient.Poller do
         nil
 
       [line] ->
-        send.(%Matrix2051.Irc.Command{
-          tags: tags,
-          source: nick2nuh(sender),
-          command: command,
-          params: [channel, line]
-        })
-
-      lines ->
-        writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
-        irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
-        capabilities = Matrix2051.IrcConn.State.capabilities(irc_state)
-        batch_reference_tag = Base.encode32(event["event_id"], padding: false)
-
-        # open batch
-        send.(%Matrix2051.Irc.Command{
-          tags: tags,
-          source: nick2nuh(sender),
-          command: "BATCH",
-          params: ["+" <> batch_reference_tag, "draft/multiline", channel]
-        })
-
-        # send content
-        Enum.map(lines, fn line ->
-          cmd = %Matrix2051.Irc.Command{
-            tags: %{"batch" => batch_reference_tag},
+        commands =
+          Matrix2051.Irc.Command.linewrap(%Matrix2051.Irc.Command{
+            tags: tags,
             source: nick2nuh(sender),
             command: command,
             params: [channel, line]
-          }
+          })
 
-          Matrix2051.IrcConn.Writer.write_command(
-            writer,
-            Matrix2051.Irc.Command.downgrade(cmd, capabilities)
-          )
-        end)
+        case commands do
+          [command] ->
+            send.(command)
 
-        # close batch
-        cmd = %Matrix2051.Irc.Command{
-          command: "BATCH",
-          params: ["-" <> batch_reference_tag]
-        }
+          _ ->
+            # Drop tags all tags except draft/multiline-concat, they will be on the BATCH opening
+            commands =
+              Enum.map(commands, fn command ->
+                command_tags =
+                  command.tags
+                  |> Map.to_list()
+                  |> Enum.flat_map(fn {k, v} ->
+                    case k do
+                      "draft/multiline-concat" -> [{k, v}]
+                      _ -> []
+                    end
+                  end)
+                  |> Map.new()
 
-        Matrix2051.IrcConn.Writer.write_command(
-          writer,
-          Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+                %{command | tags: command_tags}
+              end)
+
+            send_multiline_batch(sup_pid, sender, event, tags, channel, commands)
+        end
+
+      lines ->
+        send_multiline_batch(
+          sup_pid,
+          sender,
+          event,
+          tags,
+          channel,
+          Enum.flat_map(lines, fn line ->
+            Matrix2051.Irc.Command.linewrap(%Matrix2051.Irc.Command{
+              source: nick2nuh(sender),
+              command: command,
+              params: [channel, line]
+            })
+          end)
         )
     end
 
@@ -688,6 +690,44 @@ defmodule Matrix2051.MatrixClient.Poller do
         Matrix2051.Irc.Command.downgrade(cmd, capabilities)
       )
     end
+  end
+
+  defp send_multiline_batch(sup_pid, sender, event, tags, target, inner_commands) do
+    send = make_send_function(sup_pid, event)
+    writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
+    irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
+    capabilities = Matrix2051.IrcConn.State.capabilities(irc_state)
+    batch_reference_tag = Base.encode32(event["event_id"], padding: false)
+
+    # open batch
+    send.(%Matrix2051.Irc.Command{
+      tags: tags,
+      source: nick2nuh(sender),
+      command: "BATCH",
+      params: ["+" <> batch_reference_tag, "draft/multiline", target]
+    })
+
+    # send content
+    Enum.map(inner_commands, fn cmd ->
+      Matrix2051.IrcConn.Writer.write_command(
+        writer,
+        Matrix2051.Irc.Command.downgrade(
+          %{cmd | tags: Map.put(cmd.tags, "batch", batch_reference_tag)},
+          capabilities
+        )
+      )
+    end)
+
+    # close batch
+    cmd = %Matrix2051.Irc.Command{
+      command: "BATCH",
+      params: ["-" <> batch_reference_tag]
+    }
+
+    Matrix2051.IrcConn.Writer.write_command(
+      writer,
+      Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+    )
   end
 
   defp nick2nuh(nick) do

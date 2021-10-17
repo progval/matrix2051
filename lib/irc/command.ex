@@ -204,6 +204,7 @@ defmodule Matrix2051.Irc.Command do
                 "account" -> Enum.member?(capabilities, :account_tag)
                 "batch" -> Enum.member?(capabilities, :batch)
                 "label" -> Enum.member?(capabilities, :labeled_response)
+                "draft/multiline-concat" -> Enum.member?(capabilities, :multiline)
                 "msgid" -> Enum.member?(capabilities, :message_tags)
                 "time" -> Enum.member?(capabilities, :server_time)
                 _ -> false
@@ -247,5 +248,70 @@ defmodule Matrix2051.Irc.Command do
       end
 
     command
+  end
+
+  @doc ~S"""
+    Splits the line so that it does not exceed the protocol's 512 bytes limit
+    in the non-tags part.
+
+    ## Examples
+
+        iex> Matrix2051.Irc.Command.linewrap(%Matrix2051.Irc.Command{
+        ...>   command: "PRIVMSG",
+        ...>   params: ["#chan", "hello world"]
+        ...> }, 25)
+        [
+          %Matrix2051.Irc.Command{
+            tags: %{},
+            source: nil,
+            command: "PRIVMSG",
+            params: ["#chan", "hello "]
+          },
+          %Matrix2051.Irc.Command{
+            tags: %{"draft/multiline-concat" => nil},
+            source: nil,
+            command: "PRIVMSG",
+            params: ["#chan", "world"]
+          }
+        ]
+
+  """
+  def linewrap(command, nbytes \\ 512) do
+    case command do
+      %Matrix2051.Irc.Command{command: "PRIVMSG", params: [target, text]} ->
+        do_linewrap(command, nbytes, target, text)
+
+      %Matrix2051.Irc.Command{command: "NOTICE", params: [target, text]} ->
+        do_linewrap(command, nbytes, target, text)
+
+      _ ->
+        command
+    end
+  end
+
+  defp do_linewrap(command, nbytes, target, text) do
+    overhead =
+      byte_size(Matrix2051.Irc.Command.format(%{command | tags: %{}, params: [target, ""]}))
+
+    case Matrix2051.Irc.WordWrap.split(text, nbytes - overhead) do
+      [] ->
+        # line is empty, send it as-is.
+        [command]
+
+      [_line] ->
+        # no change needed
+        [command]
+
+      [first_line | next_lines] ->
+        make_command = fn text -> %{command | params: [target, text]} end
+
+        [
+          make_command.(first_line)
+          | Enum.map(next_lines, fn line ->
+              cmd = make_command.(line)
+              %{cmd | tags: Map.put(cmd.tags, "draft/multiline-concat", nil)}
+            end)
+        ]
+    end
   end
 end
