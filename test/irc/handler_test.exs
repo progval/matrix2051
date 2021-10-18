@@ -444,7 +444,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_message(
       {:send_event, "#existing_room:example.org", "m.room.message", nil,
        %{
-         "body" => "**hello /world/**",
+         "body" => "*hello /world/*",
          "format" => "org.matrix.custom.html",
          "formatted_body" => "<b>hello <i>world</i></b>",
          "msgtype" => "m.text"

@@ -75,7 +75,7 @@ defmodule Matrix2051.Format.Irc2Matrix do
   def make_plain_text(previous_state, state, token) do
     replacement =
       [
-        {:bold, "**"},
+        {:bold, "*"},
         {:monospace, "`"},
         {:italic, "/"},
         {:underlined, "_"},

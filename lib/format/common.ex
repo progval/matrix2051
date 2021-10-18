@@ -75,7 +75,7 @@ defmodule Matrix2051.Format do
     ## Examples
 
         iex> Matrix2051.Format.irc2matrix("\x02foo\x02")
-        {"**foo**", "<b>foo</b>"}
+        {"*foo*", "<b>foo</b>"}
 
         iex> Matrix2051.Format.irc2matrix("foo https://example.org bar")
         {"foo https://example.org bar", ~s(foo <a href="https://example.org">https://example.org</a> bar)}
