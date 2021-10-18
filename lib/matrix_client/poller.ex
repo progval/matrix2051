@@ -284,8 +284,10 @@ defmodule Matrix2051.MatrixClient.Poller do
 
     {command, body} =
       case event["content"] do
+        %{"msgtype" => "m.text", "format" => "org.matrix.custom.html", "formatted_body" => body} ->
+          {"PRIVMSG", Matrix2051.Format.matrix2irc(body)}
+
         %{"msgtype" => "m.text", "body" => body} ->
-          # TODO: if "format" key is present, parse the HTML and convert it to IRC formatting
           body =
             if reply_to do
               # Strip the fallback, as described in
@@ -301,9 +303,15 @@ defmodule Matrix2051.MatrixClient.Poller do
 
           {"PRIVMSG", body}
 
+        %{"msgtype" => "m.emote", "format" => "org.matrix.custom.html", "formatted_body" => body} ->
+          {"PRIVMSG", "\x01ACTION " <> Matrix2051.Format.matrix2irc(body) <> "\x01"}
+
         %{"msgtype" => "m.emote", "body" => body} ->
           # TODO: ditto
           {"PRIVMSG", "\x01ACTION " <> body <> "\x01"}
+
+        %{"msgtype" => "m.notice", "format" => "org.matrix.custom.html", "formatted_body" => body} ->
+          {"NOTICE", Matrix2051.Format.matrix2irc(body)}
 
         %{"msgtype" => "m.notice", "body" => body} ->
           # TODO: ditto

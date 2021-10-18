@@ -48,7 +48,11 @@ Non-goals:
 * [ ] support PART from IRC clients
 * [ ] direct messages
 * [ ] rewrite mentions/highlights
+  * [x] Matrix -> IRC
+  * [ ] IRC -> Matrix
 * [ ] rewrite formatting and colors
+  * [x] Matrix -> IRC
+  * [ ] IRC -> Matrix
 * [ ] show JOIN/PART events from other members
 * [ ] figure out images / files
   * [x] Matrix -> IRC
@@ -81,32 +85,33 @@ In the far future:
   to make IRC clients understand Olm)
 * [ ] Matrix P2P
 
-## Module structure
-
-### In supervision tree
+## Architecture
 
 * `matrix2051.exs` starts Matrix2051, which starts Matrix2051.Supervisor, which
   supervises:
   * `config.ex`: global config agent
-  * `irc_server.ex`: handles connections from IRC clients.
-    * `irc_conn/supervisor.ex`: spawned for each client connection
-      * `irc_conn/state.ex`: stores the state of the connection
-      * `irc_conn/writer.ex`: genserver holding the socket and allowing
-        to write lines to it (and batches of lines in the future)
-      * `irc_conn/handler.ex`: task busy-waiting on the incoming commands
-        from the reader, answers to the simple ones, and dispatches more complex
-        commands
-      * `matrix_client/client_supervisor.ex`
-        * `matrix_client/state.ex`: keeps the state of the connection to a Matrix homeserver
-        * `matrix_client/client.ex`: handles one connection to a Matrix homeserver, as a single user
-        * `matrix_client/sender.ex`: sends events to the Matrix homeserver and with retries on failure
-        * `matrix_client/poller.ex`: repeatedly asks the Matrix homeserver for new events (including the initial sync)
-      * `irc_conn/reader.ex`: task busy-waiting on the incoming lines,
-        and sends them to the handler
+  * `irc_server.ex`: a `DynamicSupervisor` that receives connections from IRC clients.
 
-### Outside supervision tree
+Every time `irc_server.ex` receives a connection, it spawns `irc_conn/supervisor.ex`,
+which supervises:
 
-* Matrix:
-  * `matrix/raw_client.ex`: low-level Matrix client / thin wrapper around HTTP requests
-* IRC:
-  * `irc/command.ex`: IRC line manipulation
+* `irc_conn/state.ex`: stores the state of the connection
+* `irc_conn/writer.ex`: genserver holding the socket and allowing
+  to write lines to it (and batches of lines in the future)
+* `irc_conn/handler.ex`: task busy-waiting on the incoming commands
+  from the reader, answers to the simple ones, and dispatches more complex
+  commands
+* `matrix_client/state.ex`: keeps the state of the connection to a Matrix homeserver
+* `matrix_client/client.ex`: handles one connection to a Matrix homeserver, as a single user
+* `matrix_client/sender.ex`: sends events to the Matrix homeserver and with retries on failure
+* `matrix_client/poller.ex`: repeatedly asks the Matrix homeserver for new events (including the initial sync)
+* `irc_conn/reader.ex`: task busy-waiting on the incoming lines,
+  and sends them to the handler
+
+Utilities:
+
+* `matrix/raw_client.ex`: low-level Matrix client / thin wrapper around HTTP requests
+* `irc/command.ex`: IRC line manipulation, including "downgrading" them for clients
+  that don't support some capabilities.
+* `irc/word_wrap.ex`: generic line wrapping
+* `format/`: Convert between IRC's formatting and `org.matrix.custom.html`
