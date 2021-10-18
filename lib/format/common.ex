@@ -24,14 +24,20 @@ defmodule Matrix2051.Format do
     {"\x11", "code"},
     {"\x1d", "em"},
     {"\x1d", "i"},
-    {"\x1f", "u"},
+    {"\x1e", "del"},
     {"\x1e", "strike"},
+    {"\x1f", "u"},
     {"\n", "p"}
   ]
 
   def matrix2irc_map() do
     @translations
     |> Enum.map(fn {irc, matrix} -> {matrix, irc} end)
+    |> Map.new()
+  end
+
+  def irc2matrix_map() do
+    @translations
     |> Map.new()
   end
 
@@ -50,13 +56,59 @@ defmodule Matrix2051.Format do
         "foo\nbar"
   """
   def matrix2irc(html) do
-    {:ok, {parts, [], [], []}} =
+    parsed =
       Saxy.parse_string(
         "<root>" <> Regex.replace(~r/< *br *>/, html, "<br/>") <> "</root>",
         Matrix2051.Format.Matrix2Irc.Handler,
         {[], [], [], []}
       )
 
-    String.trim(Enum.join(Enum.reverse(parts)))
+    case parsed do
+      {:ok, {parts, [], [], []}} -> String.trim(Enum.join(Enum.reverse(parts)))
+      _ -> nil
+    end
+  end
+
+  @doc ~S"""
+    Converts IRC formattin to Matrix's plain text flavor and "org.matrix.custom.html"
+
+    ## Examples
+
+        iex> Matrix2051.Format.irc2matrix("\x02foo\x02")
+        {"**foo**", "<b>foo</b>"}
+
+        iex> Matrix2051.Format.irc2matrix("foo https://example.org bar")
+        {"foo https://example.org bar", ~s(foo <a href="https://example.org">https://example.org</a> bar)}
+
+        iex> Matrix2051.Format.irc2matrix("foo\nbar")
+        {"foo\nbar", ~s(foo<br/>bar)}
+        
+  """
+  def irc2matrix(text, nicklist \\ []) do
+    stateful_tokens =
+      (text <> "\x0f")
+      |> Matrix2051.Format.Irc2Matrix.tokenize()
+      |> Stream.transform(%Matrix2051.Format.Irc2Matrix.State{}, fn token, state ->
+        new_state = Matrix2051.Format.Irc2Matrix.update_state(state, token)
+        {[{state, new_state, token}], new_state}
+      end)
+      |> Enum.to_list()
+
+    plain_text =
+      stateful_tokens
+      |> Enum.map(fn {previous_state, state, token} ->
+        Matrix2051.Format.Irc2Matrix.make_plain_text(previous_state, state, token)
+      end)
+      |> Enum.join()
+
+    html =
+      stateful_tokens
+      |> Enum.map(fn {previous_state, state, token} ->
+        Matrix2051.Format.Irc2Matrix.make_html(previous_state, state, token)
+      end)
+      |> Enum.join()
+      |> Matrix2051.Format.Irc2Matrix.finalize_html(nicklist)
+
+    {plain_text, html}
   end
 end

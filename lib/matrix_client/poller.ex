@@ -284,8 +284,27 @@ defmodule Matrix2051.MatrixClient.Poller do
 
     {command, body} =
       case event["content"] do
-        %{"msgtype" => "m.text", "format" => "org.matrix.custom.html", "formatted_body" => body} ->
-          {"PRIVMSG", Matrix2051.Format.matrix2irc(body)}
+        %{
+          "msgtype" => "m.text",
+          "format" => "org.matrix.custom.html",
+          "formatted_body" => formatted_body,
+          "body" => body
+        } ->
+          # TODO: dedup with below
+          body =
+            if reply_to do
+              # Strip the fallback, as described in
+              # https://matrix.org/docs/spec/client_server/r0.6.1#stripping-the-fallback
+              body
+              |> String.split("\n")
+              |> Enum.drop_while(fn line -> String.starts_with?(line, "> ") end)
+              |> Enum.join("\n")
+              |> String.trim_leading("\n")
+            else
+              body
+            end
+
+          {"PRIVMSG", Matrix2051.Format.matrix2irc(formatted_body) || body}
 
         %{"msgtype" => "m.text", "body" => body} ->
           body =
@@ -303,15 +322,26 @@ defmodule Matrix2051.MatrixClient.Poller do
 
           {"PRIVMSG", body}
 
-        %{"msgtype" => "m.emote", "format" => "org.matrix.custom.html", "formatted_body" => body} ->
-          {"PRIVMSG", "\x01ACTION " <> Matrix2051.Format.matrix2irc(body) <> "\x01"}
+        %{
+          "msgtype" => "m.emote",
+          "format" => "org.matrix.custom.html",
+          "formatted_body" => formatted_body,
+          "body" => body
+        } ->
+          {"PRIVMSG",
+           "\x01ACTION " <> (Matrix2051.Format.matrix2irc(formatted_body) || body) <> "\x01"}
 
         %{"msgtype" => "m.emote", "body" => body} ->
           # TODO: ditto
           {"PRIVMSG", "\x01ACTION " <> body <> "\x01"}
 
-        %{"msgtype" => "m.notice", "format" => "org.matrix.custom.html", "formatted_body" => body} ->
-          {"NOTICE", Matrix2051.Format.matrix2irc(body)}
+        %{
+          "msgtype" => "m.notice",
+          "format" => "org.matrix.custom.html",
+          "formatted_body" => formatted_body,
+          "body" => body
+        } ->
+          {"NOTICE", Matrix2051.Format.matrix2irc(formatted_body) || body}
 
         %{"msgtype" => "m.notice", "body" => body} ->
           # TODO: ditto

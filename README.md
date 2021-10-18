@@ -49,7 +49,7 @@ Non-goals:
 * [ ] direct messages
 * [ ] rewrite mentions/highlights
   * [x] Matrix -> IRC
-  * [ ] IRC -> Matrix
+  * [x] IRC -> Matrix
 * [ ] rewrite formatting and colors
   * [x] Matrix -> IRC
   * [ ] IRC -> Matrix
@@ -115,3 +115,4 @@ Utilities:
   that don't support some capabilities.
 * `irc/word_wrap.ex`: generic line wrapping
 * `format/`: Convert between IRC's formatting and `org.matrix.custom.html`
+  (the IRC -> Matrix code is awful, sorry but I can't do better than this)

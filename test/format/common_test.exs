@@ -29,6 +29,26 @@ defmodule Matrix2051.FormatTest do
              "\x02foo \x1dbar\x1d baz\x02"
   end
 
+  test "simple IRC to Matrix" do
+    assert Matrix2051.Format.irc2matrix("foo") == {"foo", "foo"}
+    assert Matrix2051.Format.irc2matrix("\x02foo\x02") == {"**foo**", "<b>foo</b>"}
+    assert Matrix2051.Format.irc2matrix("\x02foo\x0f") == {"**foo**", "<b>foo</b>"}
+    assert Matrix2051.Format.irc2matrix("\x02foo") == {"**foo**", "<b>foo</b>"}
+    assert Matrix2051.Format.irc2matrix("\x1dfoo\x1d") == {"/foo/", "<i>foo</i>"}
+    assert Matrix2051.Format.irc2matrix("\x1dfoo") == {"/foo/", "<i>foo</i>"}
+    assert Matrix2051.Format.irc2matrix("\x11foo\x11") == {"`foo`", "<code>foo</code>"}
+
+    assert Matrix2051.Format.irc2matrix("\x02foo \x1dbar\x1d baz\x02") ==
+             {"**foo /bar/ baz**", "<b>foo <i>bar</i> baz</b>"}
+
+    # TODO:
+    # assert Matrix2051.Format.irc2matrix("\x02foo \x1dbar\x0f baz") ==
+    #          {"**foo /bar/** baz", "<b>foo <i>bar</i></b> baz"}
+
+    assert Matrix2051.Format.irc2matrix("\x1dfoo \x02bar\x0f baz") ==
+             {"/foo **bar**/ baz", "<i>foo <b>bar</b></i> baz"}
+  end
+
   test "Matrix colors to IRC" do
     assert Matrix2051.Format.matrix2irc(
              ~s(<font data-mx-color="FF0000" data-mx-bg-color="00FF00">foo</font>)
@@ -53,6 +73,12 @@ defmodule Matrix2051.FormatTest do
     assert Matrix2051.Format.matrix2irc(~s(<img/>)) == ""
   end
 
+  test "IRC link to Matrix" do
+    assert Matrix2051.Format.irc2matrix("foo https://example.org") ==
+             {"foo https://example.org",
+              ~s(foo <a href="https://example.org">https://example.org</a>)}
+  end
+
   test "Matrix list to IRC" do
     assert Matrix2051.Format.matrix2irc("foo<ul><li>bar</li><li>baz</li></ul>qux") ==
              "foo\n* bar\n* baz\nqux"
@@ -65,6 +91,10 @@ defmodule Matrix2051.FormatTest do
     assert Matrix2051.Format.matrix2irc("foo<br>bar") == "foo\nbar"
     assert Matrix2051.Format.matrix2irc("foo<br/>bar") == "foo\nbar"
     assert Matrix2051.Format.matrix2irc("<p>foo</p>bar") == "foo\nbar"
+  end
+
+  test "IRC newline to Matrix" do
+    assert Matrix2051.Format.irc2matrix("foo\nbar") == {"foo\nbar", "foo<br/>bar"}
   end
 
   test "mx-reply to IRC" do
@@ -81,5 +111,21 @@ defmodule Matrix2051.FormatTest do
     assert Matrix2051.Format.matrix2irc(
              "mentioning <a href=\"https://matrix.to/#/@user:example.org\">user</a>"
            ) == "mentioning user:example.org"
+  end
+
+  test "IRC mentions to Matrix" do
+    assert Matrix2051.Format.irc2matrix("user:example.org: mention", ["foo"]) ==
+             {"user:example.org: mention", "user:example.org: mention"}
+
+    assert Matrix2051.Format.irc2matrix("user:example.org: mention", ["foo", "user:example.org"]) ==
+             {"user:example.org: mention",
+              "<a href=\"https://matrix.to/#/@user:example.org\">user</a>: mention"}
+
+    assert Matrix2051.Format.irc2matrix("mentioning user:example.org", ["foo"]) ==
+             {"mentioning user:example.org", "mentioning user:example.org"}
+
+    assert Matrix2051.Format.irc2matrix("mentioning user:example.org", ["foo", "user:example.org"]) ==
+             {"mentioning user:example.org",
+              "mentioning <a href=\"https://matrix.to/#/@user:example.org\">user</a>"}
   end
 end

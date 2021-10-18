@@ -945,6 +945,7 @@ defmodule Matrix2051.IrcConn.Handler do
   defp send_message(sup_pid, reply_to, label, type, channel, text) do
     writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
     matrix_client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
+    matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
 
     # If the client provided a label, use it as txnId on Matrix's side.
@@ -963,7 +964,26 @@ defmodule Matrix2051.IrcConn.Handler do
           {"m.notice", text}
       end
 
+    nicklist =
+      case Matrix2051.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+        {_room_id, room} -> room.members
+        nil -> []
+      end
+
+    {body, formatted_body} = Matrix2051.Format.irc2matrix(body, nicklist)
+
     event = %{"msgtype" => msgtype, "body" => body}
+
+    event =
+      if String.replace(body, "\n", "<br/>") == formatted_body do
+        # Don't add a formatted message if it's identical
+        event
+      else
+        Map.merge(event, %{
+          "format" => "org.matrix.custom.html",
+          "formatted_body" => formatted_body
+        })
+      end
 
     event =
       case reply_to do

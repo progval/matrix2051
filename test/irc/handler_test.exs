@@ -436,6 +436,22 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     )
   end
 
+  test "sending formatted privmsg", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("PRIVMSG #existing_room:example.org :\x02hello \x1dworld\x1d\x02"))
+
+    assert_message(
+      {:send_event, "#existing_room:example.org", "m.room.message", nil,
+       %{
+         "body" => "**hello /world/**",
+         "format" => "org.matrix.custom.html",
+         "formatted_body" => "<b>hello <i>world</i></b>",
+         "msgtype" => "m.text"
+       }}
+    )
+  end
+
   test "sending privmsg + ACTION", %{handler: handler} do
     do_connection_registration(handler)
 
