@@ -446,7 +446,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
        %{
          "body" => "*hello /world/*",
          "format" => "org.matrix.custom.html",
-         "formatted_body" => "<b>hello <i>world</i></b>",
+         "formatted_body" => "<b>hello </b><i><b>world</b></i>",
          "msgtype" => "m.text"
        }}
     )

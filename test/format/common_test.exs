@@ -39,20 +39,18 @@ defmodule Matrix2051.FormatTest do
     assert Matrix2051.Format.irc2matrix("\x11foo\x11") == {"`foo`", "<code>foo</code>"}
 
     assert Matrix2051.Format.irc2matrix("\x02foo \x1dbar\x1d baz\x02") ==
-             {"*foo /bar/ baz*", "<b>foo <i>bar</i> baz</b>"}
+             {"*foo /bar/ baz*", "<b>foo </b><i><b>bar</b></i><b> baz</b>"}
   end
 
   test "interleaved IRC to Matrix" do
-    # TODO:
-    # assert Matrix2051.Format.irc2matrix("\x02foo \x1dbar\x0f baz") ==
-    #          {"*foo /bar/* baz", "<b>foo <i>bar</i></b> baz"}
+    assert Matrix2051.Format.irc2matrix("\x02foo \x1dbar\x0f baz") ==
+             {"*foo /bar*/ baz", "<b>foo </b><i><b>bar</b></i> baz"}
 
-    # TODO:
-    # assert Matrix2051.Format.irc2matrix("\x02foo \x1dbar\x02 baz qux\x1d") ==
-    #          {"*foo /bar* baz/", "<b>foo <i>bar</i></b><i> baz</i>"}
+    assert Matrix2051.Format.irc2matrix("\x02foo \x1dbar\x02 baz\x1d qux") ==
+             {"*foo /bar* baz/ qux", "<b>foo </b><i><b>bar</b></i><i> baz</i> qux"}
 
     assert Matrix2051.Format.irc2matrix("\x1dfoo \x02bar\x0f baz") ==
-             {"/foo *bar*/ baz", "<i>foo <b>bar</b></i> baz"}
+             {"/foo *bar*/ baz", "<i>foo </i><i><b>bar</b></i> baz"}
   end
 
   test "Matrix colors to IRC" do

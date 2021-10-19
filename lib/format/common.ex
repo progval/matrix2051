@@ -92,13 +92,20 @@ defmodule Matrix2051.Format do
       end)
       |> Enum.join()
 
-    html =
+    html_tree =
       stateful_tokens
-      |> Enum.map(fn {previous_state, state, token} ->
-        Matrix2051.Format.Irc2Matrix.make_html(previous_state, state, token)
+      |> Enum.flat_map(fn {previous_state, state, token} ->
+        Matrix2051.Format.Irc2Matrix.make_html(previous_state, state, token, nicklist)
       end)
-      |> Enum.join()
-      |> Matrix2051.Format.Irc2Matrix.finalize_html(nicklist)
+
+    html =
+      {"html", [], html_tree}
+      |> :mochiweb_html.to_html()
+      |> IO.iodata_to_binary()
+
+    html = Regex.replace(~R(<html>(.*\)</html>), html, fn _, content -> content end)
+    # more compact
+    html = Regex.replace(~R(<br />), html, fn _ -> "<br/>" end)
 
     {plain_text, html}
   end

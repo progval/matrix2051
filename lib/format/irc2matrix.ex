@@ -102,61 +102,93 @@ defmodule Matrix2051.Format.Irc2Matrix do
     end
   end
 
-  def make_html(previous_state, state, token) do
-    replacement =
-      [
-        {:bold, "b"},
-        {:monospace, "code"},
-        {:italic, "i"},
-        {:underlined, "u"},
-        {:stroke, "strike"}
-      ]
-      |> Enum.map(fn {key, action} ->
-        case {Map.get(previous_state, key), Map.get(state, key)} do
-          {false, true} -> "<#{action}>"
-          {true, false} -> "</#{action}>"
-          _ -> ""
-        end
-      end)
-      |> Enum.join()
-
-    case replacement do
-      "" ->
-        case token do
-          "\x0f" -> ""
-          _ -> token
-        end
-
-      _ ->
-        replacement
-    end
-  end
-
-  def finalize_html(html, nicklist) do
-    html = String.replace(html, "\n", "<br/>")
-
+  defp linkify_urls(text) when is_binary(text) do
     # yet another shitty URL detection regexp
-    html =
-      Regex.replace(
+    [first_part | other_parts] =
+      Regex.split(
         ~r/(mailto:|[a-z][a-z0-9]+:\/\/)\S+(?=\s|>|$)/,
-        html,
-        fn url -> ~s(<a href="#{url}\">#{url}</a>) end
+        text,
+        include_captures: true
       )
 
-    # from https://matrix.org/docs/spec/appendices#user-identifiers
-    html =
-      Regex.replace(
-        ~r/\b([a-z0-9._=\/-]+):\S+\b/,
-        html,
-        fn userid, localpart ->
+    other_parts =
+      other_parts
+      |> Enum.map_every(
+        2,
+        fn url -> {"a", [{"href", url}], [url]} end
+      )
+
+    [first_part | other_parts]
+  end
+
+  defp linkify_urls({tag, attributes, children}) do
+    [{tag, attributes, Enum.flat_map(children, &linkify_urls/1)}]
+  end
+
+  defp linkify_nicks(text, nicklist) when is_binary(text) do
+    [first_part | other_parts] =
+      Regex.split(
+        ~r/\b[a-z0-9._=\/-]+:\S+\b/,
+        text,
+        include_captures: true
+      )
+
+    other_parts =
+      other_parts
+      |> Enum.map_every(
+        2,
+        fn userid ->
+          [localpart, _] = String.split(userid, ":", parts: 2)
+
           if Enum.member?(nicklist, userid) do
-            ~s(<a href="https://matrix.to/#/@#{userid}\">#{localpart}</a>)
+            {"a", [{"href", "https://matrix.to/#/@#{userid}"}], [localpart]}
           else
             userid
           end
         end
       )
 
-    html
+    [first_part | other_parts]
+  end
+
+  defp linkify_nicks({tag, attributes, children}, nicklist) do
+    [{tag, attributes, Enum.flat_map(children, fn child -> linkify_nicks(child, nicklist) end)}]
+  end
+
+  def make_html(_previous_state, state, token, nicklist) do
+    tree =
+      token
+      # replace formatting chars
+      |> String.graphemes()
+      |> Enum.filter(fn char -> char == "\n" || !Enum.member?(@chars, char) end)
+      |> Enum.join()
+      # newlines to <br/>:
+      |> String.split("\n")
+      |> Enum.intersperse({"br", [], []})
+      # URLs:
+      |> Enum.flat_map(&linkify_urls/1)
+      # Nicks:
+      |> Enum.flat_map(fn subtree -> linkify_nicks(subtree, nicklist) end)
+
+    case tree do
+      # don't bother formatting empty strings
+      [""] ->
+        []
+
+      _ ->
+        [
+          {:bold, "b"},
+          {:monospace, "code"},
+          {:italic, "i"},
+          {:underlined, "u"},
+          {:stroke, "strike"}
+        ]
+        |> Enum.reduce(tree, fn {key, action}, tree ->
+          case Map.get(state, key) do
+            true -> [{action, [], tree}]
+            false -> tree
+          end
+        end)
+    end
   end
 end
