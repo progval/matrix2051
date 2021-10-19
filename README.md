@@ -47,7 +47,7 @@ Non-goals:
   * [x] split at 512 bytes
 * [ ] support PART from IRC clients
 * [ ] direct messages
-* [ ] rewrite mentions/highlights
+* [x] rewrite mentions/highlights
   * [x] Matrix -> IRC
   * [x] IRC -> Matrix
 * [ ] rewrite formatting and colors

@@ -58,13 +58,13 @@ defmodule Matrix2051.FormatTest do
   test "Matrix colors to IRC" do
     assert Matrix2051.Format.matrix2irc(
              ~s(<font data-mx-color="FF0000" data-mx-bg-color="00FF00">foo</font>)
-           ) == "\x04FF0000,00FF00foo\x0f"
+           ) == "\x04FF0000,00FF00foo\x0399,99"
 
     assert Matrix2051.Format.matrix2irc(
              ~s(<font data-mx-color="FF0000" data-mx-bg-color="00FF00">foo) <>
                ~s(<font data-mx-color="00FF00" data-mx-bg-color="0000FF">bar) <>
                ~s(</font></font>)
-           ) == "\x04FF0000,00FF00foo\x0400FF00,0000FFbar\x04FF0000,00FF00\x0f"
+           ) == "\x04FF0000,00FF00foo\x0400FF00,0000FFbar\x04FF0000,00FF00\x0399,99"
   end
 
   test "Matrix link to IRC" do

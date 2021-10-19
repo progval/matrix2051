@@ -37,7 +37,8 @@ defmodule Matrix2051.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:saxy, "~> 1.4"},
+      # only using :mochiweb_html
+      {:mochiweb, "~> 2.22"},
       {:jason, "~> 1.2"},
       {:httpoison, "~> 1.7"},
       {:mox, "~> 1.0.0", only: :test}

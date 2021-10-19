@@ -56,17 +56,8 @@ defmodule Matrix2051.Format do
         "foo\nbar"
   """
   def matrix2irc(html) do
-    parsed =
-      Saxy.parse_string(
-        "<root>" <> Regex.replace(~r/< *br *>/, html, "<br/>") <> "</root>",
-        Matrix2051.Format.Matrix2Irc.Handler,
-        {[], [], [], []}
-      )
-
-    case parsed do
-      {:ok, {parts, [], [], []}} -> String.trim(Enum.join(Enum.reverse(parts)))
-      _ -> nil
-    end
+    tree = :mochiweb_html.parse("<html>" <> html <> "</html>")
+    String.trim(Matrix2051.Format.Matrix2Irc.Handler.transform(tree, {nil, nil}))
   end
 
   @doc ~S"""
