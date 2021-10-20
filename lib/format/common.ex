@@ -54,6 +54,9 @@ defmodule Matrix2051.Format do
 
         iex> Matrix2051.Format.matrix2irc(~s(foo<br/>bar))
         "foo\nbar"
+
+        iex> Matrix2051.Format.matrix2irc(~s(foo <font data-mx-color="FF0000">bar</font> baz))
+        "foo \x04FF0000,FFFFFFbar\x0399,99 baz"
   """
   def matrix2irc(html) do
     tree = :mochiweb_html.parse("<html>" <> html <> "</html>")
@@ -61,7 +64,7 @@ defmodule Matrix2051.Format do
   end
 
   @doc ~S"""
-    Converts IRC formattin to Matrix's plain text flavor and "org.matrix.custom.html"
+    Converts IRC formatting to Matrix's plain text flavor and "org.matrix.custom.html"
 
     ## Examples
 
@@ -73,6 +76,9 @@ defmodule Matrix2051.Format do
 
         iex> Matrix2051.Format.irc2matrix("foo\nbar")
         {"foo\nbar", ~s(foo<br/>bar)}
+
+        iex> Matrix2051.Format.irc2matrix("foo \x0304bar")
+        {"foo bar", ~s(foo <font data-mx-color="FF0000">bar</font>)}
         
   """
   def irc2matrix(text, nicklist \\ []) do
@@ -80,8 +86,8 @@ defmodule Matrix2051.Format do
       (text <> "\x0f")
       |> Matrix2051.Format.Irc2Matrix.tokenize()
       |> Stream.transform(%Matrix2051.Format.Irc2Matrix.State{}, fn token, state ->
-        new_state = Matrix2051.Format.Irc2Matrix.update_state(state, token)
-        {[{state, new_state, token}], new_state}
+        {new_state, new_token} = Matrix2051.Format.Irc2Matrix.update_state(state, token)
+        {[{state, new_state, new_token}], new_state}
       end)
       |> Enum.to_list()
 

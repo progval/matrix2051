@@ -50,9 +50,9 @@ Non-goals:
 * [x] rewrite mentions/highlights
   * [x] Matrix -> IRC
   * [x] IRC -> Matrix
-* [ ] rewrite formatting and colors
+* [x] rewrite formatting and colors
   * [x] Matrix -> IRC
-  * [ ] IRC -> Matrix
+  * [x] IRC -> Matrix
 * [x] show JOIN/PART events from other members
 * [ ] figure out images / files
   * [x] Matrix -> IRC

@@ -54,6 +54,9 @@ defmodule Matrix2051.FormatTest do
   end
 
   test "Matrix colors to IRC" do
+    assert Matrix2051.Format.matrix2irc(~s(<font data-mx-color="FF0000">foo</font>)) ==
+             "\x04FF0000,FFFFFFfoo\x0399,99"
+
     assert Matrix2051.Format.matrix2irc(
              ~s(<font data-mx-color="FF0000" data-mx-bg-color="00FF00">foo</font>)
            ) == "\x04FF0000,00FF00foo\x0399,99"
@@ -63,6 +66,44 @@ defmodule Matrix2051.FormatTest do
                ~s(<font data-mx-color="00FF00" data-mx-bg-color="0000FF">bar) <>
                ~s(</font></font>)
            ) == "\x04FF0000,00FF00foo\x0400FF00,0000FFbar\x04FF0000,00FF00\x0399,99"
+  end
+
+  test "IRC basic colors to Matrix" do
+    assert Matrix2051.Format.irc2matrix("\x034foo") ==
+             {"foo", ~s(<font data-mx-color="FF0000">foo</font>)}
+
+    assert Matrix2051.Format.irc2matrix("\x0304foo") ==
+             {"foo", ~s(<font data-mx-color="FF0000">foo</font>)}
+
+    assert Matrix2051.Format.irc2matrix("\x0304foo \x0303bar") ==
+             {"foo bar",
+              ~s(<font data-mx-color="FF0000">foo </font>) <>
+                ~s(<font data-mx-color="009300">bar</font>)}
+
+    assert Matrix2051.Format.irc2matrix("\x0304,03foo") ==
+             {"foo", ~s(<font data-mx-color="FF0000" data-mx-bg-color="009300">foo</font>)}
+  end
+
+  test "IRC hex colors to Matrix" do
+    assert Matrix2051.Format.irc2matrix("\x04FF0000,foo\x0399,99") ==
+             {"foo", ~s(<font data-mx-color="FF0000">foo</font>)}
+
+    assert Matrix2051.Format.irc2matrix("\x04FF0000,00FF00foo\x0399,99") ==
+             {"foo", ~s(<font data-mx-color="FF0000" data-mx-bg-color="00FF00">foo</font>)}
+
+    assert Matrix2051.Format.irc2matrix(
+             "\x04FF0000,00FF00foo\x0400FF00,0000FFbar\x04FF0000,00FF00"
+           ) ==
+             {"foobar",
+              ~s(<font data-mx-color="FF0000" data-mx-bg-color="00FF00">foo</font>) <>
+                ~s(<font data-mx-color="00FF00" data-mx-bg-color="0000FF">bar</font>)}
+
+    assert Matrix2051.Format.irc2matrix(
+             "\x04FF0000,00FF00foo\x0400FF00,0000FFbar\x04FF0000,00FF00\x0399,99"
+           ) ==
+             {"foobar",
+              ~s(<font data-mx-color="FF0000" data-mx-bg-color="00FF00">foo</font>) <>
+                ~s(<font data-mx-color="00FF00" data-mx-bg-color="0000FF">bar</font>)}
   end
 
   test "Matrix link to IRC" do
