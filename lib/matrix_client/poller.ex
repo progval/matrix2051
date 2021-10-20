@@ -593,6 +593,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     end
 
     # Join the new channel
+    Matrix2051.MatrixClient.State.room_member_add(state, room_id, nick)
     send.(%Matrix2051.Irc.Command{
       tags: %{"account" => nick},
       source: nick2nuh(nick),
