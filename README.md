@@ -53,7 +53,7 @@ Non-goals:
 * [ ] rewrite formatting and colors
   * [x] Matrix -> IRC
   * [ ] IRC -> Matrix
-* [ ] show JOIN/PART events from other members
+* [x] show JOIN/PART events from other members
 * [ ] figure out images / files
   * [x] Matrix -> IRC
   * [ ] IRC -> Matrix

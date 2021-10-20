@@ -100,6 +100,22 @@ defmodule Matrix2051.MatrixClient.State do
     end)
   end
 
+  @doc """
+    Removes a member from the room and returns true iff it was already there
+  """
+  def room_member_del(pid, room_id, userid) do
+    Agent.get_and_update(pid, fn state ->
+      room = Map.get(state.rooms, room_id, @emptyroom)
+
+      if MapSet.member?(room.members, userid) do
+        room = %{room | members: MapSet.delete(room.members, userid)}
+        {true, %{state | rooms: Map.put(state.rooms, room_id, room)}}
+      else
+        {false, state}
+      end
+    end)
+  end
+
   def room_members(pid, room_id) do
     Agent.get(pid, fn state -> Map.get(state.rooms, room_id, @emptyroom).members end)
   end

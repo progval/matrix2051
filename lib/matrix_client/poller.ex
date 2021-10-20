@@ -246,15 +246,51 @@ defmodule Matrix2051.MatrixClient.Poller do
     send = make_send_function(sup_pid, event)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
 
-    was_already_member = Matrix2051.MatrixClient.State.room_member_add(state, room_id, sender)
+    target = event |> Map.get("state_key", sender) |> String.replace_prefix("@", "")
 
-    if !state_event && !was_already_member do
-      send.(%Matrix2051.Irc.Command{
-        tags: %{"account" => sender},
-        source: nick2nuh(sender),
-        command: "JOIN",
-        params: [channel, sender, sender]
-      })
+    case event["content"]["membership"] do
+      "join" ->
+        was_already_member = Matrix2051.MatrixClient.State.room_member_add(state, room_id, target)
+        if !state_event and !was_already_member do
+          send.(%Matrix2051.Irc.Command{
+            tags: %{"account" => target},
+            source: nick2nuh(target),
+            command: "JOIN",
+            params: [channel, target, target]
+          })
+        end
+      "leave" ->
+        params_tail = case Map.get(event["content"], "reason") do
+          nil -> []
+          reason -> [reason]
+        end
+        was_already_member = Matrix2051.MatrixClient.State.room_member_del(state, room_id, target)
+        if !state_event and was_already_member do
+          if sender == target do
+            send.(%Matrix2051.Irc.Command{
+              tags: %{"account" => target},
+              source: nick2nuh(target),
+              command: "PART",
+              params: [channel | params_tail]
+            })
+          else
+            send.(%Matrix2051.Irc.Command{
+              tags: %{"account" => sender},
+              source: nick2nuh(sender),
+              command: "KICK",
+              params: [channel, target | params_tail]
+            })
+          end
+        end
+      "ban" ->
+        if !state_event do
+          send.(%Matrix2051.Irc.Command{
+            tags: %{"account" => sender},
+            source: nick2nuh(sender),
+            command: "MODE",
+            params: [channel, "+b", "#{target}!*@*"]
+          })
+        end
     end
 
     nil
