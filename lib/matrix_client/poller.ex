@@ -641,6 +641,55 @@ defmodule Matrix2051.MatrixClient.Poller do
        ) do
     irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
+    capabilities = Matrix2051.IrcConn.State.capabilities(irc_state)
+
+    supports_channel_rename = Enum.member?(capabilities, :channel_rename)
+
+    if old_canonical_alias == nil || !supports_channel_rename do
+      announce_new_channel(
+        Matrix2051.IrcConn.Supervisor,
+        sup_pid,
+        room_id,
+        event
+      )
+    end
+
+    if old_canonical_alias != nil do
+      if supports_channel_rename do
+        send = make_send_function(sup_pid, event)
+        new_canonical_alias = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+
+        source =
+          case canonical_alias_sender do
+            nil -> "server"
+            _ -> nick2nuh(canonical_alias_sender)
+          end
+
+        send.(%Matrix2051.Irc.Command{
+          source: source,
+          command: "RENAME",
+          params: [old_canonical_alias, new_canonical_alias, "Canonical alias changed"]
+        })
+      else
+        close_renamed_channel(
+          Matrix2051.IrcConn.Supervisor,
+          sup_pid,
+          room_id,
+          canonical_alias_sender,
+          old_canonical_alias
+        )
+      end
+    end
+  end
+
+  defp announce_new_channel(
+         Matrix2051.IrcConn.Supervisor,
+         sup_pid,
+         room_id,
+         event
+       ) do
+    irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
+    state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(irc_state)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
 
@@ -695,19 +744,9 @@ defmodule Matrix2051.MatrixClient.Poller do
 
     # RPL_ENDOFNAMES
     send_numeric.("366", [channel, "End of /NAMES list"])
-
-    if old_canonical_alias != nil do
-      announce_channel_rename(
-        Matrix2051.IrcConn.Supervisor,
-        sup_pid,
-        room_id,
-        canonical_alias_sender,
-        old_canonical_alias
-      )
-    end
   end
 
-  defp announce_channel_rename(
+  defp close_renamed_channel(
          Matrix2051.IrcConn.Supervisor,
          sup_pid,
          room_id,

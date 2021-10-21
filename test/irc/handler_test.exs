@@ -84,8 +84,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   use ExUnit.Case, async: false
   doctest Matrix2051.IrcConn.Handler
 
-  @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
-  @cap_ls "CAP * LS :account-tag batch draft/account-registration draft/multiline echo-message extended-join labeled-response message-tags sasl server-time\r\n"
+  @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
+  @cap_ls "CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/multiline echo-message extended-join labeled-response message-tags sasl server-time\r\n"
   @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/reply CHANLIMIT= CHANTYPES=#! TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do

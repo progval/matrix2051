@@ -74,8 +74,8 @@ Non-goals:
 * [ ] translate channel modes / room privileges
   * [ ] Matrix -> IRC
   * [ ] IRC -> Matrix
-* [ ] use [channel renaming](https://ircv3.net/specs/extensions/channel-rename)
-  * [ ] when the canonical name changes
+* [x] use [channel renaming](https://ircv3.net/specs/extensions/channel-rename)
+  * [x] when the canonical name changes
   * [ ] in case of joining duplicate aliases of the same room?
 
 In the far future:

@@ -99,6 +99,55 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "renamed room" do
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :channel_rename,
+      :message_tags
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test1:example.org"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick1:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"alias" => "#test2:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick2:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test1:example.org\r\n")
+    assert_line(":server 331 mynick:example.com :#test1:example.org\r\n")
+    assert_line(":server 353 mynick:example.com = #test1:example.org :mynick:example.com\r\n")
+    assert_line(":server 366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
+
+    assert_line(
+      "@msgid=$event2 :nick2:example.org!nick2@example.org RENAME #test1:example.org #test2:example.org :Canonical alias changed\r\n"
+    )
+  end
+
+  test "renamed room fallback" do
     state_events = [
       %{
         "content" => %{"alias" => "#test1:example.org"},
@@ -150,7 +199,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     )
   end
 
-  test "renamed room with name and topic" do
+  test "renamed room fallback with name and topic" do
     state_events = [
       %{
         "content" => %{"alias" => "#test1:example.org"},

@@ -44,6 +44,9 @@ defmodule Matrix2051.IrcConn.Handler do
     # https://ircv3.net/specs/extensions/batch
     "batch" => {:batch, nil},
 
+    # https://ircv3.net/specs/extensions/channel-rename
+    "draft/channel-rename" => {:channel_rename, nil},
+
     # https://ircv3.net/specs/extensions/echo-message.html
     "echo-message" => {:echo_message, nil},
 
