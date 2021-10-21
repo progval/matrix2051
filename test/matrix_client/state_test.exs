@@ -62,46 +62,59 @@ defmodule Matrix2051.MatrixClient.StateTest do
     Matrix2051.MatrixClient.State.room_member_add(
       :process_matrix_state,
       "!foo:example.org",
-      "user1:example.com"
+      "user1:example.com",
+      %Matrix2051.Matrix.RoomMember{display_name: "user one"}
     )
 
     assert Matrix2051.MatrixClient.State.room_members(:process_matrix_state, "!foo:example.org") ==
-             MapSet.new(["user1:example.com"])
+             %{"user1:example.com" => %Matrix2051.Matrix.RoomMember{display_name: "user one"}}
 
     Matrix2051.MatrixClient.State.room_member_add(
       :process_matrix_state,
       "!foo:example.org",
-      "user2:example.com"
+      "user2:example.com",
+      %Matrix2051.Matrix.RoomMember{display_name: nil}
     )
 
     assert Matrix2051.MatrixClient.State.room_members(:process_matrix_state, "!foo:example.org") ==
-             MapSet.new(["user1:example.com", "user2:example.com"])
+             %{
+               "user1:example.com" => %Matrix2051.Matrix.RoomMember{display_name: "user one"},
+               "user2:example.com" => %Matrix2051.Matrix.RoomMember{display_name: nil}
+             }
 
     Matrix2051.MatrixClient.State.room_member_add(
       :process_matrix_state,
       "!foo:example.org",
-      "user2:example.com"
+      "user2:example.com",
+      %Matrix2051.Matrix.RoomMember{display_name: nil}
     )
 
     assert Matrix2051.MatrixClient.State.room_members(:process_matrix_state, "!foo:example.org") ==
-             MapSet.new(["user1:example.com", "user2:example.com"])
+             %{
+               "user1:example.com" => %Matrix2051.Matrix.RoomMember{display_name: "user one"},
+               "user2:example.com" => %Matrix2051.Matrix.RoomMember{display_name: nil}
+             }
 
     Matrix2051.MatrixClient.State.room_member_add(
       :process_matrix_state,
       "!bar:example.org",
-      "user1:example.com"
+      "user1:example.com",
+      %Matrix2051.Matrix.RoomMember{display_name: nil}
     )
 
     assert Matrix2051.MatrixClient.State.room_members(:process_matrix_state, "!foo:example.org") ==
-             MapSet.new(["user1:example.com", "user2:example.com"])
+             %{
+               "user1:example.com" => %Matrix2051.Matrix.RoomMember{display_name: "user one"},
+               "user2:example.com" => %Matrix2051.Matrix.RoomMember{display_name: nil}
+             }
 
     assert Matrix2051.MatrixClient.State.room_members(:process_matrix_state, "!bar:example.org") ==
-             MapSet.new(["user1:example.com"])
+             %{"user1:example.com" => %Matrix2051.Matrix.RoomMember{display_name: nil}}
   end
 
   test "default room members" do
     assert Matrix2051.MatrixClient.State.room_members(:process_matrix_state, "!foo:example.org") ==
-             MapSet.new()
+             %{}
   end
 
   test "irc channel" do

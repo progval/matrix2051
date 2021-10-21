@@ -86,15 +86,17 @@ defmodule Matrix2051.MatrixClient.State do
 
   @doc """
     Adds a member to the room and returns true iff it was already there
+
+    `member` must be a `Matrix2051.Matrix.RoomMember` structure.
   """
-  def room_member_add(pid, room_id, userid) do
+  def room_member_add(pid, room_id, userid, member) do
     Agent.get_and_update(pid, fn state ->
       room = Map.get(state.rooms, room_id, @emptyroom)
 
-      if MapSet.member?(room.members, userid) do
+      if Map.has_key?(room.members, userid) do
         {true, state}
       else
-        room = %{room | members: MapSet.put(room.members, userid)}
+        room = %{room | members: Map.put(room.members, userid, member)}
         {false, %{state | rooms: Map.put(state.rooms, room_id, room)}}
       end
     end)
@@ -107,8 +109,8 @@ defmodule Matrix2051.MatrixClient.State do
     Agent.get_and_update(pid, fn state ->
       room = Map.get(state.rooms, room_id, @emptyroom)
 
-      if MapSet.member?(room.members, userid) do
-        room = %{room | members: MapSet.delete(room.members, userid)}
+      if Map.has_key?(room.members, userid) do
+        room = %{room | members: Map.delete(room.members, userid)}
         {true, %{state | rooms: Map.put(state.rooms, room_id, room)}}
       else
         {false, state}
@@ -116,8 +118,21 @@ defmodule Matrix2051.MatrixClient.State do
     end)
   end
 
+  @doc """
+    Returns %{user_id => %Matrix2051.Matrix.RoomMember{...}}
+  """
   def room_members(pid, room_id) do
     Agent.get(pid, fn state -> Map.get(state.rooms, room_id, @emptyroom).members end)
+  end
+
+  @doc """
+    Returns a Matrix2051.Matrix.RoomMember structure or nil
+  """
+  def room_member(pid, room_id, user_id) do
+    Agent.get(pid, fn state ->
+      members = Map.get(state.rooms, room_id, @emptyroom).members
+      Map.get(members, user_id)
+    end)
   end
 
   def set_room_name(pid, room_id, name) do

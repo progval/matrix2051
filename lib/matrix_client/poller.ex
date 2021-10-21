@@ -250,7 +250,14 @@ defmodule Matrix2051.MatrixClient.Poller do
 
     case event["content"]["membership"] do
       "join" ->
-        was_already_member = Matrix2051.MatrixClient.State.room_member_add(state, room_id, target)
+        was_already_member =
+          Matrix2051.MatrixClient.State.room_member_add(
+            state,
+            room_id,
+            target,
+            %Matrix2051.Matrix.RoomMember{display_name: Map.get(event["content"], "displayname")}
+          )
+
         if !state_event and !was_already_member do
           send.(%Matrix2051.Irc.Command{
             tags: %{"account" => target},
@@ -259,12 +266,16 @@ defmodule Matrix2051.MatrixClient.Poller do
             params: [channel, target, target]
           })
         end
+
       "leave" ->
-        params_tail = case Map.get(event["content"], "reason") do
-          nil -> []
-          reason -> [reason]
-        end
+        params_tail =
+          case Map.get(event["content"], "reason") do
+            nil -> []
+            reason -> [reason]
+          end
+
         was_already_member = Matrix2051.MatrixClient.State.room_member_del(state, room_id, target)
+
         if !state_event and was_already_member do
           if sender == target do
             send.(%Matrix2051.Irc.Command{
@@ -282,6 +293,7 @@ defmodule Matrix2051.MatrixClient.Poller do
             })
           end
         end
+
       "ban" ->
         if !state_event do
           send.(%Matrix2051.Irc.Command{
@@ -306,8 +318,18 @@ defmodule Matrix2051.MatrixClient.Poller do
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     send = make_send_function(sup_pid, event)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+    member = Matrix2051.MatrixClient.State.room_member(state, room_id, sender)
 
     tags = %{"account" => sender}
+
+    tags =
+      case member do
+        %Matrix2051.Matrix.RoomMember{display_name: display_name} when display_name != nil ->
+          Map.put(tags, "+draft/display-name", display_name)
+
+        _ ->
+          tags
+      end
 
     {reply_to, tags} =
       case event["content"] do
@@ -629,7 +651,13 @@ defmodule Matrix2051.MatrixClient.Poller do
     end
 
     # Join the new channel
-    Matrix2051.MatrixClient.State.room_member_add(state, room_id, nick)
+    Matrix2051.MatrixClient.State.room_member_add(
+      state,
+      room_id,
+      nick,
+      %Matrix2051.Matrix.RoomMember{display_name: nil}
+    )
+
     send.(%Matrix2051.Irc.Command{
       tags: %{"account" => nick},
       source: nick2nuh(nick),
@@ -658,11 +686,11 @@ defmodule Matrix2051.MatrixClient.Poller do
 
     # send RPL_NAMREPLY
     Matrix2051.MatrixClient.State.room_members(state, room_id)
-    |> Enum.map(fn member ->
+    |> Enum.map(fn {user_id, _member} ->
       # TODO: group them in lines
 
       # RPL_NAMREPLY
-      send_numeric.("353", ["=", channel, member])
+      send_numeric.("353", ["=", channel, user_id])
     end)
 
     # RPL_ENDOFNAMES

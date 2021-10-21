@@ -14,21 +14,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Matrix.RoomState do
+defmodule Matrix2051.Matrix.RoomMember do
   @moduledoc """
-    Stores the state of a Matrix client (access token, joined rooms, ...)
+    Stores the state of the member of a Matrix room
   """
 
   defstruct [
-    # human-readable identifier for the room
-    :canonical_alias,
-    # human-readable non-unique name for the room
-    :name,
-    # as on IRC
-    :topic,
-    # %{user_id => Matrix2051.Matrix.RoomMember{...}}
-    members: Map.new(),
-    # whether the whole state was fetched
-    synced: false
+    :display_name
   ]
 end

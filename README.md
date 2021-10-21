@@ -57,7 +57,7 @@ Non-goals:
 * [ ] figure out images / files
   * [x] Matrix -> IRC
   * [ ] IRC -> Matrix
-* [ ] [display names](https://github.com/ircv3/ircv3-specifications/pull/452)
+* [x] [display names](https://github.com/ircv3/ircv3-specifications/pull/452)
 * [ ] [chat history](https://ircv3.net/specs/extensions/chathistory)
 * [ ] connection via [websockets](https://github.com/ircv3/ircv3-specifications/pull/342)
 * [x] [multiline](https://ircv3.net/specs/extensions/multiline) messages

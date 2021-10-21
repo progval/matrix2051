@@ -322,6 +322,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :message_tags
     ])
+
     state_events = [
       %{
         "content" => %{"alias" => "#test:example.com"},
@@ -414,7 +415,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
         "state_key" => "mynick:example.com",
         "type" => "m.room.member",
         "unsigned" => %{}
-      },
+      }
     ]
 
     Matrix2051.MatrixClient.Poller.handle_events(self(), %{
@@ -433,13 +434,32 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     assert_line(":server 353 mynick:example.com = #test:example.com :mynick:example.com\r\n")
     assert_line(":server 366 mynick:example.com #test:example.com :End of /NAMES list\r\n")
     assert_line("@msgid=$event1 :nick2:example.com!nick2@example.com JOIN :#test:example.com\r\n")
-    assert_line("@msgid=$event3 :mynick:example.com!mynick@example.com MODE #test:example.com +b :nick2:example.com!*@*\r\n")
-    assert_line("@msgid=$event4 :mynick:example.com!mynick@example.com KICK #test:example.com :nick2:example.com\r\n")
-    assert_line("@msgid=$event5 :mynick:example.com!mynick@example.com PART :#test:example.com\r\n")
+
+    assert_line(
+      "@msgid=$event3 :mynick:example.com!mynick@example.com MODE #test:example.com +b :nick2:example.com!*@*\r\n"
+    )
+
+    assert_line(
+      "@msgid=$event4 :mynick:example.com!mynick@example.com KICK #test:example.com :nick2:example.com\r\n"
+    )
+
+    assert_line(
+      "@msgid=$event5 :mynick:example.com!mynick@example.com PART :#test:example.com\r\n"
+    )
+
     assert_line("@msgid=$event6 :nick2:example.com!nick2@example.com JOIN :#test:example.com\r\n")
-    assert_line("@msgid=$event7 :mynick:example.com!mynick@example.com JOIN :#test:example.com\r\n")
-    assert_line("@msgid=$event4 :mynick:example.com!mynick@example.com KICK #test:example.com nick2:example.com :I don't like you\r\n")
-    assert_line("@msgid=$event5 :mynick:example.com!mynick@example.com PART #test:example.com :bye\r\n")
+
+    assert_line(
+      "@msgid=$event7 :mynick:example.com!mynick@example.com JOIN :#test:example.com\r\n"
+    )
+
+    assert_line(
+      "@msgid=$event4 :mynick:example.com!mynick@example.com KICK #test:example.com nick2:example.com :I don't like you\r\n"
+    )
+
+    assert_line(
+      "@msgid=$event5 :mynick:example.com!mynick@example.com PART #test:example.com :bye\r\n"
+    )
   end
 
   test "join_rules" do
@@ -688,6 +708,61 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     assert_line(
       "@msgid=$event1;time=2021-09-29T20:10:33.579Z :nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n"
+    )
+  end
+
+  test "message with display-name" do
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :message_tags
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{"displayname" => "cool user", "membership" => "join"},
+        "sender" => "@nick:example.org",
+        "state_key" => "@nick:example.org",
+        "type" => "m.room.member"
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "first message", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
+    assert_line(":server 353 mynick:example.com = #test:example.org :nick:example.org\r\n")
+    assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+
+    assert_line(
+      "@+draft/display-name=cool\\suser;msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n"
     )
   end
 
