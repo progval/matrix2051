@@ -45,8 +45,6 @@ Non-goals:
 * [x] receiving messages from Matrix
   * [x] basics
   * [x] split at 512 bytes
-* [ ] support PART from IRC clients
-* [ ] direct messages
 * [x] rewrite mentions/highlights
   * [x] Matrix -> IRC
   * [x] IRC -> Matrix
@@ -70,6 +68,7 @@ Non-goals:
   * [x] Matrix -> IRC
   * [x] IRC -> Matrix
 * [ ] message edition/deletion
+* [ ] support PART from IRC clients
 * [ ] invites
 * [ ] translate channel modes / room privileges
   * [ ] Matrix -> IRC
@@ -81,8 +80,9 @@ Non-goals:
 In the far future:
 
 * [ ] support authentication with non-password flows
-* [ ] end-to-"end" encryption (Matrix2051 would be the end, unless there is a way
-  to make IRC clients understand Olm)
+* [ ] direct messages (it's really hard, in Matrix they are actual rooms you can
+      invite people to)
+* [ ] end-to-"end" encryption (Matrix2051 would be the end)
 * [ ] Matrix P2P
 
 ## Architecture
