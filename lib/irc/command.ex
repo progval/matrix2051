@@ -96,8 +96,7 @@ defmodule Matrix2051.Irc.Command do
     {key,
      case value do
        nil -> ""
-       # TODO: unescape
-       _ -> value
+       _ -> unescape_tag_value(value)
      end}
   end
 
@@ -156,11 +155,10 @@ defmodule Matrix2051.Irc.Command do
           [
             "@" <>
               Enum.join(
-                # TODO: escape
                 Enum.map(Map.to_list(command.tags), fn {key, value} ->
                   case value do
                     nil -> key
-                    _ -> key <> "=" <> value
+                    _ -> key <> "=" <> escape_tag_value(value)
                   end
                 end),
                 ";"
@@ -170,6 +168,37 @@ defmodule Matrix2051.Irc.Command do
       end
 
     Enum.join(tokens, " ") <> "\r\n"
+  end
+
+  # https://ircv3.net/specs/extensions/message-tags#escaping-values
+  @escapes [
+    {";", "\\:"},
+    {" ", "\\s"},
+    {"\\", "\\\\"},
+    {"\r", "\\r"},
+    {"\n", "\\n"}
+  ]
+  @escape_map Map.new(@escapes)
+  @escaped_re Regex.compile!(
+                "[" <>
+                  (@escapes
+                   |> Enum.map(fn {char, _escape} -> Regex.escape(char) end)
+                   |> Enum.join()) <> "]"
+              )
+  @unescape_map Map.new(Enum.map(@escapes, fn {char, escape} -> {escape, char} end))
+  @unescaped_re Regex.compile!(
+                  "(" <>
+                    (@escapes
+                     |> Enum.map(fn {_char, escape} -> Regex.escape(escape) end)
+                     |> Enum.join("|")) <> ")"
+                )
+
+  defp escape_tag_value(value) do
+    Regex.replace(@escaped_re, value, fn char -> Map.get(@escape_map, char) end)
+  end
+
+  defp unescape_tag_value(value) do
+    Regex.replace(@unescaped_re, value, fn escape -> Map.get(@unescape_map, escape) end)
   end
 
   @doc ~S"""

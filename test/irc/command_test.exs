@@ -51,11 +51,31 @@ defmodule Matrix2051.Irc.CommandTest do
               }}
   end
 
-  test "numeric" do
+  test "format numeric" do
     assert Matrix2051.Irc.Command.format(%Matrix2051.Irc.Command{
              command: "001",
              params: ["welcome"]
            }) == "001 :welcome\r\n"
+  end
+
+  test "escape message tags" do
+    assert Matrix2051.Irc.Command.format(%Matrix2051.Irc.Command{
+             tags: %{"foo" => "semi;space backslash\\cr\rlf\ndone", "bar" => "baz"},
+             command: "TAGMSG",
+             params: ["#chan"]
+           }) == "@bar=baz;foo=semi\\:space\\sbackslash\\\\cr\\rlf\\ndone TAGMSG :#chan\r\n"
+  end
+
+  test "unescape message tags" do
+    assert Matrix2051.Irc.Command.parse(
+             "@bar=baz;foo=semi\\:space\\sbackslash\\\\cr\\rlf\\ndone TAGMSG :#chan\r\n"
+           ) ==
+             {:ok,
+              %Matrix2051.Irc.Command{
+                tags: %{"foo" => "semi;space backslash\\cr\rlf\ndone", "bar" => "baz"},
+                command: "TAGMSG",
+                params: ["#chan"]
+              }}
   end
 
   test "downgrade noop" do
