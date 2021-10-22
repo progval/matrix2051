@@ -146,7 +146,6 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                  access_token: "t0ken",
                  httpoison: MockHTTPoison
                },
-               rooms: Map.new(),
                local_name: "user",
                hostname: "matrix.example.org"
              }
@@ -226,7 +225,6 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                  access_token: "t0ken",
                  httpoison: MockHTTPoison
                },
-               rooms: Map.new(),
                local_name: "user",
                hostname: "matrix.example.org"
              }
@@ -386,7 +384,6 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                  access_token: "t0ken",
                  httpoison: MockHTTPoison
                },
-               rooms: Map.new(),
                local_name: "user",
                hostname: "matrix.example.org"
              }
