@@ -19,45 +19,87 @@ defmodule Matrix2051.MatrixClient.ChatHistory do
     Queries history when queried from IRC clients
   """
 
-  def after_(sup_pid, room_id, event_id, limit) do
+  def after_(sup_pid, room_id, anchor, limit) do
     client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
 
-    case Matrix2051.MatrixClient.Client.get_event_context(client, room_id, event_id, limit * 2) do
-      {:ok, events} -> {:ok, process_events(sup_pid, room_id, events["events_after"])}
-      {:error, message} -> {:error, message}
-    end
-  end
-
-  def around(sup_pid, room_id, event_id, limit) do
-    client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
-
-    case Matrix2051.MatrixClient.Client.get_event_context(client, room_id, event_id, limit) do
-      {:ok, events} ->
-        # TODO: if there aren't enough events after (resp. before), allow more
-        # events before (resp. after) than half the limit.
-        nb_before = ((limit - 1) / 2) |> Float.ceil() |> Kernel.trunc()
-        nb_after = ((limit - 1) / 2) |> Kernel.trunc()
-
-        events_before = events["events_before"] |> Enum.slice(0, nb_before) |> Enum.reverse()
-        events_after = events["events_after"] |> Enum.slice(0, nb_after)
-        events = Enum.concat([events_before, [events["event"]], events_after])
-
-        {:ok, process_events(sup_pid, room_id, events)}
+    case parse_anchor(anchor) do
+      {:ok, event_id} ->
+        case Matrix2051.MatrixClient.Client.get_event_context(
+               client,
+               room_id,
+               event_id,
+               limit * 2
+             ) do
+          {:ok, events} -> {:ok, process_events(sup_pid, room_id, events["events_after"])}
+          {:error, message} -> {:error, Kernel.inspect(message)}
+        end
 
       {:error, message} ->
         {:error, message}
     end
   end
 
-  def before(sup_pid, room_id, event_id, limit) do
+  def around(sup_pid, room_id, anchor, limit) do
     client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
 
-    case Matrix2051.MatrixClient.Client.get_event_context(client, room_id, event_id, limit * 2) do
-      {:ok, events} ->
-        {:ok, process_events(sup_pid, room_id, Enum.reverse(events["events_before"]))}
+    case parse_anchor(anchor) do
+      {:ok, event_id} ->
+        case Matrix2051.MatrixClient.Client.get_event_context(client, room_id, event_id, limit) do
+          {:ok, events} ->
+            # TODO: if there aren't enough events after (resp. before), allow more
+            # events before (resp. after) than half the limit.
+            nb_before = ((limit - 1) / 2) |> Float.ceil() |> Kernel.trunc()
+            nb_after = ((limit - 1) / 2) |> Kernel.trunc()
+
+            events_before = events["events_before"] |> Enum.slice(0, nb_before) |> Enum.reverse()
+            events_after = events["events_after"] |> Enum.slice(0, nb_after)
+            events = Enum.concat([events_before, [events["event"]], events_after])
+
+            {:ok, process_events(sup_pid, room_id, events)}
+
+          {:error, message} ->
+            {:error, Kernel.inspect(message)}
+        end
 
       {:error, message} ->
         {:error, message}
+    end
+  end
+
+  def before(sup_pid, room_id, anchor, limit) do
+    client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
+
+    case parse_anchor(anchor) do
+      {:ok, event_id} ->
+        case Matrix2051.MatrixClient.Client.get_event_context(
+               client,
+               room_id,
+               event_id,
+               limit * 2
+             ) do
+          {:ok, events} ->
+            {:ok, process_events(sup_pid, room_id, Enum.reverse(events["events_before"]))}
+
+          {:error, message} ->
+            {:error, Kernel.inspect(message)}
+        end
+
+      {:error, message} ->
+        {:error, message}
+    end
+  end
+
+  defp parse_anchor(anchor) do
+    case String.split(anchor, "=", parts: 2) do
+      ["msgid", msgid] ->
+        {:ok, msgid}
+
+      ["timestamp", _] ->
+        {:error,
+         "CHATHISTORY with timestamps is not supported. See https://github.com/progval/matrix2051/issues/1"}
+
+      _ ->
+        {:error, "Invalid anchor: '#{anchor}', it should start with 'msgid='."}
     end
   end
 

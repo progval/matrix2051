@@ -777,50 +777,49 @@ defmodule Matrix2051.IrcConn.Handler do
       {"CHATHISTORY", ["TARGETS" | _]} ->
         send_needmoreparams.()
 
-      {"CHATHISTORY", ["AFTER", target, <<?$, _::binary>> = msgid1, limit | _]} ->
+      {"CHATHISTORY", ["AFTER", target, anchor, limit | _]} ->
         limit = String.to_integer(limit)
 
-        case Matrix2051.MatrixClient.ChatHistory.after_(sup_pid, target, msgid1, limit) do
+        case Matrix2051.MatrixClient.ChatHistory.after_(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
             send_batch.(messages, "chathistory")
 
           {:error, message} ->
             send.(%Matrix2051.Irc.Command{
               command: "FAIL",
-              params: ["CHATHISTORY", "MESSAGE_ERROR", "AFTER", Kernel.inspect(message)]
+              params: ["CHATHISTORY", "MESSAGE_ERROR", "AFTER", message]
             })
         end
 
-      {"CHATHISTORY", ["AROUND", target, <<?$, _::binary>> = msgid1, limit | _]} ->
+      {"CHATHISTORY", ["AROUND", target, anchor, limit | _]} ->
         limit = String.to_integer(limit)
 
-        case Matrix2051.MatrixClient.ChatHistory.around(sup_pid, target, msgid1, limit) do
+        case Matrix2051.MatrixClient.ChatHistory.around(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
             send_batch.(messages, "chathistory")
 
           {:error, message} ->
             send.(%Matrix2051.Irc.Command{
               command: "FAIL",
-              params: ["CHATHISTORY", "MESSAGE_ERROR", "AROUND", Kernel.inspect(message)]
+              params: ["CHATHISTORY", "MESSAGE_ERROR", "AROUND", message]
             })
         end
 
-      {"CHATHISTORY", ["BEFORE", target, <<?$, _::binary>> = msgid1, limit | _]} ->
+      {"CHATHISTORY", ["BEFORE", target, anchor, limit | _]} ->
         limit = String.to_integer(limit)
 
-        case Matrix2051.MatrixClient.ChatHistory.before(sup_pid, target, msgid1, limit) do
+        case Matrix2051.MatrixClient.ChatHistory.before(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
             send_batch.(messages, "chathistory")
 
           {:error, message} ->
             send.(%Matrix2051.Irc.Command{
               command: "FAIL",
-              params: ["CHATHISTORY", "MESSAGE_ERROR", "BEFORE", Kernel.inspect(message)]
+              params: ["CHATHISTORY", "MESSAGE_ERROR", "BEFORE", message]
             })
         end
 
-      {"CHATHISTORY",
-       ["BETWEEN", _target, <<?$, _::binary>> = _msgid1, <<?$, _::binary>> = _msgid2, _limit | _]} ->
+      {"CHATHISTORY", ["BETWEEN", _target, _anchor1, _anchor2, _limit | _]} ->
         send.(%Matrix2051.Irc.Command{
           command: "FAIL",
           params: [
@@ -831,7 +830,7 @@ defmodule Matrix2051.IrcConn.Handler do
           ]
         })
 
-      {"CHATHISTORY", ["LATEST", _target, <<?$, _::binary>> = _msgid1 | _]} ->
+      {"CHATHISTORY", ["LATEST", _target, _anchor | _]} ->
         send.(%Matrix2051.Irc.Command{
           command: "FAIL",
           params: [
@@ -839,30 +838,6 @@ defmodule Matrix2051.IrcConn.Handler do
             "INVALID_PARAMS",
             "LATEST",
             "CHATHISTORY LATEST is not supported yet."
-          ]
-        })
-
-      {"CHATHISTORY", [subcommand, _target, _arg1, _limit | _]}
-      when subcommand in ["AFTER", "AROUND", "BEFORE", "LATEST"] ->
-        # TODO: support timestamps somehow
-        send.(%Matrix2051.Irc.Command{
-          command: "FAIL",
-          params: [
-            "CHATHISTORY",
-            "INVALID_PARAMS",
-            subcommand,
-            "CHATHISTORY with timestamps is not supported. See https://github.com/progval/matrix2051/issues/1"
-          ]
-        })
-
-      {"CHATHISTORY", [subcommand, _target, _arg1, _arg2, _limit | _]} ->
-        # TODO: support timestamps somehow
-        send.(%Matrix2051.Irc.Command{
-          command: "FAIL",
-          params: [
-            "CHATHISTORY",
-            subcommand,
-            "CHATHISTORY with timestamps is not supported. See https://github.com/progval/matrix2051/issues/1"
           ]
         })
 

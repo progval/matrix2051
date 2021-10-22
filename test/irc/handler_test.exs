@@ -816,7 +816,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   test "CHATHISTORY AROUND", %{handler: handler} do
     do_connection_registration(handler, ["message-tags"])
 
-    send(handler, cmd("@label=l1 CHATHISTORY AROUND #chan $event3 5"))
+    send(handler, cmd("@label=l1 CHATHISTORY AROUND #chan msgid=$event3 5"))
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
 
@@ -842,7 +842,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_line("BATCH :-#{batch_id}\r\n")
 
-    send(handler, cmd("@label=l2 CHATHISTORY AROUND #chan $event3 4"))
+    send(handler, cmd("@label=l2 CHATHISTORY AROUND #chan msgid=$event3 4"))
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
 
@@ -864,7 +864,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_line("BATCH :-#{batch_id}\r\n")
 
-    send(handler, cmd("@label=l3 CHATHISTORY AROUND #chan $event3 3"))
+    send(handler, cmd("@label=l3 CHATHISTORY AROUND #chan msgid=$event3 3"))
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l3 BATCH +#{batch_id} :chathistory\r\n"
 
@@ -882,7 +882,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_line("BATCH :-#{batch_id}\r\n")
 
-    send(handler, cmd("@label=l4 CHATHISTORY AROUND #chan $event3 2"))
+    send(handler, cmd("@label=l4 CHATHISTORY AROUND #chan msgid=$event3 2"))
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l4 BATCH +#{batch_id} :chathistory\r\n"
 
@@ -896,7 +896,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_line("BATCH :-#{batch_id}\r\n")
 
-    send(handler, cmd("@label=l5 CHATHISTORY AROUND #chan $event3 1"))
+    send(handler, cmd("@label=l5 CHATHISTORY AROUND #chan msgid=$event3 1"))
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l5 BATCH +#{batch_id} :chathistory\r\n"
 
@@ -910,7 +910,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   test "CHATHISTORY BEFORE", %{handler: handler} do
     do_connection_registration(handler, ["message-tags"])
 
-    send(handler, cmd("@label=l1 CHATHISTORY BEFORE #chan $event3 2"))
+    send(handler, cmd("@label=l1 CHATHISTORY BEFORE #chan msgid=$event3 2"))
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
 
@@ -924,7 +924,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_line("BATCH :-#{batch_id}\r\n")
 
-    send(handler, cmd("@label=l2 CHATHISTORY BEFORE #chan $event3 1"))
+    send(handler, cmd("@label=l2 CHATHISTORY BEFORE #chan msgid=$event3 1"))
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
 
@@ -938,7 +938,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   test "CHATHISTORY AFTER", %{handler: handler} do
     do_connection_registration(handler, ["message-tags"])
 
-    send(handler, cmd("@label=l1 CHATHISTORY AFTER #chan $event3 2"))
+    send(handler, cmd("@label=l1 CHATHISTORY AFTER #chan msgid=$event3 2"))
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
 
@@ -952,7 +952,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_line("BATCH :-#{batch_id}\r\n")
 
-    send(handler, cmd("@label=l2 CHATHISTORY AFTER #chan $event3 1"))
+    send(handler, cmd("@label=l2 CHATHISTORY AFTER #chan msgid=$event3 1"))
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
 

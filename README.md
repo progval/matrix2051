@@ -61,7 +61,7 @@ Non-goals:
   * [ ] [AFTER/AROUND/BEFORE with timestamps](https://github.com/progval/matrix2051/issues/1)
   * [ ] BETWEEN
   * [ ] LATEST
-* [ ] connection via [websockets](https://github.com/ircv3/ircv3-specifications/pull/342)
+* [ ] connection via [websockets](https://ircv3.net/specs/extensions/websocket)
 * [x] [multiline](https://ircv3.net/specs/extensions/multiline) messages
   * [x] Matrix -> IRC
   * [x] IRC -> Matrix
