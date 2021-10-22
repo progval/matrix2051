@@ -54,7 +54,10 @@ defmodule MockMatrixState do
             "!room_id:example.org" => %Matrix2051.Matrix.RoomState{
               synced: true,
               canonical_alias: "#existing_room:example.org",
-              members: MapSet.new(["user1:example.org", "user2:example.com"])
+              members: %{
+                "user1:example.org" => %Matrix2051.Matrix.RoomMember{display_name: "user one"},
+                "user2:example.com" => %Matrix2051.Matrix.RoomMember{}
+              }
             }
           }
         }

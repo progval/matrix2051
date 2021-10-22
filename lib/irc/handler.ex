@@ -779,7 +779,7 @@ defmodule Matrix2051.IrcConn.Handler do
             fn _room_id, room ->
               commands =
                 room.members
-                |> Stream.map(fn member ->
+                |> Stream.map(fn {user_id, _member} ->
                   [local_name, hostname] = String.split(nick, ":", parts: 2)
                   # RPL_WHOREPLY
                   make_numeric.("352", [
@@ -787,9 +787,9 @@ defmodule Matrix2051.IrcConn.Handler do
                     local_name,
                     hostname,
                     "*",
-                    member,
+                    user_id,
                     "H",
-                    "0 " <> member
+                    "0 " <> user_id
                   ])
                 end)
 
