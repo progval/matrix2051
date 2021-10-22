@@ -47,6 +47,8 @@ defmodule MockMatrixState do
   def start_link(args) do
     {test_pid} = args
 
+    name = {:via, Registry, {Matrix2051.Registry, {test_pid, :matrix_state}}}
+
     Agent.start_link(
       fn ->
         %Matrix2051.MatrixClient.State{
@@ -62,7 +64,7 @@ defmodule MockMatrixState do
           }
         }
       end,
-      name: {:via, Registry, {Matrix2051.Registry, {test_pid, :matrix_state}}}
+      name: name
     )
   end
 end
