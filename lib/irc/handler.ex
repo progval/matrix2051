@@ -540,6 +540,7 @@ defmodule Matrix2051.IrcConn.Handler do
       "CLIENTTAGDENY=*,-draft/reply",
       "CHANLIMIT=",
       "CHANTYPES=#!",
+      "CHATHISTORY=1000",
       "TARGMAX=JOIN:1,PART:1",
       "UTF8ONLY",
       "are supported by this server"
