@@ -47,8 +47,14 @@ defmodule Matrix2051.IrcConn.Handler do
     # https://ircv3.net/specs/extensions/channel-rename
     "draft/channel-rename" => {:channel_rename, nil},
 
+    # https://ircv3.net/specs/extensions/chathistory
+    "draft/chathistory" => {:chathistory, nil},
+
     # https://ircv3.net/specs/extensions/echo-message.html
     "echo-message" => {:echo_message, nil},
+
+    # https://ircv3.net/specs/extensions/chathistory
+    # "draft/event-playback" => {:event_playback, nil},
 
     # https://ircv3.net/specs/extensions/extended-join.html
     "extended-join" => {:extended_join, nil},
@@ -198,12 +204,12 @@ defmodule Matrix2051.IrcConn.Handler do
   end
 
   # Returns a function that can be used to reply to the given command with multiple replies
-  defp make_send_label_batch_function(command, sup_pid) do
+  defp make_send_batch_function(command, sup_pid) do
     writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
     state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
     capabilities = Matrix2051.IrcConn.State.capabilities(state)
 
-    fn commands ->
+    fn commands, batch_type ->
       case Map.get(command.tags, "label") do
         nil ->
           # no label, don't use a batch.
@@ -224,7 +230,7 @@ defmodule Matrix2051.IrcConn.Handler do
           open_batch = %Matrix2051.Irc.Command{
             tags: %{"label" => label},
             command: "BATCH",
-            params: ["+" <> batch_id, "labeled-response"]
+            params: ["+" <> batch_id, batch_type]
           }
 
           close_batch = %Matrix2051.Irc.Command{command: "BATCH", params: ["-" <> batch_id]}
@@ -637,7 +643,7 @@ defmodule Matrix2051.IrcConn.Handler do
     nick = Matrix2051.IrcConn.State.nick(state)
 
     send = make_send_function(command, sup_pid)
-    send_label_batch = make_send_label_batch_function(command, sup_pid)
+    send_batch = make_send_batch_function(command, sup_pid)
 
     make_numeric = fn numeric, params ->
       first_param =
@@ -763,6 +769,121 @@ defmodule Matrix2051.IrcConn.Handler do
       {"TAGMSG", _} ->
         send_needmoreparams.()
 
+      {"CHATHISTORY", ["TARGETS", _ts1, _ts2, _limit | _]} ->
+        # This is mainly used for PMs, and we don't support those yet; so there
+        # is little point in storing state to actually implement it
+        send_batch.([], "draft/chathistory-targets")
+
+      {"CHATHISTORY", ["TARGETS" | _]} ->
+        send_needmoreparams.()
+
+      {"CHATHISTORY", ["AFTER", target, <<?$, _::binary>> = msgid1, limit | _]} ->
+        limit = String.to_integer(limit)
+
+        case Matrix2051.MatrixClient.ChatHistory.after_(sup_pid, target, msgid1, limit) do
+          {:ok, messages} ->
+            send_batch.(messages, "chathistory")
+
+          {:error, message} ->
+            send.(%Matrix2051.Irc.Command{
+              command: "FAIL",
+              params: ["CHATHISTORY", "MESSAGE_ERROR", "AFTER", Kernel.inspect(message)]
+            })
+        end
+
+      {"CHATHISTORY", ["AROUND", target, <<?$, _::binary>> = msgid1, limit | _]} ->
+        limit = String.to_integer(limit)
+
+        case Matrix2051.MatrixClient.ChatHistory.around(sup_pid, target, msgid1, limit) do
+          {:ok, messages} ->
+            send_batch.(messages, "chathistory")
+
+          {:error, message} ->
+            send.(%Matrix2051.Irc.Command{
+              command: "FAIL",
+              params: ["CHATHISTORY", "MESSAGE_ERROR", "AROUND", Kernel.inspect(message)]
+            })
+        end
+
+      {"CHATHISTORY", ["BEFORE", target, <<?$, _::binary>> = msgid1, limit | _]} ->
+        limit = String.to_integer(limit)
+
+        case Matrix2051.MatrixClient.ChatHistory.before(sup_pid, target, msgid1, limit) do
+          {:ok, messages} ->
+            send_batch.(messages, "chathistory")
+
+          {:error, message} ->
+            send.(%Matrix2051.Irc.Command{
+              command: "FAIL",
+              params: ["CHATHISTORY", "MESSAGE_ERROR", "BEFORE", Kernel.inspect(message)]
+            })
+        end
+
+      {"CHATHISTORY",
+       ["BETWEEN", _target, <<?$, _::binary>> = _msgid1, <<?$, _::binary>> = _msgid2, _limit | _]} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: [
+            "CHATHISTORY",
+            "INVALID_PARAMS",
+            "BETWEEN",
+            "CHATHISTORY BETWEEN is not supported yet."
+          ]
+        })
+
+      {"CHATHISTORY", ["LATEST", _target, <<?$, _::binary>> = _msgid1 | _]} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: [
+            "CHATHISTORY",
+            "INVALID_PARAMS",
+            "LATEST",
+            "CHATHISTORY LATEST is not supported yet."
+          ]
+        })
+
+      {"CHATHISTORY", [subcommand, _target, _arg1, _limit | _]}
+      when subcommand in ["AFTER", "AROUND", "BEFORE", "LATEST"] ->
+        # TODO: support timestamps somehow
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: [
+            "CHATHISTORY",
+            "INVALID_PARAMS",
+            subcommand,
+            "CHATHISTORY with timestamps is not supported. See https://github.com/progval/matrix2051/issues/1"
+          ]
+        })
+
+      {"CHATHISTORY", [subcommand, _target, _arg1, _arg2, _limit | _]} ->
+        # TODO: support timestamps somehow
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: [
+            "CHATHISTORY",
+            subcommand,
+            "CHATHISTORY with timestamps is not supported. See https://github.com/progval/matrix2051/issues/1"
+          ]
+        })
+
+      {"CHATHISTORY", [subcommand | _]}
+      when subcommand in ["BEFORE", "AFTER", "LATEST", "AROUND", "BETWEEN"] ->
+        send_needmoreparams.()
+
+      {"CHATHISTORY", [subcommand | _]} ->
+        send.(%Matrix2051.Irc.Command{
+          command: "FAIL",
+          params: [
+            "CHATHISTORY",
+            "INVALID_PARAMS",
+            subcommand,
+            "Unknown CHATHISTORY subcommand"
+          ]
+        })
+
+      {"CHATHISTORY", []} ->
+        send_needmoreparams.()
+
       {"WHO", [target, "o" | _]} ->
         # no RPL_WHOREPLY because no operators
 
@@ -796,17 +917,20 @@ defmodule Matrix2051.IrcConn.Handler do
               # RPL_ENDOFWHO
               last_command = make_numeric.(315, [target, "End of WHO list"])
 
-              send_label_batch.(Stream.concat(commands, [last_command]))
+              send_batch.(Stream.concat(commands, [last_command]), "labeled-response")
             end
           )
         else
           # target is a nick
           [local_name, hostname] = String.split(target, ":", parts: 2)
 
-          send_label_batch.([
-            make_numeric.("352", ["*", local_name, hostname, "*", target, "H", "0 " <> target]),
-            make_numeric.(315, [target, "End of WHO list"])
-          ])
+          send_batch.(
+            [
+              make_numeric.("352", ["*", local_name, hostname, "*", target, "H", "0 " <> target]),
+              make_numeric.(315, [target, "End of WHO list"])
+            ],
+            "labeled-response"
+          )
         end
 
       {"WHO", _} ->

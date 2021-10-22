@@ -57,6 +57,10 @@ Non-goals:
   * [ ] IRC -> Matrix
 * [x] [display names](https://github.com/ircv3/ircv3-specifications/pull/452)
 * [ ] [chat history](https://ircv3.net/specs/extensions/chathistory)
+  * [x] AFTER/AROUND/BEFORE with msgids
+  * [ ] [AFTER/AROUND/BEFORE with timestamps](https://github.com/progval/matrix2051/issues/1)
+  * [ ] BETWEEN
+  * [ ] LATEST
 * [ ] connection via [websockets](https://github.com/ircv3/ircv3-specifications/pull/342)
 * [x] [multiline](https://ircv3.net/specs/extensions/multiline) messages
   * [x] Matrix -> IRC
@@ -115,3 +119,5 @@ Utilities:
   that don't support some capabilities.
 * `irc/word_wrap.ex`: generic line wrapping
 * `format/`: Convert between IRC's formatting and `org.matrix.custom.html`
+* `matrix_client/chat_history.ex`: fetches message history from Matrix, when requested
+  by the IRC client

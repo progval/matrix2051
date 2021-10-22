@@ -82,7 +82,7 @@ defmodule Matrix2051.MatrixClient.Poller do
 
     case Matrix2051.Matrix.RawClient.get(raw_client, path, [], options) do
       {:ok, events} ->
-        handle_events(sup_pid, handled_event_ids, events)
+        handle_events(sup_pid, events, handled_event_ids)
         events["next_batch"]
     end
   end
@@ -90,13 +90,15 @@ defmodule Matrix2051.MatrixClient.Poller do
   @doc """
     Internal method that dispatches event; public only so it can be unit-tested.
   """
-  def handle_events(sup_pid, handled_event_ids \\ MapSet.new(), events) do
+  def handle_events(sup_pid, events, handled_event_ids \\ MapSet.new()) do
+    write = nil
+
     events
     |> Map.get("rooms", %{})
     |> Map.get("join", %{})
     |> Map.to_list()
     |> Enum.map(fn {room_id, event} ->
-      handle_joined_room(sup_pid, handled_event_ids, room_id, event)
+      handle_joined_room(sup_pid, handled_event_ids, room_id, write, event)
     end)
 
     events
@@ -104,7 +106,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     |> Map.get("leave", %{})
     |> Map.to_list()
     |> Enum.map(fn {room_id, event} ->
-      handle_left_room(sup_pid, handled_event_ids, room_id, event)
+      handle_left_room(sup_pid, handled_event_ids, room_id, write, event)
     end)
 
     events
@@ -112,11 +114,11 @@ defmodule Matrix2051.MatrixClient.Poller do
     |> Map.get("invite", %{})
     |> Map.to_list()
     |> Enum.map(fn {room_id, event} ->
-      handle_invited_room(sup_pid, handled_event_ids, room_id, event)
+      handle_invited_room(sup_pid, handled_event_ids, room_id, write, event)
     end)
   end
 
-  defp handle_joined_room(sup_pid, handled_event_ids, room_id, room_event) do
+  defp handle_joined_room(sup_pid, handled_event_ids, room_id, write, room_event) do
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
 
     new_rooms =
@@ -134,7 +136,7 @@ defmodule Matrix2051.MatrixClient.Poller do
               sender -> String.replace_prefix(sender, "@", "")
             end
 
-          handle_event(sup_pid, room_id, sender, true, event)
+          handle_event(sup_pid, room_id, sender, true, write, event)
           # Don't mark it handled right now, there is still some processing to
           # do below.
           # Matrix2051.MatrixClient.State.mark_handled_event(state, event_id)
@@ -153,6 +155,7 @@ defmodule Matrix2051.MatrixClient.Poller do
         room_id,
         canonical_alias_sender,
         old_canonical_alias,
+        write,
         nil
       )
 
@@ -173,20 +176,21 @@ defmodule Matrix2051.MatrixClient.Poller do
             sender -> String.replace_prefix(sender, "@", "")
           end
 
-        handle_event(sup_pid, room_id, sender, false, event)
+        handle_event(sup_pid, room_id, sender, false, write, event)
 
         Matrix2051.MatrixClient.State.mark_handled_event(state, event_id)
       end
     end)
   end
 
-  defp handle_event(
-         sup_pid,
-         room_id,
-         sender,
-         state_event,
-         %{"type" => "m.room.canonical_alias"} = event
-       ) do
+  def handle_event(
+        sup_pid,
+        room_id,
+        sender,
+        state_event,
+        write,
+        %{"type" => "m.room.canonical_alias"} = event
+      ) do
     new_canonical_alias = event["content"]["alias"]
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
 
@@ -198,22 +202,23 @@ defmodule Matrix2051.MatrixClient.Poller do
       )
 
     if !state_event do
-      send_channel_welcome(sup_pid, room_id, sender, old_canonical_alias, event)
+      send_channel_welcome(sup_pid, room_id, sender, old_canonical_alias, write, event)
     end
 
     {room_id, {sender, old_canonical_alias}}
   end
 
-  defp handle_event(
-         sup_pid,
-         room_id,
-         sender,
-         state_event,
-         %{"type" => "m.room.join_rules"} = event
-       ) do
+  def handle_event(
+        sup_pid,
+        room_id,
+        sender,
+        state_event,
+        write,
+        %{"type" => "m.room.join_rules"} = event
+      ) do
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
-    send = make_send_function(sup_pid, event)
+    send = make_send_function(sup_pid, event, write)
 
     if !state_event do
       mode =
@@ -235,16 +240,17 @@ defmodule Matrix2051.MatrixClient.Poller do
     nil
   end
 
-  defp handle_event(
-         sup_pid,
-         room_id,
-         sender,
-         state_event,
-         %{"type" => "m.room.member"} = event
-       ) do
+  def handle_event(
+        sup_pid,
+        room_id,
+        sender,
+        state_event,
+        write,
+        %{"type" => "m.room.member"} = event
+      ) do
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
-    send = make_send_function(sup_pid, event)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+    send = make_send_function(sup_pid, event, write)
 
     target = event |> Map.get("state_key", sender) |> String.replace_prefix("@", "")
 
@@ -308,17 +314,18 @@ defmodule Matrix2051.MatrixClient.Poller do
     nil
   end
 
-  defp handle_event(
-         sup_pid,
-         room_id,
-         sender,
-         _state_event,
-         %{"type" => "m.room.message"} = event
-       ) do
+  def handle_event(
+        sup_pid,
+        room_id,
+        sender,
+        _state_event,
+        write,
+        %{"type" => "m.room.message"} = event
+      ) do
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
-    send = make_send_function(sup_pid, event)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
     member = Matrix2051.MatrixClient.State.room_member(state, room_id, sender)
+    send = make_send_function(sup_pid, event, write)
 
     tags = %{"account" => sender}
 
@@ -460,13 +467,14 @@ defmodule Matrix2051.MatrixClient.Poller do
                 %{command | tags: command_tags}
               end)
 
-            send_multiline_batch(sup_pid, sender, event, tags, channel, commands)
+            send_multiline_batch(sup_pid, sender, write, event, tags, channel, commands)
         end
 
       lines ->
         send_multiline_batch(
           sup_pid,
           sender,
+          write,
           event,
           tags,
           channel,
@@ -483,15 +491,16 @@ defmodule Matrix2051.MatrixClient.Poller do
     nil
   end
 
-  defp handle_event(
-         sup_pid,
-         room_id,
-         sender,
-         state_event,
-         %{"type" => "m.room.name"} = event
-       ) do
+  def handle_event(
+        sup_pid,
+        room_id,
+        sender,
+        state_event,
+        write,
+        %{"type" => "m.room.name"} = event
+      ) do
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
-    send = make_send_function(sup_pid, event)
+    send = make_send_function(sup_pid, event, write)
 
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
     Matrix2051.MatrixClient.State.set_room_name(state, room_id, event["content"]["name"])
@@ -513,16 +522,17 @@ defmodule Matrix2051.MatrixClient.Poller do
     nil
   end
 
-  defp handle_event(
-         sup_pid,
-         room_id,
-         sender,
-         state_event,
-         %{"type" => "m.room.topic"} = event
-       ) do
+  def handle_event(
+        sup_pid,
+        room_id,
+        sender,
+        state_event,
+        write,
+        %{"type" => "m.room.topic"} = event
+      ) do
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
-    send = make_send_function(sup_pid, event)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+    send = make_send_function(sup_pid, event, write)
 
     Matrix2051.MatrixClient.State.set_room_topic(
       state,
@@ -547,10 +557,10 @@ defmodule Matrix2051.MatrixClient.Poller do
     nil
   end
 
-  defp handle_event(sup_pid, room_id, _sender, _state_event, event) do
+  def handle_event(sup_pid, room_id, _sender, _state_event, write, event) do
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
-    send = make_send_function(sup_pid, event)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+    send = make_send_function(sup_pid, event, write)
 
     case event["type"] do
       "m.room.create" ->
@@ -573,13 +583,13 @@ defmodule Matrix2051.MatrixClient.Poller do
     nil
   end
 
-  defp handle_left_room(sup_pid, _handled_event_ids, _room_id, _event) do
+  defp handle_left_room(sup_pid, _handled_event_ids, _room_id, _write, _event) do
     _state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     _writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
     # TODO
   end
 
-  defp handle_invited_room(sup_pid, handled_event_ids, room_id, room_event) do
+  defp handle_invited_room(sup_pid, handled_event_ids, room_id, write, room_event) do
     irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(irc_state)
@@ -592,7 +602,7 @@ defmodule Matrix2051.MatrixClient.Poller do
       event_id = Map.get(event, "event_id")
 
       if !MapSet.member?(handled_event_ids, event_id) do
-        send = make_send_function(sup_pid, event)
+        send = make_send_function(sup_pid, event, write)
 
         sender =
           case Map.get(event, "sender") do
@@ -637,11 +647,13 @@ defmodule Matrix2051.MatrixClient.Poller do
          room_id,
          canonical_alias_sender,
          old_canonical_alias,
+         write,
          event
        ) do
     irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     capabilities = Matrix2051.IrcConn.State.capabilities(irc_state)
+    send = make_send_function(sup_pid, event, write)
 
     supports_channel_rename = Enum.member?(capabilities, :channel_rename)
 
@@ -650,13 +662,13 @@ defmodule Matrix2051.MatrixClient.Poller do
         Matrix2051.IrcConn.Supervisor,
         sup_pid,
         room_id,
+        write,
         event
       )
     end
 
     if old_canonical_alias != nil do
       if supports_channel_rename do
-        send = make_send_function(sup_pid, event)
         new_canonical_alias = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
 
         source =
@@ -672,9 +684,9 @@ defmodule Matrix2051.MatrixClient.Poller do
         })
       else
         close_renamed_channel(
-          Matrix2051.IrcConn.Supervisor,
           sup_pid,
           room_id,
+          write,
           canonical_alias_sender,
           old_canonical_alias
         )
@@ -686,14 +698,14 @@ defmodule Matrix2051.MatrixClient.Poller do
          Matrix2051.IrcConn.Supervisor,
          sup_pid,
          room_id,
+         write,
          event
        ) do
     irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(irc_state)
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
-
-    send = make_send_function(sup_pid, event)
+    send = make_send_function(sup_pid, event, write)
 
     send_numeric = fn numeric, params ->
       send.(%Matrix2051.Irc.Command{source: "server", command: numeric, params: [nick | params]})
@@ -747,9 +759,9 @@ defmodule Matrix2051.MatrixClient.Poller do
   end
 
   defp close_renamed_channel(
-         Matrix2051.IrcConn.Supervisor,
          sup_pid,
          room_id,
+         write,
          canonical_alias_sender,
          old_canonical_alias
        ) do
@@ -757,8 +769,7 @@ defmodule Matrix2051.MatrixClient.Poller do
     state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = Matrix2051.IrcConn.State.nick(irc_state)
     new_canonical_alias = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
-
-    send = make_send_function(sup_pid, nil)
+    send = make_send_function(sup_pid, nil, write)
 
     # this is a known room that got renamed; part the old channel.
     send.(%Matrix2051.Irc.Command{
@@ -793,10 +804,19 @@ defmodule Matrix2051.MatrixClient.Poller do
   end
 
   # Returns a function that can be used to send messages
-  defp make_send_function(sup_pid, event) do
+  defp make_send_function(sup_pid, event, write) do
     writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
     state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
     capabilities = Matrix2051.IrcConn.State.capabilities(state)
+
+    write =
+      write ||
+        fn cmd ->
+          Matrix2051.IrcConn.Writer.write_command(
+            writer,
+            Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+          )
+        end
 
     fn cmd ->
       cmd =
@@ -843,19 +863,16 @@ defmodule Matrix2051.MatrixClient.Poller do
             %{cmd | tags: Map.merge(cmd.tags, new_tags), is_echo: is_echo}
         end
 
-      Matrix2051.IrcConn.Writer.write_command(
-        writer,
-        Matrix2051.Irc.Command.downgrade(cmd, capabilities)
-      )
+      write.(cmd)
     end
   end
 
-  defp send_multiline_batch(sup_pid, sender, event, tags, target, inner_commands) do
-    send = make_send_function(sup_pid, event)
+  defp send_multiline_batch(sup_pid, sender, write, event, tags, target, inner_commands) do
     writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
     irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
     capabilities = Matrix2051.IrcConn.State.capabilities(irc_state)
     batch_reference_tag = Base.encode32(event["event_id"], padding: false)
+    send = make_send_function(sup_pid, event, write)
 
     # open batch
     send.(%Matrix2051.Irc.Command{

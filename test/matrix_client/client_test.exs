@@ -25,6 +25,9 @@ defmodule Matrix2051.MatrixClient.ClientTest do
   setup do
     start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
     config = start_supervised!({Matrix2051.Config, []})
+
+    start_supervised!({Matrix2051.MatrixClient.State, {self()}})
+
     Registry.register(Matrix2051.Registry, {self(), :matrix_poller}, self())
 
     %{config: config, sup_pid: self()}
@@ -425,5 +428,51 @@ defmodule Matrix2051.MatrixClient.ClientTest do
     end
 
     assert Matrix2051.MatrixClient.Client.join_room(client, "#testroom:matrix.example.com")
+  end
+
+  test "getting event context", %{sup_pid: sup_pid} do
+    MockHTTPoison
+    |> expect_login
+    |> expect(:get, fn url, headers, _options ->
+      assert headers == [Authorization: "Bearer t0ken"]
+
+      assert url ==
+               "https://matrix.example.org/_matrix/client/r0/rooms/%21roomid%3Aexample.org/context/%24event3?limit=5"
+
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 200,
+         body: ~s({"events_before": [], "event": "foo", "events_after": []})
+       }}
+    end)
+
+    client =
+      start_supervised!({Matrix2051.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+
+    state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
+
+    Matrix2051.MatrixClient.State.set_room_canonical_alias(
+      state,
+      "!roomid:example.org",
+      "#chan:example.org"
+    )
+
+    assert Matrix2051.MatrixClient.Client.connect(
+             client,
+             "user",
+             "matrix.example.org",
+             "p4ssw0rd"
+           ) == {:ok}
+
+    receive do
+      msg -> assert msg == :connected
+    end
+
+    assert Matrix2051.MatrixClient.Client.get_event_context(
+             client,
+             "#chan:example.org",
+             "$event3",
+             5
+           ) == {:ok, %{"event" => "foo", "events_after" => [], "events_before" => []}}
   end
 end

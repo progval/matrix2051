@@ -73,6 +73,96 @@ defmodule MockMatrixClient do
   end
 
   @impl true
+  def handle_call({:get_event_context, _channel, _event_id, limit}, _from, state) do
+    event1 = %{
+      "content" => %{"body" => "first message", "msgtype" => "m.text"},
+      "event_id" => "$event1",
+      "origin_server_ts" => 1_632_946_233_579,
+      "sender" => "@nick:example.org",
+      "type" => "m.room.message",
+      "unsigned" => %{}
+    }
+
+    event2 = %{
+      "content" => %{"body" => "second message", "msgtype" => "m.text"},
+      "event_id" => "$event2",
+      "origin_server_ts" => 1_632_946_233_579,
+      "sender" => "@nick:example.org",
+      "type" => "m.room.message",
+      "unsigned" => %{}
+    }
+
+    event3 = %{
+      "content" => %{"body" => "third message", "msgtype" => "m.text"},
+      "event_id" => "$event3",
+      "origin_server_ts" => 1_632_946_233_579,
+      "sender" => "@nick:example.org",
+      "type" => "m.room.message",
+      "unsigned" => %{}
+    }
+
+    event4 = %{
+      "content" => %{"body" => "fourth message", "msgtype" => "m.text"},
+      "event_id" => "$event4",
+      "origin_server_ts" => 1_632_946_233_579,
+      "sender" => "@nick:example.org",
+      "type" => "m.room.message",
+      "unsigned" => %{}
+    }
+
+    event5 = %{
+      "content" => %{"body" => "fifth message", "msgtype" => "m.text"},
+      "event_id" => "$event5",
+      "origin_server_ts" => 1_632_946_233_579,
+      "sender" => "@nick:example.org",
+      "type" => "m.room.message",
+      "unsigned" => %{}
+    }
+
+    reply =
+      case limit do
+        0 ->
+          %{
+            "events_before" => [],
+            "event" => event3,
+            "events_after" => []
+          }
+
+        1 ->
+          %{
+            "events_before" => [event2],
+            "event" => event3,
+            "events_after" => []
+          }
+
+        2 ->
+          %{
+            "events_before" => [event2],
+            "event" => event3,
+            "events_after" => [event4]
+          }
+
+        3 ->
+          %{
+            # reverse-chronological order, as per the spec
+            "events_before" => [event2, event1],
+            "event" => event3,
+            "events_after" => [event4]
+          }
+
+        n when n >= 4 ->
+          %{
+            # reverse-chronological order, as per the spec
+            "events_before" => [event2, event1],
+            "event" => event3,
+            "events_after" => [event4, event5]
+          }
+      end
+
+    {:reply, {:ok, reply}, state}
+  end
+
+  @impl true
   def handle_call(msg, _from, state) do
     %Matrix2051.MatrixClient.Client{irc_pid: irc_pid} = state
     send(irc_pid, msg)
@@ -84,8 +174,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   use ExUnit.Case, async: false
   doctest Matrix2051.IrcConn.Handler
 
-  @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
-  @cap_ls "CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/multiline echo-message extended-join labeled-response message-tags sasl server-time\r\n"
+  @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
+  @cap_ls "CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/multiline echo-message extended-join labeled-response message-tags sasl server-time\r\n"
   @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/reply CHANLIMIT= CHANTYPES=#! TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
@@ -718,6 +808,156 @@ defmodule Matrix2051.IrcConn.HandlerTest do
 
     assert_line(
       "@batch=#{batch_id} :server 315 foo:example.org otheruser:example.org :End of WHO list\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
+  test "CHATHISTORY AROUND", %{handler: handler} do
+    do_connection_registration(handler, ["message-tags"])
+
+    send(handler, cmd("@label=l1 CHATHISTORY AROUND #chan $event3 5"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #chan :first message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #chan :third message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event4 :nick:example.org!nick@example.org PRIVMSG #chan :fourth message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event5 :nick:example.org!nick@example.org PRIVMSG #chan :fifth message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+
+    send(handler, cmd("@label=l2 CHATHISTORY AROUND #chan $event3 4"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #chan :first message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #chan :third message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event4 :nick:example.org!nick@example.org PRIVMSG #chan :fourth message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+
+    send(handler, cmd("@label=l3 CHATHISTORY AROUND #chan $event3 3"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l3 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #chan :third message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event4 :nick:example.org!nick@example.org PRIVMSG #chan :fourth message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+
+    send(handler, cmd("@label=l4 CHATHISTORY AROUND #chan $event3 2"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l4 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #chan :third message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+
+    send(handler, cmd("@label=l5 CHATHISTORY AROUND #chan $event3 1"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l5 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #chan :third message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
+  test "CHATHISTORY BEFORE", %{handler: handler} do
+    do_connection_registration(handler, ["message-tags"])
+
+    send(handler, cmd("@label=l1 CHATHISTORY BEFORE #chan $event3 2"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #chan :first message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+
+    send(handler, cmd("@label=l2 CHATHISTORY BEFORE #chan $event3 1"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
+  test "CHATHISTORY AFTER", %{handler: handler} do
+    do_connection_registration(handler, ["message-tags"])
+
+    send(handler, cmd("@label=l1 CHATHISTORY AFTER #chan $event3 2"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event4 :nick:example.org!nick@example.org PRIVMSG #chan :fourth message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event5 :nick:example.org!nick@example.org PRIVMSG #chan :fifth message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+
+    send(handler, cmd("@label=l2 CHATHISTORY AFTER #chan $event3 1"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event4 :nick:example.org!nick@example.org PRIVMSG #chan :fourth message\r\n"
     )
 
     assert_line("BATCH :-#{batch_id}\r\n")

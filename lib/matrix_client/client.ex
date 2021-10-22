@@ -228,7 +228,7 @@ defmodule Matrix2051.MatrixClient.Client do
     %Matrix2051.MatrixClient.Client{state: :connected, raw_client: raw_client, rooms: rooms} =
       state
 
-    path = "/_matrix/client/r0/join/" <> URI.encode(room_alias, &URI.char_unreserved?/1)
+    path = "/_matrix/client/r0/join/" <> urlquote(room_alias)
 
     room_id = Map.get(rooms, room_alias)
 
@@ -276,6 +276,36 @@ defmodule Matrix2051.MatrixClient.Client do
 
         {:reply, {:ok, {transaction_id}}, state}
     end
+  end
+
+  @impl true
+  def handle_call({:get_event_context, channel, event_id, limit}, _from, state) do
+    %Matrix2051.MatrixClient.Client{
+      state: :connected,
+      irc_pid: irc_pid,
+      raw_client: raw_client,
+      rooms: rooms
+    } = state
+
+    matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(irc_pid)
+
+    reply =
+      case Matrix2051.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+        nil ->
+          {:error, {:room_not_found, channel, rooms}}
+
+        {room_id, _room} ->
+          path =
+            "/_matrix/client/r0/rooms/#{urlquote(room_id)}/context/#{urlquote(event_id)}?" <>
+              URI.encode_query(%{"limit" => limit})
+
+          case Matrix2051.Matrix.RawClient.get(raw_client, path) do
+            {:ok, events} -> {:ok, events}
+            {:error, error} -> {:error, error}
+          end
+      end
+
+    {:reply, reply, state}
   end
 
   @doc """
@@ -399,5 +429,18 @@ defmodule Matrix2051.MatrixClient.Client do
   """
   def send_event(pid, channel, label, event_type, event) do
     GenServer.call(pid, {:send_event, channel, event_type, label, event})
+  end
+
+  @doc """
+    Returns events that happened just before or after the specified event_id.
+
+    https://matrix.org/docs/spec/client_server/r0.6.1#id131
+  """
+  def get_event_context(pid, channel, event_id, limit) do
+    GenServer.call(pid, {:get_event_context, channel, event_id, limit})
+  end
+
+  defp urlquote(s) do
+    URI.encode(s, &URI.char_unreserved?/1)
   end
 end
