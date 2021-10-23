@@ -309,6 +309,23 @@ defmodule Matrix2051.MatrixClient.Poller do
             params: [channel, "+b", "#{target}!*@*"]
           })
         end
+
+      "invite" ->
+        if !state_event do
+          send.(%Matrix2051.Irc.Command{
+            tags: %{"account" => sender},
+            source: nick2nuh(sender),
+            command: "INVITE",
+            params: [String.replace_prefix(event["state_key"], "@", ""), room_id]
+          })
+        end
+
+      _ ->
+        send.(%Matrix2051.Irc.Command{
+          tags: %{"account" => sender},
+          command: "NOTICE",
+          params: [channel, "Unexpected m.room.member event: " <> Kernel.inspect(event)]
+        })
     end
 
     nil
@@ -562,6 +579,24 @@ defmodule Matrix2051.MatrixClient.Poller do
     end
 
     nil
+  end
+
+  def handle_event(_sup_pid, _room_id, _sender, _state_event, _write, %{"type" => event_type})
+      when event_type in [
+             "im.vector.modular.widgets",
+             "org.matrix.appservice-irc.connection",
+             "m.room.avatar",
+             "m.room.bot.options",
+             "m.room.encryption",
+             "m.room.guest_access",
+             "m.room.power_levels",
+             "m.room.related_groups",
+             "m.room.server_acl",
+             "m.room.third_party_invite",
+             "m.space.child",
+             "uk.half-shot.bridge"
+           ] do
+    # ignore these
   end
 
   def handle_event(sup_pid, room_id, _sender, _state_event, write, event) do
