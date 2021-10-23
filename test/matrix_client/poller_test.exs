@@ -1381,4 +1381,81 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
   end
+
+  test "redacted message" do
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    redacted_because = %{
+      "event_id" => "$event3",
+      "origin_server_ts" => 1_633_587_552_816,
+      "redacts" => "$event1",
+      "sender" => "@censor:example.org",
+      "type" => "m.room.redaction",
+      "unsigned" => %{},
+      "user_id" => "@censor:example.org"
+    }
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "first message", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_633_586_313_381,
+        "redacted_because" => redacted_because,
+        "room_id" => "!BIDAeUqYWNCjRLhRdj:matrix.org",
+        "sender" => "@censor:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{
+          "redacted_because" => redacted_because,
+          "redacted_by" => "$event2"
+        },
+        "user_id" => "@censor:example.org"
+      },
+      %{
+        "content" => %{"body" => "second message", "msgtype" => "m.text"},
+        "event_id" => "$event4",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
+    assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n")
+    # m.room.redaction not implemented yet, so it's just ignored
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :second message\r\n"
+    )
+  end
 end

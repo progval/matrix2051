@@ -430,10 +430,17 @@ defmodule Matrix2051.MatrixClient.Poller do
         %{"body" => body} ->
           # fallback
           {"PRIVMSG", body}
+
+        event when map_size(event) == 0 ->
+          # TODO: redaction
+          {nil, ""}
       end
 
     case String.split(body, "\n") do
       [] ->
+        nil
+
+      [""] ->
         nil
 
       [line] ->
