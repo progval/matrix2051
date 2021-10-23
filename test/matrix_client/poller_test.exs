@@ -1382,6 +1382,132 @@ defmodule Matrix2051.MatrixClient.PollerTest do
     assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
   end
 
+  test "downgraded multiline" do
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :message_tags
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "a\nb", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
+    assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+
+    assert_line(
+      "@msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #test:example.org :a\r\n"
+    )
+
+    assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :b\r\n")
+  end
+
+  test "replies and downgraded multiline" do
+    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :account,
+      :message_tags
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "a\nb", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "> <@pinkie:matrix.org> a\n> b\n\nc\nd",
+          "format" => "org.matrix.custom.html",
+          "m.relates_to" => %{
+            "m.in_reply_to" => %{
+              "event_id" => "$event1"
+            }
+          },
+          "msgtype" => "m.text"
+        },
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_633_808_172_505,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
+    assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+
+    assert_line(
+      "@msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #test:example.org :a\r\n"
+    )
+
+    assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :b\r\n")
+
+    assert_line(
+      "@+draft/reply=$event1;msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #test:example.org :c\r\n"
+    )
+
+    assert_line(
+      "@+draft/reply=$event1 :nick:example.org!nick@example.org PRIVMSG #test:example.org :d\r\n"
+    )
+  end
+
   test "redacted message" do
     state_events = [
       %{

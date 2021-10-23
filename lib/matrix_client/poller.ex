@@ -91,7 +91,16 @@ defmodule Matrix2051.MatrixClient.Poller do
     Internal method that dispatches event; public only so it can be unit-tested.
   """
   def handle_events(sup_pid, events, handled_event_ids \\ MapSet.new()) do
-    write = nil
+    irc_state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
+    capabilities = Matrix2051.IrcConn.State.capabilities(irc_state)
+    writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
+
+    write = fn cmd ->
+      Matrix2051.IrcConn.Writer.write_command(
+        writer,
+        Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+      )
+    end
 
     events
     |> Map.get("rooms", %{})
@@ -858,67 +867,54 @@ defmodule Matrix2051.MatrixClient.Poller do
   end
 
   # Returns a function that can be used to send messages
-  defp make_send_function(sup_pid, event, write) do
-    writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
-    state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
-    capabilities = Matrix2051.IrcConn.State.capabilities(state)
-
-    write =
-      write ||
-        fn cmd ->
-          Matrix2051.IrcConn.Writer.write_command(
-            writer,
-            Matrix2051.Irc.Command.downgrade(cmd, capabilities)
-          )
-        end
-
+  defp make_send_function(_sup_pid, event, write) do
     fn cmd ->
-      cmd =
-        case event do
-          nil ->
-            cmd
-
-          _ ->
-            new_tags = %{}
-
-            new_tags =
-              case Map.get(event, "origin_server_ts") do
-                nil ->
-                  new_tags
-
-                origin_server_ts ->
-                  time =
-                    origin_server_ts |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601()
-
-                  Map.put(new_tags, "time", time)
-              end
-
-            new_tags =
-              case Map.get(event, "event_id") do
-                nil -> new_tags
-                event_id -> Map.put(new_tags, "msgid", event_id)
-              end
-
-            {is_echo, new_tags} =
-              case Map.get(event, "unsigned") do
-                %{"transaction_id" => transaction_id} ->
-                  label = Matrix2051.MatrixClient.Client.transaction_id_to_label(transaction_id)
-
-                  if label == nil do
-                    {true, new_tags}
-                  else
-                    {true, Map.put(new_tags, "label", label)}
-                  end
-
-                _ ->
-                  {false, new_tags}
-              end
-
-            %{cmd | tags: Map.merge(cmd.tags, new_tags), is_echo: is_echo}
-        end
-
-      write.(cmd)
+      write.(tag_command(cmd, event))
     end
+  end
+
+  defp tag_command(cmd, event, extra_tags \\ Map.new())
+
+  defp tag_command(cmd, nil, extra_tags) do
+    %{cmd | tags: cmd.tags |> Map.merge(extra_tags)}
+  end
+
+  defp tag_command(cmd, event, extra_tags) do
+    new_tags = extra_tags
+
+    new_tags =
+      case Map.get(event, "origin_server_ts") do
+        nil ->
+          new_tags
+
+        origin_server_ts ->
+          time = origin_server_ts |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601()
+
+          Map.put(new_tags, "time", time)
+      end
+
+    new_tags =
+      case Map.get(event, "event_id") do
+        nil -> new_tags
+        event_id -> Map.put(new_tags, "msgid", event_id)
+      end
+
+    {is_echo, new_tags} =
+      case Map.get(event, "unsigned") do
+        %{"transaction_id" => transaction_id} ->
+          label = Matrix2051.MatrixClient.Client.transaction_id_to_label(transaction_id)
+
+          if label == nil do
+            {true, new_tags}
+          else
+            {true, Map.put(new_tags, "label", label)}
+          end
+
+        _ ->
+          {false, new_tags}
+      end
+
+    %{cmd | tags: Map.merge(cmd.tags, new_tags), is_echo: is_echo}
   end
 
   defp send_multiline_batch(sup_pid, sender, write, event, tags, target, inner_commands) do
@@ -928,35 +924,46 @@ defmodule Matrix2051.MatrixClient.Poller do
     batch_reference_tag = Base.encode32(event["event_id"], padding: false)
     send = make_send_function(sup_pid, event, write)
 
-    # open batch
-    send.(%Matrix2051.Irc.Command{
-      tags: tags,
-      source: nick2nuh(sender),
-      command: "BATCH",
-      params: ["+" <> batch_reference_tag, "draft/multiline", target]
-    })
+    if Enum.member?(capabilities, :multiline) do
+      # open batch
+      send.(%Matrix2051.Irc.Command{
+        tags: tags,
+        source: nick2nuh(sender),
+        command: "BATCH",
+        params: ["+" <> batch_reference_tag, "draft/multiline", target]
+      })
 
-    # send content
-    Enum.map(inner_commands, fn cmd ->
+      # send content
+      Enum.map(inner_commands, fn cmd ->
+        write.(%{cmd | tags: Map.put(cmd.tags, "batch", batch_reference_tag)})
+      end)
+
+      # close batch
+      cmd = %Matrix2051.Irc.Command{
+        command: "BATCH",
+        params: ["-" <> batch_reference_tag]
+      }
+
       Matrix2051.IrcConn.Writer.write_command(
         writer,
-        Matrix2051.Irc.Command.downgrade(
-          %{cmd | tags: Map.put(cmd.tags, "batch", batch_reference_tag)},
-          capabilities
-        )
+        Matrix2051.Irc.Command.downgrade(cmd, capabilities)
       )
-    end)
+    else
+      inner_commands = inner_commands |> Enum.map(fn cmd -> tag_command(cmd, event, tags) end)
 
-    # close batch
-    cmd = %Matrix2051.Irc.Command{
-      command: "BATCH",
-      params: ["-" <> batch_reference_tag]
-    }
+      # Remove the msgid from all commands but the first one.
+      [head | tail] = inner_commands
 
-    Matrix2051.IrcConn.Writer.write_command(
-      writer,
-      Matrix2051.Irc.Command.downgrade(cmd, capabilities)
-    )
+      tail =
+        tail
+        |> Enum.map(fn cmd ->
+          %{cmd | tags: cmd.tags|> Map.delete("msgid")}
+        end)
+
+      inner_commands = [head | tail]
+
+      Enum.map(inner_commands, write)
+    end
   end
 
   defp nick2nuh(nick) do
