@@ -223,6 +223,7 @@ defmodule Matrix2051.MatrixClient.Client do
   def handle_call({:join_room, room_alias}, _from, state) do
     %Matrix2051.MatrixClient.Client{state: :connected, raw_client: raw_client, irc_pid: irc_pid} =
       state
+
     matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(irc_pid)
 
     path = "/_matrix/client/r0/join/" <> urlquote(room_alias)
@@ -230,6 +231,7 @@ defmodule Matrix2051.MatrixClient.Client do
     case Matrix2051.MatrixClient.State.room_from_irc_channel(matrix_state, room_alias) do
       {room_id, _room} ->
         {:reply, {:error, :already_joined, room_id}, state}
+
       nil ->
         case Matrix2051.Matrix.RawClient.post(raw_client, path, "{}") do
           {:ok, %{"room_id" => room_id}} ->
@@ -248,7 +250,7 @@ defmodule Matrix2051.MatrixClient.Client do
   def handle_call({:send_event, channel, event_type, label, event}, _from, state) do
     %Matrix2051.MatrixClient.Client{
       state: :connected,
-      irc_pid: irc_pid,
+      irc_pid: irc_pid
     } = state
 
     matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(irc_pid)
@@ -277,7 +279,7 @@ defmodule Matrix2051.MatrixClient.Client do
     %Matrix2051.MatrixClient.Client{
       state: :connected,
       irc_pid: irc_pid,
-      raw_client: raw_client,
+      raw_client: raw_client
     } = state
 
     matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(irc_pid)
