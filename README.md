@@ -31,6 +31,32 @@ Non-goals:
   * SASL username: your full matrix ID (`user:homeserver.example.org`)
   * SASL password: your matrix password
 
+### Web clients
+
+To connect web clients, you need a websocket gateway.
+Matrix2051 was tested with [KiwiIRC's webircgateway](https://github.com/kiwiirc/webircgateway)
+(try [this patch](https://github.com/kiwiirc/webircgateway/pull/91) if you need to run it on old Go versions).
+
+Here is how you can configure it to connect to Matrix2051 with [Gamja](https://git.sr.ht/~emersion/gamja/):
+
+```toml
+[fileserving]
+enabled = true
+webroot = "/path/to/gamja"
+
+
+[upstream.1]
+hostname = "localhost"
+port = 2051
+tls = false
+# Connection timeout in seconds
+timeout = 20
+# Throttle the lines being written by X per second
+throttle = 100
+webirc = ""
+serverpassword = ""
+```
+
 ## Roadmap
 
 * [x] password authentication (using [SASL](https://ircv3.net/specs/extensions/sasl-3.1) on the IRC side)
@@ -61,7 +87,6 @@ Non-goals:
   * [ ] [AFTER/AROUND/BEFORE with timestamps](https://github.com/progval/matrix2051/issues/1)
   * [ ] BETWEEN
   * [ ] LATEST
-* [ ] connection via [websockets](https://ircv3.net/specs/extensions/websocket)
 * [x] [multiline](https://ircv3.net/specs/extensions/multiline) messages
   * [x] Matrix -> IRC
   * [x] IRC -> Matrix
