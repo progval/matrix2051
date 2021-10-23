@@ -26,11 +26,22 @@ Non-goals:
 
 * Registration and password authentication
 * Joining rooms
-* Sending and receiving messages (supports multiline, highlights, replying, reacting to messages)
+* Sending and receiving messages (supports formatting, multiline, highlights, replying, reacting to messages)
 * Partial [IRCv3 ChatHistory](https://ircv3.net/specs/extensions/chathistory) support;
   enough for Gamja to work.
   [open chathistory issues](https://github.com/progval/matrix2051/milestone/3)
 * [Partial](https://github.com/progval/matrix2051/issues/14) display name support
+
+## Shortcomings
+
+* [Direct chats are shown like a regular channels with a random name](https://github.com/progval/matrix2051/issues/11)
+* Does not "feel" like a real IRC network (yet?)
+* User IDs and room names are uncomfortably long
+* Loading the nick list of huge rooms like #matrix:matrix.org overloads some IRC clients
+* IRC clients without [hex color](https://modern.ircdocs.horse/formatting.html#hex-color)
+  support will see some garbage instead of colors. (Though colored text seems very uncommon on Matrix)
+* IRC clients without advanced IRCv3 support work miss out on many features:
+  [quote replies](https://github.com/progval/matrix2051/issues/16), reacts, display names.
 
 ## Usage
 
