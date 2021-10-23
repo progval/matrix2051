@@ -84,6 +84,10 @@ defmodule Matrix2051.MatrixClient.Poller do
       {:ok, events} ->
         handle_events(sup_pid, events, handled_event_ids)
         events["next_batch"]
+
+      {:error, code, _} when code in [504, 520, 524] ->
+        # Backend timeout, try again
+        poll_one(sup_pid, since, handled_event_ids, raw_client)
     end
   end
 
@@ -564,6 +568,10 @@ defmodule Matrix2051.MatrixClient.Poller do
           command: "TAGMSG",
           params: [channel]
         })
+
+      content when map_size(content) == 0 ->
+        # TODO: redacted
+        nil
 
       _ ->
         send.(%Matrix2051.Irc.Command{

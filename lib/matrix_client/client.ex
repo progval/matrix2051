@@ -46,12 +46,15 @@ defmodule Matrix2051.MatrixClient.Client do
   def init(args) do
     {irc_pid, extra_args} = args
 
+    # slightly larger than Matrix2051.Matrix.RawClient's timeout,
+    timeout = 25000
+
     {:ok,
      %Matrix2051.MatrixClient.Client{
        state: :initial_state,
        irc_pid: irc_pid,
        args: extra_args
-     }}
+     }, timeout}
   end
 
   @impl true
@@ -242,6 +245,9 @@ defmodule Matrix2051.MatrixClient.Client do
 
           {:error, _, %{"errcode" => errcode, "error" => message}} ->
             {:reply, {:error, :unknown, errcode <> ": " <> message}, state}
+
+          {:error, nil, error} ->
+            {:reply, {:error, :unknown, Kernel.inspect(error)}, state}
         end
     end
   end
@@ -378,7 +384,7 @@ defmodule Matrix2051.MatrixClient.Client do
   end
 
   def connect(pid, local_name, hostname, password) do
-    GenServer.call(pid, {:connect, local_name, hostname, password}, 20000)
+    GenServer.call(pid, {:connect, local_name, hostname, password})
   end
 
   def raw_client(pid) do

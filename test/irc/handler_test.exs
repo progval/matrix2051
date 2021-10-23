@@ -739,7 +739,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
            "rel_type" => "m.annotation",
            "event_id" => "$event1",
            "key" => "👍"
-         },
+         }
        }}
     )
   end

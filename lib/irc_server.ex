@@ -45,11 +45,14 @@ defmodule Matrix2051.IrcServer do
     ret
   end
 
-  defp accept(port) do
-    {:ok, server_sock} =
-      :gen_tcp.listen(port, [:binary, packet: :line, active: false, reuseaddr: true])
-
-    loop_accept(server_sock)
+  defp accept(port, retries_left \\ 10) do
+    case :gen_tcp.listen(port, [:binary, packet: :line, active: false, reuseaddr: true]) do
+      {:ok, server_sock} -> loop_accept(server_sock)
+      {:error, :eaddrinuse} when retries_left > 0 ->
+        # happens sometimes when recovering from a crash...
+        Process.sleep(100)
+        accept(port, retries_left - 1)
+    end
   end
 
   defp loop_accept(server_sock) do
