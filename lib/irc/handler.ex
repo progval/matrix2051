@@ -537,7 +537,7 @@ defmodule Matrix2051.IrcConn.Handler do
     # RPL_ISUPPORT
     send_numeric.("005", [
       "CASEMAPPING=rfc3454",
-      "CLIENTTAGDENY=*,-draft/reply",
+      "CLIENTTAGDENY=*,-draft/react,-draft/reply",
       "CHANLIMIT=",
       "CHANTYPES=#!",
       "CHATHISTORY=1000",

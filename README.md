@@ -90,8 +90,8 @@ serverpassword = ""
 * [x] [multiline](https://ircv3.net/specs/extensions/multiline) messages
   * [x] Matrix -> IRC
   * [x] IRC -> Matrix
-* [ ] [reacts](https://ircv3.net/specs/client-tags/reply)
-  * [ ] Matrix -> IRC
+* [ ] [reacts](https://ircv3.net/specs/client-tags/react) ([Matrix draft spec](https://github.com/matrix-org/matrix-doc/pull/2677))
+  * [x] Matrix -> IRC
   * [ ] IRC -> Matrix
 * [x] [replies](https://ircv3.net/specs/client-tags/reply)
   * [x] Matrix -> IRC
