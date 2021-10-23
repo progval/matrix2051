@@ -31,31 +31,7 @@ Non-goals:
   * SASL username: your full matrix ID (`user:homeserver.example.org`)
   * SASL password: your matrix password
 
-### Web clients
-
-To connect web clients, you need a websocket gateway.
-Matrix2051 was tested with [KiwiIRC's webircgateway](https://github.com/kiwiirc/webircgateway)
-(try [this patch](https://github.com/kiwiirc/webircgateway/pull/91) if you need to run it on old Go versions).
-
-Here is how you can configure it to connect to Matrix2051 with [Gamja](https://git.sr.ht/~emersion/gamja/):
-
-```toml
-[fileserving]
-enabled = true
-webroot = "/path/to/gamja"
-
-
-[upstream.1]
-hostname = "localhost"
-port = 2051
-tls = false
-# Connection timeout in seconds
-timeout = 20
-# Throttle the lines being written by X per second
-throttle = 100
-webirc = ""
-serverpassword = ""
-```
+See below for extra instructions to work with web clients.
 
 ## Roadmap
 
@@ -146,3 +122,54 @@ Utilities:
 * `format/`: Convert between IRC's formatting and `org.matrix.custom.html`
 * `matrix_client/chat_history.ex`: fetches message history from Matrix, when requested
   by the IRC client
+
+## Questions
+
+### Why?
+
+There are many great IRC clients, but I can't find a Matrix client I like.
+Yet, some communities are moving from IRC to Matrix, so I wrote this so I can
+join them with a comfortable client.
+
+This is also a way to prototype the latest IRCv3 features easily,
+and for me to learn the Matrix protocol.
+
+### Are you planning support ... ?
+
+At the time of writing, if both Matrix and IRC/IRCv3 support it, it likely will.
+Take a look at [the list of open 'enhancement' issues](https://github.com/progval/matrix2051/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement).
+
+A notable exception is [direct messages](https://github.com/progval/matrix2051/issues/11),
+because Matrix's model differs significantly from IRC's.
+
+### Can I connect with a web client?
+
+To connect web clients, you need a websocket gateway.
+Matrix2051 was tested with [KiwiIRC's webircgateway](https://github.com/kiwiirc/webircgateway)
+(try [this patch](https://github.com/kiwiirc/webircgateway/pull/91) if you need to run it on old Go versions).
+
+Here is how you can configure it to connect to Matrix2051 with [Gamja](https://git.sr.ht/~emersion/gamja/):
+
+```toml
+[fileserving]
+enabled = true
+webroot = "/path/to/gamja"
+
+
+[upstream.1]
+hostname = "localhost"
+port = 2051
+tls = false
+# Connection timeout in seconds
+timeout = 20
+# Throttle the lines being written by X per second
+throttle = 100
+webirc = ""
+serverpassword = ""
+```
+
+### What's with the name?
+
+This is a reference to [xkcd 1782](https://xkcd.com/1782/):
+
+![2004: Our team stays in touch over IRC. 2010: Our team mainly uses Skype, but some of us prefer to stick to IRC. 2017: We've got almost everyone on Slack, But three people refuse to quit IRC and connect via gateway. 2051: All consciousnesses have merged with the Galactic Singularity, Except for one guy who insists on joining through his IRC client. "I just have it set up the way I want, okay?!" *Sigh*](https://imgs.xkcd.com/comics/team_chat.png)
