@@ -57,9 +57,17 @@ defmodule Matrix2051.Irc.WordWrap do
     else
       # Split after each whitespace
       Regex.split(~r/((?<=\s)|(?=\s))/, text)
-      |> join_reverse_tokens(0, [], [], nbytes)
-      |> Enum.reverse()
+      |> join_tokens(nbytes)
     end
+  end
+
+  @doc """
+    Joins a list of strings (token) into lines. This is equivalent to `|> Enum.join(" ") |> split()`,
+  """
+  def join_tokens(tokens, nbytes) do
+    tokens
+    |> join_reverse_tokens(0, [], [], nbytes)
+    |> Enum.reverse()
   end
 
   defp join_reverse_tokens([], _current_size, reversed_current_line, other_lines, _nbytes) do

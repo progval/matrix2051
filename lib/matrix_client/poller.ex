@@ -707,8 +707,12 @@ defmodule Matrix2051.MatrixClient.Poller do
     channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_pid, event, write)
 
+    make_numeric = fn numeric, params ->
+      %Matrix2051.Irc.Command{source: "server", command: numeric, params: [nick | params]}
+    end
+
     send_numeric = fn numeric, params ->
-      send.(%Matrix2051.Irc.Command{source: "server", command: numeric, params: [nick | params]})
+      send.(make_numeric.(numeric, params))
     end
 
     # Join the new channel
@@ -746,12 +750,20 @@ defmodule Matrix2051.MatrixClient.Poller do
     end
 
     # send RPL_NAMREPLY
-    Matrix2051.MatrixClient.State.room_members(state, room_id)
-    |> Enum.map(fn {user_id, _member} ->
-      # TODO: group them in lines
+    overhead =
+      make_numeric.("353", ["=", channel, ""]) |> Matrix2051.Irc.Command.format() |> byte_size()
 
-      # RPL_NAMREPLY
-      send_numeric.("353", ["=", channel, user_id])
+    Matrix2051.MatrixClient.State.room_members(state, room_id)
+    |> Enum.map(fn {user_id, _member} -> user_id <> " " end)
+    |> Enum.sort()
+    |> Matrix2051.Irc.WordWrap.join_tokens(512 - overhead)
+    |> Enum.map(fn line ->
+      line = line |> String.trim_trailing()
+
+      if line != "" do
+        # RPL_NAMREPLY
+        send_numeric.("353", ["=", channel, line])
+      end
     end)
 
     # RPL_ENDOFNAMES

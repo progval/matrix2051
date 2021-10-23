@@ -313,8 +313,11 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
-    assert_line(":server 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
-    assert_line(":server 353 mynick:example.com = #test:example.org :nick2:example.org\r\n")
+
+    assert_line(
+      ":server 353 mynick:example.com = #test:example.org :mynick:example.com nick2:example.org\r\n"
+    )
+
     assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
   end
 
@@ -806,8 +809,11 @@ defmodule Matrix2051.MatrixClient.PollerTest do
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
     assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
-    assert_line(":server 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
-    assert_line(":server 353 mynick:example.com = #test:example.org :nick:example.org\r\n")
+
+    assert_line(
+      ":server 353 mynick:example.com = #test:example.org :mynick:example.com nick:example.org\r\n"
+    )
+
     assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
     assert_line(
