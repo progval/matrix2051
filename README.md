@@ -1,5 +1,7 @@
 # Matrix2051
 
+*Join Matrix from your favorite IRC client*
+
 An IRC server backed by Matrix. You can also see it as an IRC bouncer that
 connects to Matrix homeservers instead of IRC servers.
 
@@ -20,6 +22,16 @@ Non-goals:
 3. Connecting to multiple accounts per IRC connection or to other protocols (à la [Bitlbee](https://www.bitlbee.org/)). This conflicts with goals 1 and 4.
 4. Implementing any features not natively by **both** protocols (ie. no need for service bots that you interract with using PRIVMSG)
 
+## Major features
+
+* Registration and password authentication
+* Joining rooms
+* Sending and receiving messages (supports multiline, highlights, replying, reacting to messages)
+* Partial [IRCv3 ChatHistory](https://ircv3.net/specs/extensions/chathistory) support;
+  enough for Gamja to work.
+  [open chathistory issues](https://github.com/progval/matrix2051/milestone/3)
+* [Partial](https://github.com/progval/matrix2051/issues/14) display name support
+
 ## Usage
 
 * Install system dependencies. For example, on Debian: `sudo apt install elixir otp erlang-dev erlang-inets erlang-xmerl`
@@ -32,63 +44,6 @@ Non-goals:
   * SASL password: your matrix password
 
 See below for extra instructions to work with web clients.
-
-## Roadmap
-
-* [x] password authentication (using [SASL](https://ircv3.net/specs/extensions/sasl-3.1) on the IRC side)
-* [x] registration (using the [draft/account-registration](https://github.com/ircv3/ircv3-specifications/pull/435) spec)
-  * [x] on Synapse with no email verification
-  * [ ] on Synapse with email verification
-  * [ ] on other homeservers (when the Matrix spec defines how to)
-* [x] retrieving the room list and joining clients to it
-* [x] retrieving the member list and sending it to clients
-* [x] support JOIN from clients
-* [x] sending messages from IRC clients
-* [x] receiving messages from Matrix
-  * [x] basics
-  * [x] split at 512 bytes
-* [x] rewrite mentions/highlights
-  * [x] Matrix -> IRC
-  * [x] IRC -> Matrix
-* [x] rewrite formatting and colors
-  * [x] Matrix -> IRC
-  * [x] IRC -> Matrix
-* [x] show JOIN/PART events from other members
-* [ ] figure out images / files
-  * [x] Matrix -> IRC
-  * [ ] IRC -> Matrix
-* [x] [display names](https://github.com/ircv3/ircv3-specifications/pull/452)
-* [ ] [chat history](https://ircv3.net/specs/extensions/chathistory)
-  * [x] AFTER/AROUND/BEFORE with msgids
-  * [ ] [AFTER/AROUND/BEFORE with timestamps](https://github.com/progval/matrix2051/issues/1)
-  * [ ] BETWEEN
-  * [ ] LATEST
-* [x] [multiline](https://ircv3.net/specs/extensions/multiline) messages
-  * [x] Matrix -> IRC
-  * [x] IRC -> Matrix
-* [x] [reacts](https://ircv3.net/specs/client-tags/react) ([Matrix draft spec](https://github.com/matrix-org/matrix-doc/pull/2677))
-  * [x] Matrix -> IRC
-  * [x] IRC -> Matrix
-* [x] [replies](https://ircv3.net/specs/client-tags/reply)
-  * [x] Matrix -> IRC
-  * [x] IRC -> Matrix
-* [ ] message edition/deletion
-* [ ] support PART from IRC clients
-* [ ] invites
-* [ ] translate channel modes / room privileges
-  * [ ] Matrix -> IRC
-  * [ ] IRC -> Matrix
-* [x] use [channel renaming](https://ircv3.net/specs/extensions/channel-rename)
-  * [x] when the canonical name changes
-  * [ ] in case of joining duplicate aliases of the same room?
-
-In the far future:
-
-* [ ] support authentication with non-password flows
-* [ ] direct messages (it's really hard, in Matrix they are actual rooms you can
-      invite people to)
-* [ ] end-to-"end" encryption (Matrix2051 would be the end)
-* [ ] Matrix P2P
 
 ## Architecture
 
