@@ -764,8 +764,28 @@ defmodule Matrix2051.IrcConn.Handler do
       {"NOTICE", _} ->
         send_needmoreparams.()
 
-      {"TAGMSG", [_channel | _]} ->
-        nil
+      {"TAGMSG", [channel | _]} ->
+        case command.tags do
+          %{"+draft/reply" => msgid, "+draft/react" => react} ->
+            event = %{
+              "m.relates_to" => %{
+                "rel_type" => "m.annotation",
+                "event_id" => msgid,
+                "key" => react
+              }
+            }
+
+            Matrix2051.MatrixClient.Client.send_event(
+              matrix_client,
+              channel,
+              Map.get(command.tags, "label"),
+              "m.reaction",
+              event
+            )
+
+          _ ->
+            nil
+        end
 
       {"TAGMSG", _} ->
         send_needmoreparams.()

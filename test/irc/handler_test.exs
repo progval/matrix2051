@@ -727,6 +727,23 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     )
   end
 
+  test "sending reacts", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@+draft/reply=$event1;+draft/react=👍 TAGMSG #existing_room:example.org"))
+
+    assert_message(
+      {:send_event, "#existing_room:example.org", "m.reaction", nil,
+       %{
+         "m.relates_to" => %{
+           "rel_type" => "m.annotation",
+           "event_id" => "$event1",
+           "key" => "👍"
+         },
+       }}
+    )
+  end
+
   test "WHO o on channel", %{handler: handler} do
     do_connection_registration(handler)
 
