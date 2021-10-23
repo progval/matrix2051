@@ -89,9 +89,28 @@ join them with a comfortable client.
 This is also a way to prototype the latest IRCv3 features easily,
 and for me to learn the Matrix protocol.
 
-### Are you planning support ... ?
+### What IRC clients are supported?
 
-At the time of writing, if both Matrix and IRC/IRCv3 support it, it likely will.
+In theory, any IRC client should work. In particular, I test it with
+[Gamja](https://git.sr.ht/~emersion/gamja/), [IRCCloud](https://www.irccloud.com/),
+and [WeeChat](https://weechat.org/).
+
+Please open an issue if your client has any issue.
+
+### What Matrix homeservers are supported?
+
+In theory, any, as I wrote this by reading the Matrix specs.
+In practice, this is only tested with [Synapse](https://github.com/matrix-org/synapse/).
+
+A notable exception is registration, which uses a Synapse-specific API
+as Matrix itself does not specify registration.
+
+Please open an issue if you have any issue with your homeserver
+(a dummy login/password I can use to connect to it would be appreciated).
+
+### Are you planning to support features X, Y, ...?
+
+At the time of writing, if both Matrix and IRC/IRCv3 support them, Matrix2051 likely will.
 Take a look at [the list of open 'enhancement' issues](https://github.com/progval/matrix2051/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement).
 
 A notable exception is [direct messages](https://github.com/progval/matrix2051/issues/11),
