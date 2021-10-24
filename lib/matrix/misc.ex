@@ -21,7 +21,6 @@ defmodule M51.Matrix.Misc do
         if Regex.match?(~r|^[0-9a-z.=_/-]+$|, local_name) do
           if Regex.match?(~r/.*\s.*/u, hostname) do
             {:error, "\"" <> hostname <> "\" is not a valid hostname"}
-            nil
           else
             {:ok, {local_name, hostname}}
           end
