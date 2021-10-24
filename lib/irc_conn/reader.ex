@@ -35,6 +35,7 @@ defmodule M51.IrcConn.Reader do
   defp loop_serve(supervisor, sock) do
     case :gen_tcp.recv(sock, 0) do
       {:ok, line} ->
+        Logger.debug("C->S #{Regex.replace(~r/[\r\n]/, line, "")}")
         {:ok, command} = M51.Irc.Command.parse(line)
         Registry.send({M51.Registry, {supervisor, :irc_handler}}, command)
         loop_serve(supervisor, sock)

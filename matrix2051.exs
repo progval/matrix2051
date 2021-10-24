@@ -16,5 +16,11 @@
 
 require Logger
 
+if Enum.member?(System.argv(), "--debug") do
+  Logger.warn("Starting in debug mode")
+  Logger.configure(level: :debug)
+else
+  Logger.configure(level: :info)
+end
 {:ok, _} = M51.Application.start(:normal, [])
 Logger.info("Matrix2051 started.")
