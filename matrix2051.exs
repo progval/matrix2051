@@ -16,5 +16,5 @@
 
 require Logger
 
-{:ok, _} = Matrix2051.Application.start(:normal, [])
+{:ok, _} = M51.Application.start(:normal, [])
 Logger.info("Matrix2051 started.")
