@@ -14,14 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-{_parsed, []} =
-  OptionParser.parse!(
-    System.argv(),
-    strict: []
-  )
+require Logger
 
-{:ok, matrix2051} = Matrix2051.start(:normal, [])
-
-[{Matrix2051.Supervisor, supervisor, _, _}]  = Supervisor.which_children(matrix2051)
-children = Supervisor.which_children(supervisor)
-IO.inspect(children)
+{:ok, _} = Matrix2051.Application.start(:normal, [])
+Logger.info("Matrix2051 started.")

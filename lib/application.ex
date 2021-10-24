@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051 do
+defmodule Matrix2051.Application do
   @moduledoc """
     Main module of Matrix2051.
   """

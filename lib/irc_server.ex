@@ -21,6 +21,8 @@ defmodule Matrix2051.IrcServer do
   """
   use DynamicSupervisor
 
+  require Logger
+
   def start_link(args) do
     DynamicSupervisor.start_link(__MODULE__, args, name: __MODULE__)
   end
@@ -47,7 +49,10 @@ defmodule Matrix2051.IrcServer do
 
   defp accept(port, retries_left \\ 10) do
     case :gen_tcp.listen(port, [:binary, packet: :line, active: false, reuseaddr: true]) do
-      {:ok, server_sock} -> loop_accept(server_sock)
+      {:ok, server_sock} ->
+        Logger.info("Listening on port #{port}")
+        loop_accept(server_sock)
+
       {:error, :eaddrinuse} when retries_left > 0 ->
         # happens sometimes when recovering from a crash...
         Process.sleep(100)
@@ -57,6 +62,10 @@ defmodule Matrix2051.IrcServer do
 
   defp loop_accept(server_sock) do
     {:ok, sock} = :gen_tcp.accept(server_sock)
+
+    {:ok, {peer_address, peer_port}} = :inet.peername(sock)
+
+    Logger.info("Incoming connection from #{:inet_parse.ntoa(peer_address)}:#{peer_port}")
 
     {:ok, conn_supervisor} =
       DynamicSupervisor.start_child(
