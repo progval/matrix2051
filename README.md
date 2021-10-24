@@ -2,7 +2,7 @@
 
 *Join Matrix from your favorite IRC client*
 
-Matrix2051 (or M51 for short) is IRC server backed by Matrix. You can also see it
+Matrix2051 (or M51 for short) is an IRC server backed by Matrix. You can also see it
 as an IRC bouncer that connects to Matrix homeservers instead of IRC servers.
 
 Goals:
@@ -34,7 +34,7 @@ Non-goals:
 
 ## Shortcomings
 
-* [Direct chats are shown like a regular channels with a random name](https://github.com/progval/matrix2051/issues/11)
+* [Direct chats are shown as regular channels, with random names](https://github.com/progval/matrix2051/issues/11)
 * Does not "feel" like a real IRC network (yet?)
 * User IDs and room names are uncomfortably long
 * Loading the nick list of huge rooms like #matrix:matrix.org overloads some IRC clients
