@@ -34,6 +34,10 @@ defmodule M51.MatrixClient.Client do
     :hostname
   ]
 
+  # timeout used for all requests sent to a homeserver.
+  # It should be slightly larger than M51.Matrix.RawClient's timeout,
+  @timeout 25000
+
   def start_link(opts) do
     {sup_pid, _extra_args} = opts
 
@@ -46,15 +50,12 @@ defmodule M51.MatrixClient.Client do
   def init(args) do
     {irc_pid, extra_args} = args
 
-    # slightly larger than M51.Matrix.RawClient's timeout,
-    timeout = 25000
-
     {:ok,
      %M51.MatrixClient.Client{
        state: :initial_state,
        irc_pid: irc_pid,
        args: extra_args
-     }, timeout}
+     }}
   end
 
   @impl true
@@ -383,7 +384,7 @@ defmodule M51.MatrixClient.Client do
   end
 
   def connect(pid, local_name, hostname, password) do
-    GenServer.call(pid, {:connect, local_name, hostname, password})
+    GenServer.call(pid, {:connect, local_name, hostname, password}, @timeout)
   end
 
   def raw_client(pid) do
@@ -414,11 +415,11 @@ defmodule M51.MatrixClient.Client do
   end
 
   def register(pid, local_name, hostname, password) do
-    GenServer.call(pid, {:register, local_name, hostname, password})
+    GenServer.call(pid, {:register, local_name, hostname, password}, @timeout)
   end
 
   def join_room(pid, room_alias) do
-    GenServer.call(pid, {:join_room, room_alias})
+    GenServer.call(pid, {:join_room, room_alias}, @timeout)
   end
 
   @doc """
@@ -428,7 +429,7 @@ defmodule M51.MatrixClient.Client do
     the event is seen in the event stream.
   """
   def send_event(pid, channel, label, event_type, event) do
-    GenServer.call(pid, {:send_event, channel, event_type, label, event})
+    GenServer.call(pid, {:send_event, channel, event_type, label, event}, @timeout)
   end
 
   @doc """
@@ -437,7 +438,7 @@ defmodule M51.MatrixClient.Client do
     https://matrix.org/docs/spec/client_server/r0.6.1#id131
   """
   def get_event_context(pid, channel, event_id, limit) do
-    GenServer.call(pid, {:get_event_context, channel, event_id, limit})
+    GenServer.call(pid, {:get_event_context, channel, event_id, limit}, @timeout)
   end
 
   defp urlquote(s) do
