@@ -2,8 +2,8 @@
 
 *Join Matrix from your favorite IRC client*
 
-An IRC server backed by Matrix. You can also see it as an IRC bouncer that
-connects to Matrix homeservers instead of IRC servers.
+Matrix2051 (or M51 for short) is IRC server backed by Matrix. You can also see it
+as an IRC bouncer that connects to Matrix homeservers instead of IRC servers.
 
 Goals:
 
@@ -58,7 +58,7 @@ See below for extra instructions to work with web clients.
 
 ## Architecture
 
-* `matrix2051.exs` starts Matrix2051, which starts Matrix2051.Supervisor, which
+* `matrix2051.exs` starts M51.Application, which starts M51.Supervisor, which
   supervises:
   * `config.ex`: global config agent
   * `irc_server.ex`: a `DynamicSupervisor` that receives connections from IRC clients.

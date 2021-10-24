@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.IrcConn.State do
+defmodule M51.IrcConn.State do
   @moduledoc """
     Stores the state of an open IRC connection.
   """
@@ -27,7 +27,7 @@ defmodule Matrix2051.IrcConn.State do
 
     Agent.start_link(
       fn ->
-        %Matrix2051.IrcConn.State{
+        %M51.IrcConn.State{
           sup_pid: sup_pid,
           registered: false,
           nick: nil,
@@ -37,7 +37,7 @@ defmodule Matrix2051.IrcConn.State do
           batches: Map.new()
         }
       end,
-      name: {:via, Registry, {Matrix2051.Registry, {sup_pid, :irc_state}}}
+      name: {:via, Registry, {M51.Registry, {sup_pid, :irc_state}}}
     )
   end
 

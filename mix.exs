@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.MixProject do
+defmodule M51.MixProject do
   use Mix.Project
 
   def project do

@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Config do
+defmodule M51.Config do
   @moduledoc """
     Global configuration.
   """

@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Matrix.RawClient do
+defmodule M51.Matrix.RawClient do
   @moduledoc """
     Sends queries to a Matrix homeserver.
   """

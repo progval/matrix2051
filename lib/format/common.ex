@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Format do
+defmodule M51.Format do
   # pairs of {irc_code, matrix_html_tag}
   # this excludes color ("\x03"), which must be handled with specific code.
   @translations [
@@ -46,21 +46,21 @@ defmodule Matrix2051.Format do
 
     ## Examples
 
-        iex> Matrix2051.Format.matrix2irc(~s(<b>foo</b>))
+        iex> M51.Format.matrix2irc(~s(<b>foo</b>))
         "\x02foo\x02"
 
-        iex> Matrix2051.Format.matrix2irc(~s(<a href="https://example.org">foo</a>))
+        iex> M51.Format.matrix2irc(~s(<a href="https://example.org">foo</a>))
         "foo <https://example.org>"
 
-        iex> Matrix2051.Format.matrix2irc(~s(foo<br/>bar))
+        iex> M51.Format.matrix2irc(~s(foo<br/>bar))
         "foo\nbar"
 
-        iex> Matrix2051.Format.matrix2irc(~s(foo <font data-mx-color="FF0000">bar</font> baz))
+        iex> M51.Format.matrix2irc(~s(foo <font data-mx-color="FF0000">bar</font> baz))
         "foo \x04FF0000,FFFFFFbar\x0399,99 baz"
   """
   def matrix2irc(html) do
     tree = :mochiweb_html.parse("<html>" <> html <> "</html>")
-    String.trim(Matrix2051.Format.Matrix2Irc.Handler.transform(tree, {nil, nil}))
+    String.trim(M51.Format.Matrix2Irc.Handler.transform(tree, {nil, nil}))
   end
 
   @doc ~S"""
@@ -68,25 +68,25 @@ defmodule Matrix2051.Format do
 
     ## Examples
 
-        iex> Matrix2051.Format.irc2matrix("\x02foo\x02")
+        iex> M51.Format.irc2matrix("\x02foo\x02")
         {"*foo*", "<b>foo</b>"}
 
-        iex> Matrix2051.Format.irc2matrix("foo https://example.org bar")
+        iex> M51.Format.irc2matrix("foo https://example.org bar")
         {"foo https://example.org bar", ~s(foo <a href="https://example.org">https://example.org</a> bar)}
 
-        iex> Matrix2051.Format.irc2matrix("foo\nbar")
+        iex> M51.Format.irc2matrix("foo\nbar")
         {"foo\nbar", ~s(foo<br/>bar)}
 
-        iex> Matrix2051.Format.irc2matrix("foo \x0304bar")
+        iex> M51.Format.irc2matrix("foo \x0304bar")
         {"foo bar", ~s(foo <font data-mx-color="FF0000">bar</font>)}
         
   """
   def irc2matrix(text, nicklist \\ []) do
     stateful_tokens =
       (text <> "\x0f")
-      |> Matrix2051.Format.Irc2Matrix.tokenize()
-      |> Stream.transform(%Matrix2051.Format.Irc2Matrix.State{}, fn token, state ->
-        {new_state, new_token} = Matrix2051.Format.Irc2Matrix.update_state(state, token)
+      |> M51.Format.Irc2Matrix.tokenize()
+      |> Stream.transform(%M51.Format.Irc2Matrix.State{}, fn token, state ->
+        {new_state, new_token} = M51.Format.Irc2Matrix.update_state(state, token)
         {[{state, new_state, new_token}], new_state}
       end)
       |> Enum.to_list()
@@ -94,14 +94,14 @@ defmodule Matrix2051.Format do
     plain_text =
       stateful_tokens
       |> Enum.map(fn {previous_state, state, token} ->
-        Matrix2051.Format.Irc2Matrix.make_plain_text(previous_state, state, token)
+        M51.Format.Irc2Matrix.make_plain_text(previous_state, state, token)
       end)
       |> Enum.join()
 
     html_tree =
       stateful_tokens
       |> Enum.flat_map(fn {previous_state, state, token} ->
-        Matrix2051.Format.Irc2Matrix.make_html(previous_state, state, token, nicklist)
+        M51.Format.Irc2Matrix.make_html(previous_state, state, token, nicklist)
       end)
 
     html =

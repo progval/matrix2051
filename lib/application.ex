@@ -14,21 +14,21 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Application do
+defmodule M51.Application do
   @moduledoc """
-    Main module of Matrix2051.
+    Main module of M51.
   """
   use Application
 
   @doc """
-    Entrypoint. Takes the global config as args, and starts Matrix2051.Supervisor
+    Entrypoint. Takes the global config as args, and starts M51.Supervisor
   """
   @impl true
   def start(_type, args) do
     HTTPoison.start()
 
     children = [
-      {Matrix2051.Supervisor, args}
+      {M51.Supervisor, args}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one)

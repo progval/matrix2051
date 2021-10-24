@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.MatrixClient.State do
+defmodule M51.MatrixClient.State do
   @moduledoc """
     Stores the state of a Matrix client (access token, joined rooms, ...)
   """
@@ -34,13 +34,13 @@ defmodule Matrix2051.MatrixClient.State do
 
   use Agent
 
-  @emptyroom %Matrix2051.Matrix.RoomState{}
+  @emptyroom %M51.Matrix.RoomState{}
 
   def start_link(opts) do
     {sup_pid} = opts
 
-    Agent.start_link(fn -> %Matrix2051.MatrixClient.State{rooms: %{}} end,
-      name: {:via, Registry, {Matrix2051.Registry, {sup_pid, :matrix_state}}}
+    Agent.start_link(fn -> %M51.MatrixClient.State{rooms: %{}} end,
+      name: {:via, Registry, {M51.Registry, {sup_pid, :matrix_state}}}
     )
   end
 
@@ -87,7 +87,7 @@ defmodule Matrix2051.MatrixClient.State do
   @doc """
     Adds a member to the room and returns true iff it was already there
 
-    `member` must be a `Matrix2051.Matrix.RoomMember` structure.
+    `member` must be a `M51.Matrix.RoomMember` structure.
   """
   def room_member_add(pid, room_id, userid, member) do
     Agent.get_and_update(pid, fn state ->
@@ -119,14 +119,14 @@ defmodule Matrix2051.MatrixClient.State do
   end
 
   @doc """
-    Returns %{user_id => %Matrix2051.Matrix.RoomMember{...}}
+    Returns %{user_id => %M51.Matrix.RoomMember{...}}
   """
   def room_members(pid, room_id) do
     Agent.get(pid, fn state -> Map.get(state.rooms, room_id, @emptyroom).members end)
   end
 
   @doc """
-    Returns a Matrix2051.Matrix.RoomMember structure or nil
+    Returns a M51.Matrix.RoomMember structure or nil
   """
   def room_member(pid, room_id, user_id) do
     Agent.get(pid, fn state ->
@@ -189,7 +189,7 @@ defmodule Matrix2051.MatrixClient.State do
   def queue_on_channel_sync(pid, channel, callback) do
     Agent.update(pid, fn state ->
       case _room_from_irc_channel(state, channel) do
-        {room_id, %Matrix2051.Matrix.RoomState{synced: true} = room} ->
+        {room_id, %M51.Matrix.RoomState{synced: true} = room} ->
           # We already have the room, call immediately
           callback.(room_id, room)
           state

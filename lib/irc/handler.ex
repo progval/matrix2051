@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.IrcConn.Handler do
+defmodule M51.IrcConn.Handler do
   @moduledoc """
     Receives commands from the reader and dispatches them.
   """
@@ -89,10 +89,10 @@ defmodule Matrix2051.IrcConn.Handler do
   """
   def run(args) do
     {sup_pid} = args
-    Registry.register(Matrix2051.Registry, {sup_pid, :irc_handler}, nil)
-    state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
+    Registry.register(M51.Registry, {sup_pid, :irc_handler}, nil)
+    state = M51.IrcConn.Supervisor.state(sup_pid)
 
-    if !Matrix2051.IrcConn.State.registered(state) do
+    if !M51.IrcConn.State.registered(state) do
       loop_connreg(sup_pid)
     end
 
@@ -115,8 +115,8 @@ defmodule Matrix2051.IrcConn.Handler do
          user_id \\ nil,
          waiting_cap_end \\ false
        ) do
-    writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
-    send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
+    writer = M51.IrcConn.Supervisor.writer(sup_pid)
+    send = fn cmd -> M51.IrcConn.Writer.write_command(writer, cmd) end
 
     receive do
       command ->
@@ -132,25 +132,25 @@ defmodule Matrix2051.IrcConn.Handler do
 
         if nick != nil && gecos != nil && !waiting_cap_end do
           # Registration finished. Send welcome messages and return to the main loop
-          state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
+          state = M51.IrcConn.Supervisor.state(sup_pid)
 
-          Matrix2051.IrcConn.State.set_nick(state, nick)
-          Matrix2051.IrcConn.State.set_gecos(state, gecos)
+          M51.IrcConn.State.set_nick(state, nick)
+          M51.IrcConn.State.set_gecos(state, gecos)
 
           case user_id do
             # all good
             ^nick ->
               send_welcome(sup_pid, command)
 
-              Matrix2051.IrcConn.State.set_registered(state)
+              M51.IrcConn.State.set_registered(state)
 
-              case Registry.lookup(Matrix2051.Registry, {sup_pid, :matrix_poller}) do
+              case Registry.lookup(M51.Registry, {sup_pid, :matrix_poller}) do
                 [{matrix_poller, _}] -> send(matrix_poller, :start_polling)
                 [] -> nil
               end
 
             nil ->
-              send.(%Matrix2051.Irc.Command{
+              send.(%M51.Irc.Command{
                 command: "FAIL",
                 params: ["*", "ACCOUNT_REQUIRED", "You must authenticate."]
               })
@@ -160,17 +160,17 @@ defmodule Matrix2051.IrcConn.Handler do
             _ ->
               # Nick does not match the matrix user id, forcefully change it.
               send_welcome(sup_pid, command)
-              Matrix2051.IrcConn.State.set_nick(state, user_id)
+              M51.IrcConn.State.set_nick(state, user_id)
 
-              send.(%Matrix2051.Irc.Command{
+              send.(%M51.Irc.Command{
                 source: nick <> "!" <> String.replace(user_id, ~r/:/, "@"),
                 command: "NICK",
                 params: [user_id]
               })
 
-              Matrix2051.IrcConn.State.set_registered(state)
+              M51.IrcConn.State.set_registered(state)
 
-              case Registry.lookup(Matrix2051.Registry, {sup_pid, :matrix_poller}) do
+              case Registry.lookup(M51.Registry, {sup_pid, :matrix_poller}) do
                 [{matrix_poller, _}] -> send(matrix_poller, :start_polling)
                 [] -> nil
               end
@@ -183,9 +183,9 @@ defmodule Matrix2051.IrcConn.Handler do
 
   # Returns a function that can be used to reply to the given command
   defp make_send_function(command, sup_pid) do
-    writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
-    state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
-    capabilities = Matrix2051.IrcConn.State.capabilities(state)
+    writer = M51.IrcConn.Supervisor.writer(sup_pid)
+    state = M51.IrcConn.Supervisor.state(sup_pid)
+    capabilities = M51.IrcConn.State.capabilities(state)
 
     fn cmd ->
       tags =
@@ -194,20 +194,20 @@ defmodule Matrix2051.IrcConn.Handler do
           label -> Map.put_new(cmd.tags, "label", label)
         end
 
-      cmd = %Matrix2051.Irc.Command{cmd | tags: tags}
+      cmd = %M51.Irc.Command{cmd | tags: tags}
 
-      Matrix2051.IrcConn.Writer.write_command(
+      M51.IrcConn.Writer.write_command(
         writer,
-        Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+        M51.Irc.Command.downgrade(cmd, capabilities)
       )
     end
   end
 
   # Returns a function that can be used to reply to the given command with multiple replies
   defp make_send_batch_function(command, sup_pid) do
-    writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
-    state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
-    capabilities = Matrix2051.IrcConn.State.capabilities(state)
+    writer = M51.IrcConn.Supervisor.writer(sup_pid)
+    state = M51.IrcConn.Supervisor.state(sup_pid)
+    capabilities = M51.IrcConn.State.capabilities(state)
 
     fn commands, batch_type ->
       case Map.get(command.tags, "label") do
@@ -215,9 +215,9 @@ defmodule Matrix2051.IrcConn.Handler do
           # no label, don't use a batch.
           commands
           |> Enum.map(fn cmd ->
-            Matrix2051.IrcConn.Writer.write_command(
+            M51.IrcConn.Writer.write_command(
               writer,
-              Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+              M51.Irc.Command.downgrade(cmd, capabilities)
             )
           end)
 
@@ -227,13 +227,13 @@ defmodule Matrix2051.IrcConn.Handler do
             |> Base.url_encode64(padding: false)
             |> String.replace(~r"_", "")
 
-          open_batch = %Matrix2051.Irc.Command{
+          open_batch = %M51.Irc.Command{
             tags: %{"label" => label},
             command: "BATCH",
             params: ["+" <> batch_id, batch_type]
           }
 
-          close_batch = %Matrix2051.Irc.Command{command: "BATCH", params: ["-" <> batch_id]}
+          close_batch = %M51.Irc.Command{command: "BATCH", params: ["-" <> batch_id]}
 
           Stream.concat([
             [open_batch],
@@ -242,9 +242,9 @@ defmodule Matrix2051.IrcConn.Handler do
             [close_batch]
           ])
           |> Stream.map(fn cmd ->
-            Matrix2051.IrcConn.Writer.write_command(
+            M51.IrcConn.Writer.write_command(
               writer,
-              Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+              M51.Irc.Command.downgrade(cmd, capabilities)
             )
           end)
           |> Stream.run()
@@ -265,7 +265,7 @@ defmodule Matrix2051.IrcConn.Handler do
           _ -> nick
         end
 
-      send.(%Matrix2051.Irc.Command{
+      send.(%M51.Irc.Command{
         source: "server",
         command: numeric,
         params: [first_param | params]
@@ -304,7 +304,7 @@ defmodule Matrix2051.IrcConn.Handler do
           end)
           |> Enum.join(" ")
 
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LS", caps]})
+        send.(%M51.Irc.Command{command: "CAP", params: ["*", "LS", caps]})
         :got_cap_ls
 
       {"CAP", ["LS" | _]} ->
@@ -315,12 +315,12 @@ defmodule Matrix2051.IrcConn.Handler do
           |> Enum.map(fn {k, _v} -> k end)
           |> Enum.join(" ")
 
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LS", caps]})
+        send.(%M51.Irc.Command{command: "CAP", params: ["*", "LS", caps]})
         :got_cap_ls
 
       {"CAP", ["LIST" | _]} ->
         # TODO: return sasl when relevant
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LIST"]})
+        send.(%M51.Irc.Command{command: "CAP", params: ["*", "LIST"]})
         nil
 
       {"CAP", ["REQ", caps | _]} ->
@@ -337,11 +337,11 @@ defmodule Matrix2051.IrcConn.Handler do
         all_caps_known = Enum.all?(cap_atoms, fn atom -> atom != nil end)
 
         if all_caps_known do
-          send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "ACK", caps]})
-          state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
-          Matrix2051.IrcConn.State.add_capabilities(state, cap_atoms)
+          send.(%M51.Irc.Command{command: "CAP", params: ["*", "ACK", caps]})
+          state = M51.IrcConn.Supervisor.state(sup_pid)
+          M51.IrcConn.State.add_capabilities(state, cap_atoms)
         else
-          send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "NAK", caps]})
+          send.(%M51.Irc.Command{command: "CAP", params: ["*", "NAK", caps]})
         end
 
         nil
@@ -362,7 +362,7 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {"AUTHENTICATE", ["PLAIN" | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "AUTHENTICATE", params: ["+"]})
+        send.(%M51.Irc.Command{command: "AUTHENTICATE", params: ["+"]})
         nil
 
       {"AUTHENTICATE", [param | _]} ->
@@ -371,19 +371,19 @@ defmodule Matrix2051.IrcConn.Handler do
 
         # TODO: support multi-line AUTHENTICATE
 
-        matrix_client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
+        matrix_client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
 
-        case Matrix2051.MatrixClient.Client.user_id(matrix_client) do
+        case M51.MatrixClient.Client.user_id(matrix_client) do
           nil ->
             case Base.decode64(param) do
               {:ok, sasl_message} ->
                 case String.split(sasl_message, "\x00") do
                   [_authzid, authcid, passwd] ->
-                    case Matrix2051.Matrix.Misc.parse_userid(authcid) do
+                    case M51.Matrix.Misc.parse_userid(authcid) do
                       {:ok, {local_name, hostname}} ->
                         user_id = authcid
 
-                        case Matrix2051.MatrixClient.Client.connect(
+                        case M51.MatrixClient.Client.connect(
                                matrix_client,
                                local_name,
                                hostname,
@@ -455,7 +455,7 @@ defmodule Matrix2051.IrcConn.Handler do
       {"REGISTER", [account_name, email, password | _]} ->
         case nick do
           nil ->
-            send.(%Matrix2051.Irc.Command{
+            send.(%M51.Irc.Command{
               command: "FAIL",
               params: [
                 "REGISTER",
@@ -469,7 +469,7 @@ defmodule Matrix2051.IrcConn.Handler do
             register(sup_pid, command, nick, nick, email, password)
 
           _ ->
-            send.(%Matrix2051.Irc.Command{
+            send.(%M51.Irc.Command{
               command: "FAIL",
               params: [
                 "REGISTER",
@@ -486,7 +486,7 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {"VERIFY", _} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "FAIL",
           params: [
             "VERIFY",
@@ -497,11 +497,11 @@ defmodule Matrix2051.IrcConn.Handler do
         })
 
       {"PING", [cookie]} ->
-        send.(%Matrix2051.Irc.Command{command: "PONG", params: [cookie]})
+        send.(%M51.Irc.Command{command: "PONG", params: [cookie]})
         nil
 
       {"PING", [_, cookie | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "PONG", params: [cookie]})
+        send.(%M51.Irc.Command{command: "PONG", params: [cookie]})
         nil
 
       {"PING", []} ->
@@ -509,11 +509,11 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {"QUIT", []} ->
-        send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["Client quit"]})
+        send.(%M51.Irc.Command{command: "ERROR", params: ["Client quit"]})
         close_connection(sup_pid)
 
       {"QUIT", [reason | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["Quit: " <> reason]})
+        send.(%M51.Irc.Command{command: "ERROR", params: ["Quit: " <> reason]})
         close_connection(sup_pid)
 
       _ ->
@@ -525,11 +525,11 @@ defmodule Matrix2051.IrcConn.Handler do
   # Sends the burst of post-registration messages
   defp send_welcome(sup_pid, command) do
     send = make_send_function(command, sup_pid)
-    state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
-    nick = Matrix2051.IrcConn.State.nick(state)
+    state = M51.IrcConn.Supervisor.state(sup_pid)
+    nick = M51.IrcConn.State.nick(state)
 
     send_numeric = fn numeric, params ->
-      send.(%Matrix2051.Irc.Command{source: "server", command: numeric, params: [nick | params]})
+      send.(%M51.Irc.Command{source: "server", command: numeric, params: [nick | params]})
     end
 
     # RPL_WELCOME
@@ -556,21 +556,21 @@ defmodule Matrix2051.IrcConn.Handler do
 
   # Handles the REGISTER command
   defp register(sup_pid, command, nick, user_id, _email, password) do
-    matrix_client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
+    matrix_client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
 
     send = make_send_function(command, sup_pid)
 
     send_numeric = fn numeric, params ->
-      send.(%Matrix2051.Irc.Command{source: "server", command: numeric, params: [nick | params]})
+      send.(%M51.Irc.Command{source: "server", command: numeric, params: [nick | params]})
     end
 
     # This function is only called if the nick matches the user_id, and the
     # nick was already validated.
-    {:ok, {local_name, hostname}} = Matrix2051.Matrix.Misc.parse_userid(user_id)
+    {:ok, {local_name, hostname}} = M51.Matrix.Misc.parse_userid(user_id)
 
-    case Matrix2051.MatrixClient.Client.register(matrix_client, local_name, hostname, password) do
+    case M51.MatrixClient.Client.register(matrix_client, local_name, hostname, password) do
       {:ok, user_id} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "REGISTER",
           params: ["SUCCESS", user_id, "You are now registered as " <> user_id]
         })
@@ -580,7 +580,7 @@ defmodule Matrix2051.IrcConn.Handler do
         {:authenticate, user_id}
 
       {:error, :invalid_username, message} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "FAIL",
           params: ["REGISTER", "BAD_ACCOUNT_NAME", user_id, "Bad account name: " <> message]
         })
@@ -588,7 +588,7 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {:error, :user_in_use, message} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "FAIL",
           params: ["REGISTER", "ACCOUNT_EXISTS", user_id, "Account already exists: " <> message]
         })
@@ -596,7 +596,7 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {:error, :exclusive, message} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "FAIL",
           params: [
             "REGISTER",
@@ -609,7 +609,7 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {:error, :unknown, message} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "FAIL",
           params: [
             "REGISTER",
@@ -625,11 +625,11 @@ defmodule Matrix2051.IrcConn.Handler do
 
   # Handles a command (after connection registration is finished)
   defp handle(sup_pid, command) do
-    state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
+    state = M51.IrcConn.Supervisor.state(sup_pid)
 
     case command.tags do
       %{"batch" => reference_tag} ->
-        Matrix2051.IrcConn.State.add_batch_command(state, reference_tag, command)
+        M51.IrcConn.State.add_batch_command(state, reference_tag, command)
 
       _ ->
         handle_unbatched(sup_pid, command)
@@ -638,10 +638,10 @@ defmodule Matrix2051.IrcConn.Handler do
 
   # Called by handle/3 when the command isn't part of a batch
   defp handle_unbatched(sup_pid, command) do
-    state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
-    matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
-    matrix_client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
-    nick = Matrix2051.IrcConn.State.nick(state)
+    state = M51.IrcConn.Supervisor.state(sup_pid)
+    matrix_state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+    matrix_client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
+    nick = M51.IrcConn.State.nick(state)
 
     send = make_send_function(command, sup_pid)
     send_batch = make_send_batch_function(command, sup_pid)
@@ -653,7 +653,7 @@ defmodule Matrix2051.IrcConn.Handler do
           _ -> nick
         end
 
-      %Matrix2051.Irc.Command{source: "server", command: numeric, params: [first_param | params]}
+      %M51.Irc.Command{source: "server", command: numeric, params: [first_param | params]}
     end
 
     send_numeric = fn numeric, params ->
@@ -664,7 +664,7 @@ defmodule Matrix2051.IrcConn.Handler do
       send_numeric.("461", [command.command, "Need more parameters"])
     end
 
-    send_ack = fn -> send.(%Matrix2051.Irc.Command{command: "ACK", params: []}) end
+    send_ack = fn -> send.(%M51.Irc.Command{command: "ACK", params: []}) end
 
     case {command.command, command.params} do
       {"NICK", [new_nick | _]} ->
@@ -678,7 +678,7 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {"CAP", ["LIST" | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "CAP", params: ["*", "LIST", "sasl"]})
+        send.(%M51.Irc.Command{command: "CAP", params: ["*", "LIST", "sasl"]})
 
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD
@@ -689,36 +689,36 @@ defmodule Matrix2051.IrcConn.Handler do
         send_numeric.("410", ["CAP", "Missing CAP subcommand"])
 
       {"PING", [cookie]} ->
-        send.(%Matrix2051.Irc.Command{command: "PONG", params: [cookie]})
+        send.(%M51.Irc.Command{command: "PONG", params: [cookie]})
 
       {"PING", [_, cookie | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "PONG", params: [cookie]})
+        send.(%M51.Irc.Command{command: "PONG", params: [cookie]})
 
       {"PING", []} ->
         send_needmoreparams.()
 
       {"QUIT", []} ->
-        send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["Client quit"]})
+        send.(%M51.Irc.Command{command: "ERROR", params: ["Client quit"]})
         close_connection(sup_pid)
 
       {"QUIT", [reason | _]} ->
-        send.(%Matrix2051.Irc.Command{command: "ERROR", params: ["Quit: " <> reason]})
+        send.(%M51.Irc.Command{command: "ERROR", params: ["Quit: " <> reason]})
         close_connection(sup_pid)
 
       {"REGISTER", _} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "FAIL",
           params: ["REGISTER", "ALREADY_AUTHENTICATED", nick, "You are already authenticated."]
         })
 
       {"VERIFY", _} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "FAIL",
           params: ["VERIFY", "ALREADY_AUTHENTICATED", nick, "You are already authenticated."]
         })
 
       {"JOIN", [channel | _]} ->
-        case Matrix2051.MatrixClient.Client.join_room(matrix_client, channel) do
+        case M51.MatrixClient.Client.join_room(matrix_client, channel) do
           {:ok, _room_id} ->
             # Should we send a JOIN?
             send_ack.()
@@ -775,7 +775,7 @@ defmodule Matrix2051.IrcConn.Handler do
               }
             }
 
-            Matrix2051.MatrixClient.Client.send_event(
+            M51.MatrixClient.Client.send_event(
               matrix_client,
               channel,
               Map.get(command.tags, "label"),
@@ -801,12 +801,12 @@ defmodule Matrix2051.IrcConn.Handler do
       {"CHATHISTORY", ["AFTER", target, anchor, limit | _]} ->
         limit = String.to_integer(limit)
 
-        case Matrix2051.MatrixClient.ChatHistory.after_(sup_pid, target, anchor, limit) do
+        case M51.MatrixClient.ChatHistory.after_(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
             send_batch.(messages, "chathistory")
 
           {:error, message} ->
-            send.(%Matrix2051.Irc.Command{
+            send.(%M51.Irc.Command{
               command: "FAIL",
               params: ["CHATHISTORY", "MESSAGE_ERROR", "AFTER", message]
             })
@@ -815,12 +815,12 @@ defmodule Matrix2051.IrcConn.Handler do
       {"CHATHISTORY", ["AROUND", target, anchor, limit | _]} ->
         limit = String.to_integer(limit)
 
-        case Matrix2051.MatrixClient.ChatHistory.around(sup_pid, target, anchor, limit) do
+        case M51.MatrixClient.ChatHistory.around(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
             send_batch.(messages, "chathistory")
 
           {:error, message} ->
-            send.(%Matrix2051.Irc.Command{
+            send.(%M51.Irc.Command{
               command: "FAIL",
               params: ["CHATHISTORY", "MESSAGE_ERROR", "AROUND", message]
             })
@@ -829,19 +829,19 @@ defmodule Matrix2051.IrcConn.Handler do
       {"CHATHISTORY", ["BEFORE", target, anchor, limit | _]} ->
         limit = String.to_integer(limit)
 
-        case Matrix2051.MatrixClient.ChatHistory.before(sup_pid, target, anchor, limit) do
+        case M51.MatrixClient.ChatHistory.before(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
             send_batch.(messages, "chathistory")
 
           {:error, message} ->
-            send.(%Matrix2051.Irc.Command{
+            send.(%M51.Irc.Command{
               command: "FAIL",
               params: ["CHATHISTORY", "MESSAGE_ERROR", "BEFORE", message]
             })
         end
 
       {"CHATHISTORY", ["BETWEEN", _target, _anchor1, _anchor2, _limit | _]} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "FAIL",
           params: [
             "CHATHISTORY",
@@ -852,7 +852,7 @@ defmodule Matrix2051.IrcConn.Handler do
         })
 
       {"CHATHISTORY", ["LATEST", _target, _anchor | _]} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "FAIL",
           params: [
             "CHATHISTORY",
@@ -867,7 +867,7 @@ defmodule Matrix2051.IrcConn.Handler do
         send_needmoreparams.()
 
       {"CHATHISTORY", [subcommand | _]} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           command: "FAIL",
           params: [
             "CHATHISTORY",
@@ -890,7 +890,7 @@ defmodule Matrix2051.IrcConn.Handler do
         if Enum.member?(["#", "!"], String.slice(target, 0, 1)) do
           channel = target
 
-          Matrix2051.MatrixClient.State.queue_on_channel_sync(
+          M51.MatrixClient.State.queue_on_channel_sync(
             matrix_state,
             channel,
             fn _room_id, room ->
@@ -939,7 +939,7 @@ defmodule Matrix2051.IrcConn.Handler do
           {"+", [type | _other_params]} ->
             # Opening batch
             if Enum.member?(@valid_batch_types, type) do
-              Matrix2051.IrcConn.State.create_batch(state, reference_tag, command)
+              M51.IrcConn.State.create_batch(state, reference_tag, command)
             else
               # Ignore the batch.
             end
@@ -949,11 +949,11 @@ defmodule Matrix2051.IrcConn.Handler do
             handle_batch(
               sup_pid,
               reference_tag,
-              Matrix2051.IrcConn.State.pop_batch(state, reference_tag)
+              M51.IrcConn.State.pop_batch(state, reference_tag)
             )
 
           _ ->
-            send.(%Matrix2051.Irc.Command{
+            send.(%M51.Irc.Command{
               command: "ERROR",
               params: ["Invalid BATCH arguments: " <> Enum.join(command.params, " ")]
             })
@@ -986,7 +986,7 @@ defmodule Matrix2051.IrcConn.Handler do
           nil
 
         {[_tag], _} ->
-          send.(%Matrix2051.Irc.Command{
+          send.(%M51.Irc.Command{
             command: "ERROR",
             params: ["multiline batch is missing a type and a target."]
           })
@@ -995,7 +995,7 @@ defmodule Matrix2051.IrcConn.Handler do
           nil
 
         {[_tag, _type], _} ->
-          send.(%Matrix2051.Irc.Command{
+          send.(%M51.Irc.Command{
             command: "ERROR",
             params: ["multiline batch is missing a target."]
           })
@@ -1010,7 +1010,7 @@ defmodule Matrix2051.IrcConn.Handler do
           {:notice, channel}
 
         {_, [command]} ->
-          send.(%Matrix2051.Irc.Command{
+          send.(%M51.Irc.Command{
             command: "ERROR",
             params: ["command #{command} not allowed in multiline batches."]
           })
@@ -1023,7 +1023,7 @@ defmodule Matrix2051.IrcConn.Handler do
           nil
 
         {_, commands} ->
-          send.(%Matrix2051.Irc.Command{
+          send.(%M51.Irc.Command{
             command: "ERROR",
             params: ["inconsistent commands in multiline batch: " <> Kernel.inspect(commands)]
           })
@@ -1041,13 +1041,13 @@ defmodule Matrix2051.IrcConn.Handler do
           commands
           |> Enum.map(fn command ->
             case command do
-              %Matrix2051.Irc.Command{
+              %M51.Irc.Command{
                 tags: %{"draft/multiline-concat" => _},
                 params: [_target, text | _]
               } ->
                 text
 
-              %Matrix2051.Irc.Command{params: [_target, text | _]} ->
+              %M51.Irc.Command{params: [_target, text | _]} ->
                 "\n" <> text
             end
           end)
@@ -1066,10 +1066,10 @@ defmodule Matrix2051.IrcConn.Handler do
   end
 
   defp send_message(sup_pid, reply_to, label, type, channel, text) do
-    writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
-    matrix_client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
-    matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
-    send = fn cmd -> Matrix2051.IrcConn.Writer.write_command(writer, cmd) end
+    writer = M51.IrcConn.Supervisor.writer(sup_pid)
+    matrix_client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
+    matrix_state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+    send = fn cmd -> M51.IrcConn.Writer.write_command(writer, cmd) end
 
     # If the client provided a label, use it as txnId on Matrix's side.
     # This way we can parse it when receiving the echo from Matrix's event
@@ -1088,12 +1088,12 @@ defmodule Matrix2051.IrcConn.Handler do
       end
 
     nicklist =
-      case Matrix2051.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+      case M51.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
         {_room_id, room} -> room.members
         nil -> []
       end
 
-    {body, formatted_body} = Matrix2051.Format.irc2matrix(body, nicklist)
+    {body, formatted_body} = M51.Format.irc2matrix(body, nicklist)
 
     event = %{"msgtype" => msgtype, "body" => body}
 
@@ -1122,7 +1122,7 @@ defmodule Matrix2051.IrcConn.Handler do
       end
 
     result =
-      Matrix2051.MatrixClient.Client.send_event(
+      M51.MatrixClient.Client.send_event(
         matrix_client,
         channel,
         label,
@@ -1135,7 +1135,7 @@ defmodule Matrix2051.IrcConn.Handler do
         nil
 
       {:error, error} ->
-        send.(%Matrix2051.Irc.Command{
+        send.(%M51.Irc.Command{
           source: "server",
           command: "NOTICE",
           params: [channel, "Error while sending message: " <> Kernel.inspect(error)]
@@ -1144,9 +1144,9 @@ defmodule Matrix2051.IrcConn.Handler do
   end
 
   defp close_connection(sup_pid) do
-    writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
-    Matrix2051.IrcConn.Writer.close(writer)
-    DynamicSupervisor.terminate_child(Matrix2051.IrcServer, sup_pid)
+    writer = M51.IrcConn.Supervisor.writer(sup_pid)
+    M51.IrcConn.Writer.close(writer)
+    DynamicSupervisor.terminate_child(M51.IrcServer, sup_pid)
   end
 
   defp nick2nuh(nick) do

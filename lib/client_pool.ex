@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.ClientPool do
+defmodule M51.ClientPool do
   @moduledoc """
     Supervises matrix clients; one per user:homeserver.
   """
@@ -32,7 +32,7 @@ defmodule Matrix2051.ClientPool do
     Task.start_link(fn ->
       DynamicSupervisor.start_child(
         __MODULE__,
-        {Registry, name: Matrix2051.ClientRegistry}
+        {Registry, name: M51.ClientRegistry}
       )
     end)
 
@@ -45,17 +45,17 @@ defmodule Matrix2051.ClientPool do
     {:ok, new_pid} =
       DynamicSupervisor.start_child(
         __MODULE__,
-        {Matrix2051.Client, {matrix_id}}
+        {M51.Client, {matrix_id}}
       )
 
-    case Registry.register({Matrix2051.ClientRegistry, keys: :duplicate}, matrix_id, new_pid) do
+    case Registry.register({M51.ClientRegistry, keys: :duplicate}, matrix_id, new_pid) do
       {:ok, _} ->
         new_pid
 
       {:error, {:already_registered, existing_pid}} ->
         # There is already a client for that matrix_id. Terminate the client we just
         # created, then return the existing one
-        :ok = DynamicSupervisor.terminate_child(Matrix2051.ClientSupervisor, new_pid)
+        :ok = DynamicSupervisor.terminate_child(M51.ClientSupervisor, new_pid)
         existing_pid
     end
   end

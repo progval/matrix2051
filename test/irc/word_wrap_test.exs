@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Irc.WordWrapTest do
+defmodule M51.Irc.WordWrapTest do
   use ExUnit.Case
-  doctest Matrix2051.Irc.WordWrap
+  doctest M51.Irc.WordWrap
 end

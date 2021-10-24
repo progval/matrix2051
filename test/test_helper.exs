@@ -24,7 +24,7 @@ defmodule MockIrcConnWriter do
 
   def start_link(args) do
     {test_pid} = args
-    name = {:via, Registry, {Matrix2051.Registry, {test_pid, :irc_writer}}}
+    name = {:via, Registry, {M51.Registry, {test_pid, :irc_writer}}}
     GenServer.start_link(__MODULE__, args, name: name)
   end
 
@@ -47,18 +47,18 @@ defmodule MockMatrixState do
   def start_link(args) do
     {test_pid} = args
 
-    name = {:via, Registry, {Matrix2051.Registry, {test_pid, :matrix_state}}}
+    name = {:via, Registry, {M51.Registry, {test_pid, :matrix_state}}}
 
     Agent.start_link(
       fn ->
-        %Matrix2051.MatrixClient.State{
+        %M51.MatrixClient.State{
           rooms: %{
-            "!room_id:example.org" => %Matrix2051.Matrix.RoomState{
+            "!room_id:example.org" => %M51.Matrix.RoomState{
               synced: true,
               canonical_alias: "#existing_room:example.org",
               members: %{
-                "user1:example.org" => %Matrix2051.Matrix.RoomMember{display_name: "user one"},
-                "user2:example.com" => %Matrix2051.Matrix.RoomMember{}
+                "user1:example.org" => %M51.Matrix.RoomMember{display_name: "user one"},
+                "user2:example.com" => %M51.Matrix.RoomMember{}
               }
             }
           }

@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.MatrixClient.Supervisor do
+defmodule M51.MatrixClient.Supervisor do
   @moduledoc """
     Supervises a Matrix client.
   """
@@ -30,25 +30,23 @@ defmodule Matrix2051.MatrixClient.Supervisor do
     {} = args
 
     children = [
-      {Matrix2051.MatrixClient.State, {__MODULE__, self()}},
-      {Matrix2051.MatrixClient.Client, {__MODULE__, self()}}
+      {M51.MatrixClient.State, {__MODULE__, self()}},
+      {M51.MatrixClient.Client, {__MODULE__, self()}}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
   end
 
-  @doc "Returns the pid of the Matrix2051.MatrixClient.State child."
+  @doc "Returns the pid of the M51.MatrixClient.State child."
   def state(sup) do
-    {_, pid, _, _} =
-      List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.State, 0)
+    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), M51.MatrixClient.State, 0)
 
     pid
   end
 
-  @doc "Returns the pid of the Matrix2051.MatrixClient.Client child."
+  @doc "Returns the pid of the M51.MatrixClient.Client child."
   def client(sup) do
-    {_, pid, _, _} =
-      List.keyfind(Supervisor.which_children(sup), Matrix2051.MatrixClient.Client, 0)
+    {_, pid, _, _} = List.keyfind(Supervisor.which_children(sup), M51.MatrixClient.Client, 0)
 
     pid
   end

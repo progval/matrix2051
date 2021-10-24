@@ -14,10 +14,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Supervisor do
+defmodule M51.Supervisor do
   @moduledoc """
-    Main supervisor of Matrix2051. Starts the Matrix2051.Config agent,
-    and the Matrix2051.IrcServer tree.
+    Main supervisor of M51. Starts the M51.Config agent,
+    and the M51.IrcServer tree.
   """
 
   use Supervisor
@@ -29,9 +29,9 @@ defmodule Matrix2051.Supervisor do
   @impl true
   def init(args) do
     children = [
-      {Registry, keys: :unique, name: Matrix2051.Registry},
-      {Matrix2051.Config, args},
-      Matrix2051.IrcServer
+      {Registry, keys: :unique, name: M51.Registry},
+      {M51.Config, args},
+      M51.IrcServer
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

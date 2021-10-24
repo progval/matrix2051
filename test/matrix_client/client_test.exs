@@ -14,21 +14,21 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.MatrixClient.ClientTest do
+defmodule M51.MatrixClient.ClientTest do
   use ExUnit.Case
-  doctest Matrix2051.MatrixClient.Client
+  doctest M51.MatrixClient.Client
 
   import Mox
   setup :set_mox_from_context
   setup :verify_on_exit!
 
   setup do
-    start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
-    config = start_supervised!({Matrix2051.Config, []})
+    start_supervised!({Registry, keys: :unique, name: M51.Registry})
+    config = start_supervised!({M51.Config, []})
 
-    start_supervised!({Matrix2051.MatrixClient.State, {self()}})
+    start_supervised!({M51.MatrixClient.State, {self()}})
 
-    Registry.register(Matrix2051.Registry, {self(), :matrix_poller}, self())
+    Registry.register(M51.Registry, {self(), :matrix_poller}, self())
 
     %{config: config, sup_pid: self()}
   end
@@ -72,11 +72,10 @@ defmodule Matrix2051.MatrixClient.ClientTest do
   end
 
   test "initialization", %{sup_pid: sup_pid} do
-    client =
-      start_supervised!({Matrix2051.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:dump_state}) ==
-             %Matrix2051.MatrixClient.Client{
+             %M51.MatrixClient.Client{
                state: :initial_state,
                irc_pid: sup_pid,
                args: [httpoison: MockHTTPoison]
@@ -132,16 +131,15 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    client =
-      start_supervised!({Matrix2051.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) == {:ok}
 
     assert GenServer.call(client, {:dump_state}) ==
-             %Matrix2051.MatrixClient.Client{
+             %M51.MatrixClient.Client{
                state: :connected,
                irc_pid: sup_pid,
-               raw_client: %Matrix2051.Matrix.RawClient{
+               raw_client: %M51.Matrix.RawClient{
                  base_url: "https://matrix.example.org",
                  access_token: "t0ken",
                  httpoison: MockHTTPoison
@@ -150,7 +148,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                hostname: "matrix.example.org"
              }
 
-    assert Matrix2051.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
+    assert M51.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
 
     receive do
       msg -> assert msg == :connected
@@ -211,16 +209,15 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    client =
-      start_supervised!({Matrix2051.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) == {:ok}
 
     assert GenServer.call(client, {:dump_state}) ==
-             %Matrix2051.MatrixClient.Client{
+             %M51.MatrixClient.Client{
                state: :connected,
                irc_pid: sup_pid,
-               raw_client: %Matrix2051.Matrix.RawClient{
+               raw_client: %M51.Matrix.RawClient{
                  base_url: "https://matrix.example.com",
                  access_token: "t0ken",
                  httpoison: MockHTTPoison
@@ -229,7 +226,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                hostname: "matrix.example.org"
              }
 
-    assert Matrix2051.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
+    assert M51.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
 
     receive do
       msg -> assert msg == :connected
@@ -265,20 +262,19 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    client =
-      start_supervised!({Matrix2051.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) ==
              {:error, :no_password_flow, "No password flow"}
 
     assert GenServer.call(client, {:dump_state}) ==
-             %Matrix2051.MatrixClient.Client{
+             %M51.MatrixClient.Client{
                state: :initial_state,
                irc_pid: sup_pid,
                args: [httpoison: MockHTTPoison]
              }
 
-    assert Matrix2051.MatrixClient.Client.user_id(client) == nil
+    assert M51.MatrixClient.Client.user_id(client) == nil
   end
 
   test "connection with invalid password", %{sup_pid: sup_pid} do
@@ -326,20 +322,19 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    client =
-      start_supervised!({Matrix2051.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) ==
              {:error, :denied, "Invalid password"}
 
     assert GenServer.call(client, {:dump_state}) ==
-             %Matrix2051.MatrixClient.Client{
+             %M51.MatrixClient.Client{
                state: :initial_state,
                irc_pid: sup_pid,
                args: [httpoison: MockHTTPoison]
              }
 
-    assert Matrix2051.MatrixClient.Client.user_id(client) == nil
+    assert M51.MatrixClient.Client.user_id(client) == nil
   end
 
   test "registration", %{sup_pid: sup_pid} do
@@ -369,17 +364,16 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       }
     end)
 
-    client =
-      start_supervised!({Matrix2051.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
     assert GenServer.call(client, {:register, "user", "matrix.example.org", "p4ssw0rd"}) ==
              {:ok, "user:matrix.example.org"}
 
     assert GenServer.call(client, {:dump_state}) ==
-             %Matrix2051.MatrixClient.Client{
+             %M51.MatrixClient.Client{
                state: :connected,
                irc_pid: sup_pid,
-               raw_client: %Matrix2051.Matrix.RawClient{
+               raw_client: %M51.Matrix.RawClient{
                  base_url: "https://matrix.example.org",
                  access_token: "t0ken",
                  httpoison: MockHTTPoison
@@ -388,7 +382,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
                hostname: "matrix.example.org"
              }
 
-    assert Matrix2051.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
+    assert M51.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
 
     receive do
       msg -> assert msg == :connected
@@ -410,10 +404,9 @@ defmodule Matrix2051.MatrixClient.ClientTest do
        %HTTPoison.Response{status_code: 200, body: "{\"room_id\": \"!abc:matrix.example.net\"}"}}
     end)
 
-    client =
-      start_supervised!({Matrix2051.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
-    assert Matrix2051.MatrixClient.Client.connect(
+    assert M51.MatrixClient.Client.connect(
              client,
              "user",
              "matrix.example.org",
@@ -424,7 +417,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       msg -> assert msg == :connected
     end
 
-    assert Matrix2051.MatrixClient.Client.join_room(client, "#testroom:matrix.example.com")
+    assert M51.MatrixClient.Client.join_room(client, "#testroom:matrix.example.com")
   end
 
   test "getting event context", %{sup_pid: sup_pid} do
@@ -443,18 +436,17 @@ defmodule Matrix2051.MatrixClient.ClientTest do
        }}
     end)
 
-    client =
-      start_supervised!({Matrix2051.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
-    state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
+    state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
 
-    Matrix2051.MatrixClient.State.set_room_canonical_alias(
+    M51.MatrixClient.State.set_room_canonical_alias(
       state,
       "!roomid:example.org",
       "#chan:example.org"
     )
 
-    assert Matrix2051.MatrixClient.Client.connect(
+    assert M51.MatrixClient.Client.connect(
              client,
              "user",
              "matrix.example.org",
@@ -465,7 +457,7 @@ defmodule Matrix2051.MatrixClient.ClientTest do
       msg -> assert msg == :connected
     end
 
-    assert Matrix2051.MatrixClient.Client.get_event_context(
+    assert M51.MatrixClient.Client.get_event_context(
              client,
              "#chan:example.org",
              "$event3",

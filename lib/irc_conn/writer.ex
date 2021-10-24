@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.IrcConn.Writer do
+defmodule M51.IrcConn.Writer do
   @moduledoc """
     Writes lines to a client.
   """
@@ -25,7 +25,7 @@ defmodule Matrix2051.IrcConn.Writer do
     {sup_pid, _sock} = args
 
     GenServer.start_link(__MODULE__, args,
-      name: {:via, Registry, {Matrix2051.Registry, {sup_pid, :irc_writer}}}
+      name: {:via, Registry, {M51.Registry, {sup_pid, :irc_writer}}}
     )
   end
 
@@ -36,7 +36,7 @@ defmodule Matrix2051.IrcConn.Writer do
 
   def write_command(writer, command) do
     if command != nil do
-      write_line(writer, Matrix2051.Irc.Command.format(command))
+      write_line(writer, M51.Irc.Command.format(command))
     end
   end
 

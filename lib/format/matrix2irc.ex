@@ -14,8 +14,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Format.Matrix2Irc.Handler do
-  @simple_tags Matrix2051.Format.matrix2irc_map()
+defmodule M51.Format.Matrix2Irc.Handler do
+  @simple_tags M51.Format.matrix2irc_map()
 
   def transform(s, _current_color) when is_binary(s) do
     s

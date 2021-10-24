@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Matrix.RoomMember do
+defmodule M51.Matrix.RoomMember do
   @moduledoc """
     Stores the state of the member of a Matrix room
   """

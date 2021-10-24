@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.MatrixClient.Client do
+defmodule M51.MatrixClient.Client do
   @moduledoc """
     Manages connections to a Matrix homeserver.
   """
@@ -28,7 +28,7 @@ defmodule Matrix2051.MatrixClient.Client do
     :args,
     # pid of IrcConnSupervisor
     :irc_pid,
-    # Matrix2051.Matrix.RawClient structure
+    # M51.Matrix.RawClient structure
     :raw_client,
     :local_name,
     :hostname
@@ -38,7 +38,7 @@ defmodule Matrix2051.MatrixClient.Client do
     {sup_pid, _extra_args} = opts
 
     GenServer.start_link(__MODULE__, opts,
-      name: {:via, Registry, {Matrix2051.Registry, {sup_pid, :matrix_client}}}
+      name: {:via, Registry, {M51.Registry, {sup_pid, :matrix_client}}}
     )
   end
 
@@ -46,11 +46,11 @@ defmodule Matrix2051.MatrixClient.Client do
   def init(args) do
     {irc_pid, extra_args} = args
 
-    # slightly larger than Matrix2051.Matrix.RawClient's timeout,
+    # slightly larger than M51.Matrix.RawClient's timeout,
     timeout = 25000
 
     {:ok,
-     %Matrix2051.MatrixClient.Client{
+     %M51.MatrixClient.Client{
        state: :initial_state,
        irc_pid: irc_pid,
        args: extra_args
@@ -65,7 +65,7 @@ defmodule Matrix2051.MatrixClient.Client do
   @impl true
   def handle_call({:connect, local_name, hostname, password}, _from, state) do
     case state do
-      %Matrix2051.MatrixClient.Client{
+      %M51.MatrixClient.Client{
         state: :initial_state,
         irc_pid: irc_pid,
         args: args
@@ -110,13 +110,13 @@ defmodule Matrix2051.MatrixClient.Client do
 
                 access_token = data["access_token"]
 
-                raw_client = %Matrix2051.Matrix.RawClient{
+                raw_client = %M51.Matrix.RawClient{
                   base_url: base_url,
                   access_token: access_token,
                   httpoison: httpoison
                 }
 
-                state = %Matrix2051.MatrixClient.Client{
+                state = %M51.MatrixClient.Client{
                   state: :connected,
                   irc_pid: irc_pid,
                   raw_client: raw_client,
@@ -124,7 +124,7 @@ defmodule Matrix2051.MatrixClient.Client do
                   hostname: hostname
                 }
 
-                Registry.send({Matrix2051.Registry, {irc_pid, :matrix_poller}}, :connected)
+                Registry.send({M51.Registry, {irc_pid, :matrix_poller}}, :connected)
 
                 {:reply, {:ok}, state}
 
@@ -134,7 +134,7 @@ defmodule Matrix2051.MatrixClient.Client do
             end
         end
 
-      %Matrix2051.MatrixClient.Client{
+      %M51.MatrixClient.Client{
         state: :connected,
         local_name: local_name,
         hostname: hostname
@@ -146,7 +146,7 @@ defmodule Matrix2051.MatrixClient.Client do
   @impl true
   def handle_call({:register, local_name, hostname, password}, _from, state) do
     case state do
-      %Matrix2051.MatrixClient.Client{
+      %M51.MatrixClient.Client{
         state: :initial_state,
         irc_pid: irc_pid,
         args: args
@@ -173,13 +173,13 @@ defmodule Matrix2051.MatrixClient.Client do
             {_, user_id} = String.split_at(data["user_id"], 1)
             access_token = data["access_token"]
 
-            raw_client = %Matrix2051.Matrix.RawClient{
+            raw_client = %M51.Matrix.RawClient{
               base_url: base_url,
               access_token: access_token,
               httpoison: httpoison
             }
 
-            state = %Matrix2051.MatrixClient.Client{
+            state = %M51.MatrixClient.Client{
               state: :connected,
               irc_pid: irc_pid,
               raw_client: raw_client,
@@ -187,7 +187,7 @@ defmodule Matrix2051.MatrixClient.Client do
               hostname: hostname
             }
 
-            Registry.send({Matrix2051.Registry, {irc_pid, :matrix_poller}}, :connected)
+            Registry.send({M51.Registry, {irc_pid, :matrix_poller}}, :connected)
 
             {:reply, {:ok, user_id}, state}
 
@@ -213,7 +213,7 @@ defmodule Matrix2051.MatrixClient.Client do
             {:reply, {:error, :unknown, Kernel.inspect(body)}, state}
         end
 
-      %Matrix2051.MatrixClient.Client{
+      %M51.MatrixClient.Client{
         state: :connected,
         local_name: local_name,
         hostname: hostname
@@ -224,19 +224,18 @@ defmodule Matrix2051.MatrixClient.Client do
 
   @impl true
   def handle_call({:join_room, room_alias}, _from, state) do
-    %Matrix2051.MatrixClient.Client{state: :connected, raw_client: raw_client, irc_pid: irc_pid} =
-      state
+    %M51.MatrixClient.Client{state: :connected, raw_client: raw_client, irc_pid: irc_pid} = state
 
-    matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(irc_pid)
+    matrix_state = M51.IrcConn.Supervisor.matrix_state(irc_pid)
 
     path = "/_matrix/client/r0/join/" <> urlquote(room_alias)
 
-    case Matrix2051.MatrixClient.State.room_from_irc_channel(matrix_state, room_alias) do
+    case M51.MatrixClient.State.room_from_irc_channel(matrix_state, room_alias) do
       {room_id, _room} ->
         {:reply, {:error, :already_joined, room_id}, state}
 
       nil ->
-        case Matrix2051.Matrix.RawClient.post(raw_client, path, "{}") do
+        case M51.Matrix.RawClient.post(raw_client, path, "{}") do
           {:ok, %{"room_id" => room_id}} ->
             {:reply, {:ok, room_id}, state}
 
@@ -254,21 +253,21 @@ defmodule Matrix2051.MatrixClient.Client do
 
   @impl true
   def handle_call({:send_event, channel, event_type, label, event}, _from, state) do
-    %Matrix2051.MatrixClient.Client{
+    %M51.MatrixClient.Client{
       state: :connected,
       irc_pid: irc_pid
     } = state
 
-    matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(irc_pid)
+    matrix_state = M51.IrcConn.Supervisor.matrix_state(irc_pid)
 
     transaction_id = label_to_transaction_id(label)
 
-    case Matrix2051.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+    case M51.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
       nil ->
         {:reply, {:error, {:room_not_found, channel}}, state}
 
       {room_id, _room} ->
-        Matrix2051.MatrixClient.Sender.queue_event(
+        M51.MatrixClient.Sender.queue_event(
           irc_pid,
           room_id,
           event_type,
@@ -282,16 +281,16 @@ defmodule Matrix2051.MatrixClient.Client do
 
   @impl true
   def handle_call({:get_event_context, channel, event_id, limit}, _from, state) do
-    %Matrix2051.MatrixClient.Client{
+    %M51.MatrixClient.Client{
       state: :connected,
       irc_pid: irc_pid,
       raw_client: raw_client
     } = state
 
-    matrix_state = Matrix2051.IrcConn.Supervisor.matrix_state(irc_pid)
+    matrix_state = M51.IrcConn.Supervisor.matrix_state(irc_pid)
 
     reply =
-      case Matrix2051.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+      case M51.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
         nil ->
           {:error, {:room_not_found, channel}}
 
@@ -300,7 +299,7 @@ defmodule Matrix2051.MatrixClient.Client do
             "/_matrix/client/r0/rooms/#{urlquote(room_id)}/context/#{urlquote(event_id)}?" <>
               URI.encode_query(%{"limit" => limit})
 
-          case Matrix2051.Matrix.RawClient.get(raw_client, path) do
+          case M51.Matrix.RawClient.get(raw_client, path) do
             {:ok, events} -> {:ok, events}
             {:error, error} -> {:error, error}
           end
@@ -317,19 +316,19 @@ defmodule Matrix2051.MatrixClient.Client do
 
     # Examples
 
-        iex> Matrix2051.MatrixClient.Client.label_to_transaction_id("foo")
+        iex> M51.MatrixClient.Client.label_to_transaction_id("foo")
         "m51-cl-Zm9v"
-        iex> Matrix2051.MatrixClient.Client.label_to_transaction_id("foo")
+        iex> M51.MatrixClient.Client.label_to_transaction_id("foo")
         "m51-cl-Zm9v"
-        iex> txid1 = Matrix2051.MatrixClient.Client.label_to_transaction_id(nil)
-        iex> txid2 = Matrix2051.MatrixClient.Client.label_to_transaction_id(nil)
+        iex> txid1 = M51.MatrixClient.Client.label_to_transaction_id(nil)
+        iex> txid2 = M51.MatrixClient.Client.label_to_transaction_id(nil)
         iex> txid1 == txid2
         false
-        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label(
-        ...>   Matrix2051.MatrixClient.Client.label_to_transaction_id("foo")
+        iex> M51.MatrixClient.Client.transaction_id_to_label(
+        ...>   M51.MatrixClient.Client.label_to_transaction_id("foo")
         ...> )
         "foo"
-        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label(txid1)
+        iex> M51.MatrixClient.Client.transaction_id_to_label(txid1)
         nil
   """
   def label_to_transaction_id(label) do
@@ -346,16 +345,16 @@ defmodule Matrix2051.MatrixClient.Client do
 
     # Examples
 
-        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label("m51-cl-Zm9v")
+        iex> M51.MatrixClient.Client.transaction_id_to_label("m51-cl-Zm9v")
         "foo"
-        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label("m51-gen-AAAA")
+        iex> M51.MatrixClient.Client.transaction_id_to_label("m51-gen-AAAA")
         nil
-        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label(
-        ...>   Matrix2051.MatrixClient.Client.label_to_transaction_id("foo")
+        iex> M51.MatrixClient.Client.transaction_id_to_label(
+        ...>   M51.MatrixClient.Client.label_to_transaction_id("foo")
         ...> )
         "foo"
-        iex> Matrix2051.MatrixClient.Client.transaction_id_to_label(
-        ...>   Matrix2051.MatrixClient.Client.label_to_transaction_id(nil)
+        iex> M51.MatrixClient.Client.transaction_id_to_label(
+        ...>   M51.MatrixClient.Client.label_to_transaction_id(nil)
         ...> )
         nil
   """
@@ -389,27 +388,27 @@ defmodule Matrix2051.MatrixClient.Client do
 
   def raw_client(pid) do
     case GenServer.call(pid, {:dump_state}) do
-      %Matrix2051.MatrixClient.Client{
+      %M51.MatrixClient.Client{
         state: :connected,
         raw_client: raw_client
       } ->
         raw_client
 
-      %Matrix2051.MatrixClient.Client{state: :initial_state} ->
+      %M51.MatrixClient.Client{state: :initial_state} ->
         nil
     end
   end
 
   def user_id(pid) do
     case GenServer.call(pid, {:dump_state}) do
-      %Matrix2051.MatrixClient.Client{
+      %M51.MatrixClient.Client{
         state: :connected,
         local_name: local_name,
         hostname: hostname
       } ->
         local_name <> ":" <> hostname
 
-      %Matrix2051.MatrixClient.Client{state: :initial_state} ->
+      %M51.MatrixClient.Client{state: :initial_state} ->
         nil
     end
   end

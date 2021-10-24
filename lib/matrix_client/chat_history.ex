@@ -14,17 +14,17 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.MatrixClient.ChatHistory do
+defmodule M51.MatrixClient.ChatHistory do
   @moduledoc """
     Queries history when queried from IRC clients
   """
 
   def after_(sup_pid, room_id, anchor, limit) do
-    client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
+    client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
 
     case parse_anchor(anchor) do
       {:ok, event_id} ->
-        case Matrix2051.MatrixClient.Client.get_event_context(
+        case M51.MatrixClient.Client.get_event_context(
                client,
                room_id,
                event_id,
@@ -40,11 +40,11 @@ defmodule Matrix2051.MatrixClient.ChatHistory do
   end
 
   def around(sup_pid, room_id, anchor, limit) do
-    client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
+    client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
 
     case parse_anchor(anchor) do
       {:ok, event_id} ->
-        case Matrix2051.MatrixClient.Client.get_event_context(client, room_id, event_id, limit) do
+        case M51.MatrixClient.Client.get_event_context(client, room_id, event_id, limit) do
           {:ok, events} ->
             # TODO: if there aren't enough events after (resp. before), allow more
             # events before (resp. after) than half the limit.
@@ -67,11 +67,11 @@ defmodule Matrix2051.MatrixClient.ChatHistory do
   end
 
   def before(sup_pid, room_id, anchor, limit) do
-    client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
+    client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
 
     case parse_anchor(anchor) do
       {:ok, event_id} ->
-        case Matrix2051.MatrixClient.Client.get_event_context(
+        case M51.MatrixClient.Client.get_event_context(
                client,
                room_id,
                event_id,
@@ -110,7 +110,7 @@ defmodule Matrix2051.MatrixClient.ChatHistory do
     # Run the poller with this "mock" write function.
     # This allows us to collect commands, so put them all in the chathistory batch.
     #
-    # It is tempting to make Matrix2051.MatrixClient.Poller.handle_event return
+    # It is tempting to make M51.MatrixClient.Poller.handle_event return
     # a list of commands instead of making it send them directly, but it makes
     # it hard to deal with state changes.
     # TODO: still... it would be nice to find a way to avoid this.
@@ -123,7 +123,7 @@ defmodule Matrix2051.MatrixClient.ChatHistory do
             sender -> String.replace_prefix(sender, "@", "")
           end
 
-        Matrix2051.MatrixClient.Poller.handle_event(
+        M51.MatrixClient.Poller.handle_event(
           sup_pid,
           room_id,
           sender,

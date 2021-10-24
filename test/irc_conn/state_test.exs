@@ -14,25 +14,24 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.IrcConn.StateTest do
+defmodule M51.IrcConn.StateTest do
   use ExUnit.Case
-  doctest Matrix2051.IrcConn.State
+  doctest M51.IrcConn.State
 
   test "batches" do
-    start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
-    state = start_supervised!({Matrix2051.IrcConn.State, {nil}})
+    start_supervised!({Registry, keys: :unique, name: M51.Registry})
+    state = start_supervised!({M51.IrcConn.State, {nil}})
 
-    opening_command = %Matrix2051.Irc.Command{
+    opening_command = %M51.Irc.Command{
       command: "BATCH",
       params: ["+tag", "type", "foo", "bar"]
     }
 
-    Matrix2051.IrcConn.State.create_batch(state, "tag", opening_command)
-    Matrix2051.IrcConn.State.add_batch_command(state, "tag", :foo)
-    Matrix2051.IrcConn.State.add_batch_command(state, "tag", :bar)
-    Matrix2051.IrcConn.State.add_batch_command(state, "tag", :baz)
+    M51.IrcConn.State.create_batch(state, "tag", opening_command)
+    M51.IrcConn.State.add_batch_command(state, "tag", :foo)
+    M51.IrcConn.State.add_batch_command(state, "tag", :bar)
+    M51.IrcConn.State.add_batch_command(state, "tag", :baz)
 
-    assert Matrix2051.IrcConn.State.pop_batch(state, "tag") ==
-             {opening_command, [:foo, :bar, :baz]}
+    assert M51.IrcConn.State.pop_batch(state, "tag") == {opening_command, [:foo, :bar, :baz]}
   end
 end

@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.IrcConn.Reader do
+defmodule M51.IrcConn.Reader do
   @moduledoc """
     Reads from a client, and sends commands to the handler.
   """
@@ -35,8 +35,8 @@ defmodule Matrix2051.IrcConn.Reader do
   defp loop_serve(supervisor, sock) do
     case :gen_tcp.recv(sock, 0) do
       {:ok, line} ->
-        {:ok, command} = Matrix2051.Irc.Command.parse(line)
-        Registry.send({Matrix2051.Registry, {supervisor, :irc_handler}}, command)
+        {:ok, command} = M51.Irc.Command.parse(line)
+        Registry.send({M51.Registry, {supervisor, :irc_handler}}, command)
         loop_serve(supervisor, sock)
 
       {:error, :closed} ->

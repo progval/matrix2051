@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Matrix.RoomState do
+defmodule M51.Matrix.RoomState do
   @moduledoc """
     Stores the state of a Matrix client (access token, joined rooms, ...)
   """
@@ -26,7 +26,7 @@ defmodule Matrix2051.Matrix.RoomState do
     :name,
     # as on IRC
     :topic,
-    # %{user_id => Matrix2051.Matrix.RoomMember{...}}
+    # %{user_id => M51.Matrix.RoomMember{...}}
     members: Map.new(),
     # whether the whole state was fetched
     synced: false

@@ -14,23 +14,23 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.MatrixClient.PollerTest do
+defmodule M51.MatrixClient.PollerTest do
   use ExUnit.Case
-  doctest Matrix2051.MatrixClient.Poller
+  doctest M51.MatrixClient.Poller
 
   setup do
-    start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
+    start_supervised!({Registry, keys: :unique, name: M51.Registry})
 
-    start_supervised!({Matrix2051.IrcConn.State, {self()}})
+    start_supervised!({M51.IrcConn.State, {self()}})
     |> Process.register(:process_ircconn_state)
 
-    start_supervised!({Matrix2051.MatrixClient.State, {self()}})
+    start_supervised!({M51.MatrixClient.State, {self()}})
     |> Process.register(:process_matrix_state)
 
     start_supervised!({MockIrcConnWriter, {self()}})
     |> Process.register(MockIrcConnWriter)
 
-    Matrix2051.IrcConn.State.set_nick(:process_ircconn_state, "mynick:example.com")
+    M51.IrcConn.State.set_nick(:process_ircconn_state, "mynick:example.com")
 
     :ok
   end
@@ -42,7 +42,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "no events" do
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{})
+    M51.MatrixClient.Poller.handle_events(self(), %{})
   end
 
   test "new room" do
@@ -57,7 +57,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
       }
@@ -86,7 +86,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
       }
@@ -99,7 +99,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "renamed room" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :channel_rename,
       :message_tags
     ])
@@ -126,7 +126,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -170,7 +170,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -238,7 +238,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -305,7 +305,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
       }
@@ -352,7 +352,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -371,7 +371,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "leaving members" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :message_tags
     ])
 
@@ -470,7 +470,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.com" => %{
@@ -545,7 +545,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -602,7 +602,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "invite" => %{
           "!testid:example.org" => %{
@@ -680,7 +680,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -715,7 +715,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "message with tags" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :server_time,
       :message_tags
     ])
@@ -742,7 +742,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -764,7 +764,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "message with display-name" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :message_tags
     ])
 
@@ -796,7 +796,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -822,7 +822,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "echo-message" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :echo_message,
       :message_tags,
       :labeled_response
@@ -866,7 +866,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -896,7 +896,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "drops echos if echo-message not negotiated" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :message_tags,
       :labeled_response
     ])
@@ -939,7 +939,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -961,7 +961,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "replies" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :multiline,
       :message_tags
     ])
@@ -1005,7 +1005,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -1031,7 +1031,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "rich replies" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :multiline,
       :message_tags
     ])
@@ -1077,7 +1077,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -1103,7 +1103,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "reactions" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :multiline,
       :message_tags
     ])
@@ -1144,7 +1144,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -1170,7 +1170,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "multiline" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :multiline,
       :batch,
       :message_tags
@@ -1198,7 +1198,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -1230,7 +1230,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "replies and multiline" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :multiline,
       :batch,
       :account,
@@ -1276,7 +1276,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -1322,7 +1322,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "multiline-concat" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :multiline,
       :batch,
       :message_tags
@@ -1350,7 +1350,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -1384,7 +1384,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "multiline and multiline-concat" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :multiline,
       :batch,
       :message_tags
@@ -1412,7 +1412,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -1450,7 +1450,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "downgraded multiline" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :message_tags
     ])
 
@@ -1476,7 +1476,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -1500,7 +1500,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
   end
 
   test "replies and downgraded multiline" do
-    Matrix2051.IrcConn.State.add_capabilities(:process_ircconn_state, [
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :account,
       :message_tags
     ])
@@ -1544,7 +1544,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{
@@ -1630,7 +1630,7 @@ defmodule Matrix2051.MatrixClient.PollerTest do
       }
     ]
 
-    Matrix2051.MatrixClient.Poller.handle_events(self(), %{
+    M51.MatrixClient.Poller.handle_events(self(), %{
       "rooms" => %{
         "join" => %{
           "!testid:example.org" => %{

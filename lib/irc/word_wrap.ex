@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Irc.WordWrap do
+defmodule M51.Irc.WordWrap do
   @doc ~S"""
     Splits text into lines not larger than the specified number of bytes.
 
@@ -28,25 +28,25 @@ defmodule Matrix2051.Irc.WordWrap do
 
     ## Examples
 
-        iex> Matrix2051.Irc.WordWrap.split("foo bar baz", 20)
+        iex> M51.Irc.WordWrap.split("foo bar baz", 20)
         ["foo bar baz"]
 
-        iex> Matrix2051.Irc.WordWrap.split("foo bar baz", 10)
+        iex> M51.Irc.WordWrap.split("foo bar baz", 10)
         ["foo bar ", "baz"]
 
-        iex> Matrix2051.Irc.WordWrap.split("foo bar baz", 4)
+        iex> M51.Irc.WordWrap.split("foo bar baz", 4)
         ["foo ", "bar ", "baz"]
 
-        iex> Matrix2051.Irc.WordWrap.split("foo bar baz", 3)
+        iex> M51.Irc.WordWrap.split("foo bar baz", 3)
         ["foo", " ", "bar", " ", "baz"]
 
-        iex> Matrix2051.Irc.WordWrap.split("abcdefghijk", 10)
+        iex> M51.Irc.WordWrap.split("abcdefghijk", 10)
         ["abcdefghij", "k"]
 
-        iex> Matrix2051.Irc.WordWrap.split("abcdefghijk", 4)
+        iex> M51.Irc.WordWrap.split("abcdefghijk", 4)
         ["abcd", "efgh", "ijk"]
 
-        iex> Matrix2051.Irc.WordWrap.split("réellement", 2)
+        iex> M51.Irc.WordWrap.split("réellement", 2)
         ["r", "é", "el", "le", "me", "nt"]
 
   """
@@ -130,10 +130,10 @@ defmodule Matrix2051.Irc.WordWrap do
 
     ## Examples
 
-        iex> Matrix2051.Irc.WordWrap.split_graphemes_at(String.graphemes("foobar"), 2)
+        iex> M51.Irc.WordWrap.split_graphemes_at(String.graphemes("foobar"), 2)
         {["f", "o"], ["o", "b", "a", "r"]}
 
-        iex> Matrix2051.Irc.WordWrap.split_graphemes_at(String.graphemes("réel"), 2)
+        iex> M51.Irc.WordWrap.split_graphemes_at(String.graphemes("réel"), 2)
         {["r"], ["é", "e", "l"]}
   """
   def split_graphemes_at(graphemes, nbytes) do
@@ -168,10 +168,10 @@ defmodule Matrix2051.Irc.WordWrap do
 
     ## Examples
 
-        iex> Matrix2051.Irc.WordWrap.split_graphemes(String.graphemes("foobar"), 2)
+        iex> M51.Irc.WordWrap.split_graphemes(String.graphemes("foobar"), 2)
         {["fo", "ob"], "ar"}
 
-        iex> Matrix2051.Irc.WordWrap.split_graphemes(String.graphemes("réellement"), 2)
+        iex> M51.Irc.WordWrap.split_graphemes(String.graphemes("réellement"), 2)
         {["r", "é", "el", "le", "me"], "nt"}
   """
 

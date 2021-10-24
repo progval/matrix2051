@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Matrix.Misc do
+defmodule M51.Matrix.Misc do
   def parse_userid(userid) do
     case String.split(userid, ":") do
       [local_name, hostname] ->

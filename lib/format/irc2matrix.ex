@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Format.Irc2Matrix.State do
+defmodule M51.Format.Irc2Matrix.State do
   defstruct bold: false,
             italic: false,
             underlined: false,
@@ -23,8 +23,8 @@ defmodule Matrix2051.Format.Irc2Matrix.State do
             color: {nil, nil}
 end
 
-defmodule Matrix2051.Format.Irc2Matrix do
-  @simple_tags Matrix2051.Format.irc2matrix_map()
+defmodule M51.Format.Irc2Matrix do
+  @simple_tags M51.Format.irc2matrix_map()
   @chars ["\x0f" | Map.keys(@simple_tags)]
   @digits Enum.to_list(?0..?9)
   @hexdigits Enum.concat(Enum.to_list(?0..?9), Enum.to_list(?A..?F))
@@ -330,7 +330,7 @@ defmodule Matrix2051.Format.Irc2Matrix do
 
   def update_state(_state, "\x0f") do
     # reset state
-    {%Matrix2051.Format.Irc2Matrix.State{}, ""}
+    {%M51.Format.Irc2Matrix.State{}, ""}
   end
 
   def update_state(state, token) do

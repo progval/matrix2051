@@ -14,10 +14,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.IrcServer do
+defmodule M51.IrcServer do
   @moduledoc """
     Holds the main server socket and spawns a supervised
-    Matrix2051.IrcConn.Supervisor process for each incoming IRC connection.
+    M51.IrcConn.Supervisor process for each incoming IRC connection.
   """
   use DynamicSupervisor
 
@@ -29,13 +29,13 @@ defmodule Matrix2051.IrcServer do
 
   @impl true
   def init(_args) do
-    port = Matrix2051.Config.port()
+    port = M51.Config.port()
     ret = DynamicSupervisor.init(strategy: :one_for_one)
 
     Task.start_link(fn ->
       DynamicSupervisor.start_child(
         __MODULE__,
-        {Task.Supervisor, name: Matrix2051.IrcServer.TaskSupervisor}
+        {Task.Supervisor, name: M51.IrcServer.TaskSupervisor}
       )
 
       DynamicSupervisor.start_child(
@@ -70,7 +70,7 @@ defmodule Matrix2051.IrcServer do
     {:ok, conn_supervisor} =
       DynamicSupervisor.start_child(
         __MODULE__,
-        {Matrix2051.IrcConn.Supervisor, {sock}}
+        {M51.IrcConn.Supervisor, {sock}}
       )
 
     :ok = :gen_tcp.controlling_process(sock, conn_supervisor)

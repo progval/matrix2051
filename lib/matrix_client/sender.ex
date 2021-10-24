@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.MatrixClient.Sender do
+defmodule M51.MatrixClient.Sender do
   @moduledoc """
     Sends events to the homeserver.
 
@@ -31,7 +31,7 @@ defmodule Matrix2051.MatrixClient.Sender do
 
   def poll(args) do
     {sup_pid} = args
-    Registry.register(Matrix2051.Registry, {sup_pid, :matrix_sender}, nil)
+    Registry.register(M51.Registry, {sup_pid, :matrix_sender}, nil)
     loop_poll(sup_pid)
   end
 
@@ -45,10 +45,10 @@ defmodule Matrix2051.MatrixClient.Sender do
   end
 
   defp loop_send(sup_pid, room_id, event_type, transaction_id, event, nb_attempts \\ 0) do
-    client = Matrix2051.IrcConn.Supervisor.matrix_client(sup_pid)
+    client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
     send = make_send_function(sup_pid, transaction_id)
 
-    case Matrix2051.MatrixClient.Client.raw_client(client) do
+    case M51.MatrixClient.Client.raw_client(client) do
       nil ->
         # Wait for it to be initialized
         Process.sleep(100)
@@ -61,7 +61,7 @@ defmodule Matrix2051.MatrixClient.Sender do
 
         IO.inspect(body, label: "sending")
 
-        case Matrix2051.Matrix.RawClient.put(raw_client, path, body) do
+        case M51.Matrix.RawClient.put(raw_client, path, body) do
           {:ok, _body} ->
             nil
 
@@ -81,10 +81,10 @@ defmodule Matrix2051.MatrixClient.Sender do
               )
             else
               IO.inspect(reason, label: "error while sending event, giving up")
-              state = Matrix2051.IrcConn.Supervisor.matrix_state(sup_pid)
-              channel = Matrix2051.MatrixClient.State.room_irc_channel(state, room_id)
+              state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+              channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
 
-              send.(%Matrix2051.Irc.Command{
+              send.(%M51.Irc.Command{
                 source: "server",
                 command: "NOTICE",
                 params: [channel, "Error while sending message: " <> Kernel.inspect(reason)]
@@ -96,10 +96,10 @@ defmodule Matrix2051.MatrixClient.Sender do
 
   # Returns a function that can be used to send messages
   defp make_send_function(sup_pid, transaction_id) do
-    writer = Matrix2051.IrcConn.Supervisor.writer(sup_pid)
-    state = Matrix2051.IrcConn.Supervisor.state(sup_pid)
-    capabilities = Matrix2051.IrcConn.State.capabilities(state)
-    label = Matrix2051.MatrixClient.Client.transaction_id_to_label(transaction_id)
+    writer = M51.IrcConn.Supervisor.writer(sup_pid)
+    state = M51.IrcConn.Supervisor.state(sup_pid)
+    capabilities = M51.IrcConn.State.capabilities(state)
+    label = M51.MatrixClient.Client.transaction_id_to_label(transaction_id)
 
     fn cmd ->
       cmd =
@@ -108,16 +108,16 @@ defmodule Matrix2051.MatrixClient.Sender do
           _ -> %{cmd | tags: %{cmd.tags | "label" => label}}
         end
 
-      Matrix2051.IrcConn.Writer.write_command(
+      M51.IrcConn.Writer.write_command(
         writer,
-        Matrix2051.Irc.Command.downgrade(cmd, capabilities)
+        M51.Irc.Command.downgrade(cmd, capabilities)
       )
     end
   end
 
   def queue_event(sup_pid, room_id, event_type, transaction_id, event) do
     Registry.send(
-      {Matrix2051.Registry, {sup_pid, :matrix_sender}},
+      {M51.Registry, {sup_pid, :matrix_sender}},
       {:send, room_id, event_type, transaction_id, event}
     )
   end

@@ -19,14 +19,14 @@ defmodule MockMatrixClient do
 
   def start_link(args) do
     {sup_pid} = args
-    name = {:via, Registry, {Matrix2051.Registry, {sup_pid, :matrix_client}}}
+    name = {:via, Registry, {M51.Registry, {sup_pid, :matrix_client}}}
     GenServer.start_link(__MODULE__, args, name: name)
   end
 
   @impl true
   def init({sup_pid}) do
     {:ok,
-     %Matrix2051.MatrixClient.Client{
+     %M51.MatrixClient.Client{
        state: :initial_state,
        irc_pid: sup_pid,
        args: []
@@ -164,27 +164,27 @@ defmodule MockMatrixClient do
 
   @impl true
   def handle_call(msg, _from, state) do
-    %Matrix2051.MatrixClient.Client{irc_pid: irc_pid} = state
+    %M51.MatrixClient.Client{irc_pid: irc_pid} = state
     send(irc_pid, msg)
     {:reply, {:ok, nil}, state}
   end
 end
 
-defmodule Matrix2051.IrcConn.HandlerTest do
+defmodule M51.IrcConn.HandlerTest do
   use ExUnit.Case, async: false
-  doctest Matrix2051.IrcConn.Handler
+  doctest M51.IrcConn.Handler
 
   @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
   @cap_ls "CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/multiline echo-message extended-join labeled-response message-tags sasl server-time\r\n"
   @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANTYPES=#! CHATHISTORY=1000 TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
-    start_supervised!({Registry, keys: :unique, name: Matrix2051.Registry})
-    start_supervised!({Matrix2051.Config, []})
+    start_supervised!({Registry, keys: :unique, name: M51.Registry})
+    start_supervised!({M51.Config, []})
     start_supervised!({MockMatrixClient, {self()}})
-    state = start_supervised!({Matrix2051.IrcConn.State, {self()}})
+    state = start_supervised!({M51.IrcConn.State, {self()}})
 
-    handler = start_supervised!({Matrix2051.IrcConn.Handler, {self()}})
+    handler = start_supervised!({M51.IrcConn.Handler, {self()}})
 
     start_supervised!({MockIrcConnWriter, {self()}})
     start_supervised!({MockMatrixState, {self()}})
@@ -196,7 +196,7 @@ defmodule Matrix2051.IrcConn.HandlerTest do
   end
 
   def cmd(line) do
-    {:ok, command} = Matrix2051.Irc.Command.parse(line)
+    {:ok, command} = M51.Irc.Command.parse(line)
     command
   end
 
@@ -214,8 +214,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     receive do
       msg ->
         {:line, line} = msg
-        {:ok, cmd} = Matrix2051.Irc.Command.parse(line)
-        %Matrix2051.Irc.Command{command: "BATCH", params: [param1 | _]} = cmd
+        {:ok, cmd} = M51.Irc.Command.parse(line)
+        %M51.Irc.Command{command: "BATCH", params: [param1 | _]} = cmd
         batch_id = String.slice(param1, 1, String.length(param1))
         {batch_id, line}
     end
@@ -332,8 +332,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP END"))
     assert_welcome("foo:example.org")
 
-    assert Matrix2051.IrcConn.State.nick(state) == "foo:example.org"
-    assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
+    assert M51.IrcConn.State.nick(state) == "foo:example.org"
+    assert M51.IrcConn.State.gecos(state) == "My GECOS"
   end
 
   test "Connection registration with AUTHENTICATE before NICK", %{state: state, handler: handler} do
@@ -362,8 +362,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("CAP END"))
     assert_welcome("foo:example.org")
 
-    assert Matrix2051.IrcConn.State.nick(state) == "foo:example.org"
-    assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
+    assert M51.IrcConn.State.nick(state) == "foo:example.org"
+    assert M51.IrcConn.State.gecos(state) == "My GECOS"
   end
 
   test "Registration with mismatched nick", %{state: state, handler: handler} do
@@ -395,8 +395,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     assert_welcome("initial_nick")
     assert_line(":initial_nick!foo@example.org NICK :foo:example.org\r\n")
 
-    assert Matrix2051.IrcConn.State.nick(state) == "foo:example.org"
-    assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
+    assert M51.IrcConn.State.nick(state) == "foo:example.org"
+    assert M51.IrcConn.State.gecos(state) == "My GECOS"
   end
 
   test "user_id validation", %{state: state, handler: handler} do
@@ -463,8 +463,8 @@ defmodule Matrix2051.IrcConn.HandlerTest do
     send(handler, cmd("PING sync2"))
     assert_line("PONG :sync2\r\n")
 
-    assert Matrix2051.IrcConn.State.nick(state) == "foo:bar"
-    assert Matrix2051.IrcConn.State.gecos(state) == "My GECOS"
+    assert M51.IrcConn.State.nick(state) == "foo:bar"
+    assert M51.IrcConn.State.gecos(state) == "My GECOS"
   end
 
   test "Account registration", %{handler: handler} do

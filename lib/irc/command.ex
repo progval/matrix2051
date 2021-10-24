@@ -14,33 +14,33 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule Matrix2051.Irc.Command do
+defmodule M51.Irc.Command do
   @enforce_keys [:command, :params]
   defstruct [{:tags, %{}}, :source, :command, :params, {:is_echo, false}]
 
   @doc ~S"""
-    Parses an IRC line into the `Matrix2051.Irc.Command` structure.
+    Parses an IRC line into the `M51.Irc.Command` structure.
 
     ## Examples
 
-        iex> Matrix2051.Irc.Command.parse("PRIVMSG #chan :hello\r\n")
+        iex> M51.Irc.Command.parse("PRIVMSG #chan :hello\r\n")
         {:ok,
-         %Matrix2051.Irc.Command{
+         %M51.Irc.Command{
            command: "PRIVMSG",
            params: ["#chan", "hello"]
          }}
 
-        iex> Matrix2051.Irc.Command.parse("@+typing=active TAGMSG #chan\r\n")
+        iex> M51.Irc.Command.parse("@+typing=active TAGMSG #chan\r\n")
         {:ok,
-         %Matrix2051.Irc.Command{
+         %M51.Irc.Command{
            tags: %{"+typing" => "active"},
            command: "TAGMSG",
            params: ["#chan"]
          }}
 
-        iex> Matrix2051.Irc.Command.parse("@msgid=foo :nick!user@host PRIVMSG #chan :hello\r\n")
+        iex> M51.Irc.Command.parse("@msgid=foo :nick!user@host PRIVMSG #chan :hello\r\n")
         {:ok,
-         %Matrix2051.Irc.Command{
+         %M51.Irc.Command{
            tags: %{"msgid" => "foo"},
            source: "nick!user@host",
            command: "PRIVMSG",
@@ -55,7 +55,7 @@ defmodule Matrix2051.Irc.Command do
       if String.starts_with?(line, "@") do
         [tags | [rest]] = Regex.split(~r/ +/, line, parts: 2)
         {_, tags} = String.split_at(tags, 1)
-        {Map.new(Regex.split(~r/;/, tags), fn s -> Matrix2051.Irc.Command.parse_tag(s) end), rest}
+        {Map.new(Regex.split(~r/;/, tags), fn s -> M51.Irc.Command.parse_tag(s) end), rest}
       else
         {%{}, line}
       end
@@ -101,24 +101,24 @@ defmodule Matrix2051.Irc.Command do
   end
 
   @doc ~S"""
-    Formats an IRC line from the `Matrix2051.Irc.Command` structure.
+    Formats an IRC line from the `M51.Irc.Command` structure.
 
     ## Examples
 
-        iex> Matrix2051.Irc.Command.format(%Matrix2051.Irc.Command{
+        iex> M51.Irc.Command.format(%M51.Irc.Command{
         ...>   command: "PRIVMSG",
         ...>   params: ["#chan", "hello"]
         ...> })
         "PRIVMSG #chan :hello\r\n"
 
-        iex> Matrix2051.Irc.Command.format(%Matrix2051.Irc.Command{
+        iex> M51.Irc.Command.format(%M51.Irc.Command{
         ...>   tags: %{"+typing" => "active"},
         ...>   command: "TAGMSG",
         ...>   params: ["#chan"]
         ...> })
         "@+typing=active TAGMSG :#chan\r\n"
 
-        iex> Matrix2051.Irc.Command.format(%Matrix2051.Irc.Command{
+        iex> M51.Irc.Command.format(%M51.Irc.Command{
         ...>   tags: %{"msgid" => "foo"},
         ...>   source: "nick!user@host",
         ...>   command: "PRIVMSG",
@@ -206,13 +206,13 @@ defmodule Matrix2051.Irc.Command do
 
     # Example
 
-        iex> cmd = %Matrix2051.Irc.Command{
+        iex> cmd = %M51.Irc.Command{
         ...>   tags: %{"account" => "abcd"},
         ...>   command: "JOIN",
         ...>   params: ["#foo", "account", "realname"]
         ...> }
-        iex> Matrix2051.Irc.Command.downgrade(cmd, [:extended_join])
-        %Matrix2051.Irc.Command{
+        iex> M51.Irc.Command.downgrade(cmd, [:extended_join])
+        %M51.Irc.Command{
              tags: %{},
              command: "JOIN",
              params: ["#foo", "account", "realname"]
@@ -259,7 +259,7 @@ defmodule Matrix2051.Irc.Command do
           |> Enum.filter(&(&1 != nil))
           |> Map.new()
 
-        %Matrix2051.Irc.Command{command | tags: tags}
+        %M51.Irc.Command{command | tags: tags}
       end
 
     # downgrade commands
@@ -301,18 +301,18 @@ defmodule Matrix2051.Irc.Command do
 
     ## Examples
 
-        iex> Matrix2051.Irc.Command.linewrap(%Matrix2051.Irc.Command{
+        iex> M51.Irc.Command.linewrap(%M51.Irc.Command{
         ...>   command: "PRIVMSG",
         ...>   params: ["#chan", "hello world"]
         ...> }, 25)
         [
-          %Matrix2051.Irc.Command{
+          %M51.Irc.Command{
             tags: %{},
             source: nil,
             command: "PRIVMSG",
             params: ["#chan", "hello "]
           },
-          %Matrix2051.Irc.Command{
+          %M51.Irc.Command{
             tags: %{"draft/multiline-concat" => nil},
             source: nil,
             command: "PRIVMSG",
@@ -323,10 +323,10 @@ defmodule Matrix2051.Irc.Command do
   """
   def linewrap(command, nbytes \\ 512) do
     case command do
-      %Matrix2051.Irc.Command{command: "PRIVMSG", params: [target, text]} ->
+      %M51.Irc.Command{command: "PRIVMSG", params: [target, text]} ->
         do_linewrap(command, nbytes, target, text)
 
-      %Matrix2051.Irc.Command{command: "NOTICE", params: [target, text]} ->
+      %M51.Irc.Command{command: "NOTICE", params: [target, text]} ->
         do_linewrap(command, nbytes, target, text)
 
       _ ->
@@ -335,10 +335,9 @@ defmodule Matrix2051.Irc.Command do
   end
 
   defp do_linewrap(command, nbytes, target, text) do
-    overhead =
-      byte_size(Matrix2051.Irc.Command.format(%{command | tags: %{}, params: [target, ""]}))
+    overhead = byte_size(M51.Irc.Command.format(%{command | tags: %{}, params: [target, ""]}))
 
-    case Matrix2051.Irc.WordWrap.split(text, nbytes - overhead) do
+    case M51.Irc.WordWrap.split(text, nbytes - overhead) do
       [] ->
         # line is empty, send it as-is.
         [command]
