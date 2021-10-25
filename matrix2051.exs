@@ -24,3 +24,4 @@ else
 end
 {:ok, _} = M51.Application.start(:normal, [])
 Logger.info("Matrix2051 started.")
+Process.sleep(:infinity)

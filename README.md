@@ -48,7 +48,7 @@ Non-goals:
 * Install system dependencies. For example, on Debian: `sudo apt install elixir otp erlang-dev erlang-inets erlang-xmerl`
 * Install Elixir dependencies: `mix deps.get`
 * Run tests to make sure everything is working: `mix test`
-* Run: `mix run --no-halt matrix2051.exs`
+* Run: `mix run matrix2051.exs`
 * Connect a client to `localhost:2051`, with the following config:
   * no SSL/TLS
   * SASL username: your full matrix ID (`user:homeserver.example.org`)
