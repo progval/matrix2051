@@ -85,8 +85,8 @@ defmodule M51.MatrixClient.Poller do
         handle_events(sup_pid, events, handled_event_ids)
         events["next_batch"]
 
-      {:error, code, _} when code in [504, 520, 524] ->
-        # Backend timeout, try again
+      {:error, code, _} when code >= 500 and code < 600 ->
+        # server error, try again
         poll_one(sup_pid, since, handled_event_ids, raw_client)
     end
   end
