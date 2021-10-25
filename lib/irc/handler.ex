@@ -21,6 +21,8 @@ defmodule M51.IrcConn.Handler do
 
   use Task, restart: :permanent
 
+  require Logger
+
   def start_link(args) do
     Task.start_link(__MODULE__, :run, [args])
   end
@@ -632,7 +634,33 @@ defmodule M51.IrcConn.Handler do
         M51.IrcConn.State.add_batch_command(state, reference_tag, command)
 
       _ ->
-        handle_unbatched(sup_pid, command)
+        try do
+          handle_unbatched(sup_pid, command)
+        rescue
+          e ->
+            Logger.error(Exception.format(:error, e, __STACKTRACE__))
+            send = make_send_function(command, sup_pid)
+            nick = M51.IrcConn.State.nick(state)
+
+            tags =
+              case Map.get(command.tags, "label") do
+                nil -> %{}
+                label -> %{"label" => label}
+              end
+
+            # ERR_UNKNOWNERROR
+            send.(%M51.Irc.Command{
+              tags: tags,
+              source: "server",
+              command: 400,
+              params: [
+                nick,
+                command.command,
+                "An unknown error occured, please report it along with your IRC and console logs. " <>
+                  "Summary: " <> Exception.format_banner(:error, e, __STACKTRACE__)
+              ]
+            })
+        end
     end
   end
 

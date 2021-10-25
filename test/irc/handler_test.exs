@@ -492,6 +492,20 @@ defmodule M51.IrcConn.HandlerTest do
     assert_welcome("user:example.org")
   end
 
+  test "unknown errors", %{handler: handler} do
+    do_connection_registration(handler)
+
+    Logger.remove_backend(:console)
+
+    send(handler, %M51.Irc.Command{tags: %{"label" => "abcd"}, command: "PING", params: [:foo]})
+
+    assert_line(
+      "@label=abcd :server 400 foo:example.org PING :An unknown error occured, please report it along with your IRC and console logs. Summary: ** (ArgumentError) argument error\r\n"
+    )
+
+    Logger.add_backend(:console)
+  end
+
   test "labeled response", %{handler: handler} do
     do_connection_registration(handler)
 
