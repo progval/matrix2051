@@ -174,8 +174,8 @@ defmodule M51.IrcConn.HandlerTest do
   use ExUnit.Case, async: false
   doctest M51.IrcConn.Handler
 
-  @cap_ls_302 "CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
-  @cap_ls "CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/multiline echo-message extended-join labeled-response message-tags sasl server-time\r\n"
+  @cap_ls_302 ":server CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time\r\n"
+  @cap_ls ":server CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/multiline echo-message extended-join labeled-response message-tags sasl server-time\r\n"
   @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANTYPES=#! CHATHISTORY=1000 TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
@@ -235,7 +235,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     joined_caps = Enum.join(["batch", "labeled-response", "sasl"] ++ capabilities, " ")
     send(handler, cmd("CAP REQ :" <> joined_caps))
-    assert_line("CAP * ACK :" <> joined_caps <> "\r\n")
+    assert_line(":server CAP * ACK :" <> joined_caps <> "\r\n")
 
     send(handler, cmd("NICK foo:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -291,7 +291,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line("CAP * ACK :sasl\r\n")
+    assert_line(":server CAP * ACK :sasl\r\n")
 
     send(handler, cmd("PING sync1"))
     assert_line("PONG :sync1\r\n")
@@ -309,7 +309,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls_302)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line("CAP * ACK :sasl\r\n")
+    assert_line(":server CAP * ACK :sasl\r\n")
 
     send(handler, cmd("NICK foo:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -341,7 +341,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls_302)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line("CAP * ACK :sasl\r\n")
+    assert_line(":server CAP * ACK :sasl\r\n")
 
     send(handler, cmd("AUTHENTICATE PLAIN"))
     assert_line("AUTHENTICATE :+\r\n")
@@ -371,7 +371,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls_302)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line("CAP * ACK :sasl\r\n")
+    assert_line(":server CAP * ACK :sasl\r\n")
 
     send(handler, cmd("NICK initial_nick"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -404,7 +404,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line("CAP * ACK :sasl\r\n")
+    assert_line(":server CAP * ACK :sasl\r\n")
 
     send(handler, cmd("NICK foo:bar"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -472,7 +472,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls_302)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line("CAP * ACK :sasl\r\n")
+    assert_line(":server CAP * ACK :sasl\r\n")
 
     send(handler, cmd("NICK user:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))

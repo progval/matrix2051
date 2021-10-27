@@ -306,7 +306,7 @@ defmodule M51.IrcConn.Handler do
           end)
           |> Enum.join(" ")
 
-        send.(%M51.Irc.Command{command: "CAP", params: ["*", "LS", caps]})
+        send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "LS", caps]})
         :got_cap_ls
 
       {"CAP", ["LS" | _]} ->
@@ -317,12 +317,12 @@ defmodule M51.IrcConn.Handler do
           |> Enum.map(fn {k, _v} -> k end)
           |> Enum.join(" ")
 
-        send.(%M51.Irc.Command{command: "CAP", params: ["*", "LS", caps]})
+        send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "LS", caps]})
         :got_cap_ls
 
       {"CAP", ["LIST" | _]} ->
         # TODO: return sasl when relevant
-        send.(%M51.Irc.Command{command: "CAP", params: ["*", "LIST"]})
+        send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "LIST"]})
         nil
 
       {"CAP", ["REQ", caps | _]} ->
@@ -339,11 +339,11 @@ defmodule M51.IrcConn.Handler do
         all_caps_known = Enum.all?(cap_atoms, fn atom -> atom != nil end)
 
         if all_caps_known do
-          send.(%M51.Irc.Command{command: "CAP", params: ["*", "ACK", caps]})
+          send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "ACK", caps]})
           state = M51.IrcConn.Supervisor.state(sup_pid)
           M51.IrcConn.State.add_capabilities(state, cap_atoms)
         else
-          send.(%M51.Irc.Command{command: "CAP", params: ["*", "NAK", caps]})
+          send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "NAK", caps]})
         end
 
         nil
@@ -707,7 +707,7 @@ defmodule M51.IrcConn.Handler do
         nil
 
       {"CAP", ["LIST" | _]} ->
-        send.(%M51.Irc.Command{command: "CAP", params: ["*", "LIST", "sasl"]})
+        send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "LIST", "sasl"]})
 
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD
