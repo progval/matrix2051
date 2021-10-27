@@ -158,3 +158,8 @@ serverpassword = ""
 This is a reference to [xkcd 1782](https://xkcd.com/1782/):
 
 ![2004: Our team stays in touch over IRC. 2010: Our team mainly uses Skype, but some of us prefer to stick to IRC. 2017: We've got almost everyone on Slack, But three people refuse to quit IRC and connect via gateway. 2051: All consciousnesses have merged with the Galactic Singularity, Except for one guy who insists on joining through his IRC client. "I just have it set up the way I want, okay?!" *Sigh*](https://imgs.xkcd.com/comics/team_chat.png)
+
+### I still have a question, how can I contact you?
+
+Join [#matrix2051 at irc.interlinked.me](ircs://irc.interlinked.me/matrix2051).
+(No I am not eating my own dogfood, I still prefer "native" IRC.)
