@@ -499,9 +499,11 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, %M51.Irc.Command{tags: %{"label" => "abcd"}, command: "PING", params: [:foo]})
 
-    assert_line(
-      "@label=abcd :server 400 foo:example.org PING :An unknown error occured, please report it along with your IRC and console logs. Summary: ** (ArgumentError) argument error\r\n"
-    )
+    receive do
+      msg ->
+        {:line, line} = msg
+        assert Regex.match?(~r/@label=abcd :server 400 foo:example.org PING :An unknown error occured, please report it along with your IRC and console logs. Summary:[^\r\n]*ArgumentError[^\r\n]*\r\n/, line)
+    end
 
     Logger.add_backend(:console)
   end

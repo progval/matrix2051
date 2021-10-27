@@ -649,6 +649,7 @@ defmodule M51.IrcConn.Handler do
               end
 
             # ERR_UNKNOWNERROR
+            [error | _] = Exception.format_banner(:error, e, __STACKTRACE__) |> String.split("\n")
             send.(%M51.Irc.Command{
               tags: tags,
               source: "server",
@@ -657,7 +658,7 @@ defmodule M51.IrcConn.Handler do
                 nick,
                 command.command,
                 "An unknown error occured, please report it along with your IRC and console logs. " <>
-                  "Summary: " <> Exception.format_banner(:error, e, __STACKTRACE__)
+                  "Summary: " <> error
               ]
             })
         end
