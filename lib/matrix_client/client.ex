@@ -20,6 +20,8 @@ defmodule M51.MatrixClient.Client do
   """
   use GenServer
 
+  require Logger
+
   # The state of this client
   defstruct [
     # :initial_state or :connected
@@ -75,8 +77,11 @@ defmodule M51.MatrixClient.Client do
         base_url = get_base_url(hostname, httpoison)
 
         # Check the server supports password login
-        %HTTPoison.Response{status_code: 200, body: body} =
-          httpoison.get!(base_url <> "/_matrix/client/r0/login")
+        url = base_url <> "/_matrix/client/r0/login"
+        Logger.debug("(raw) GET #{url}")
+        response = httpoison.get!(url)
+        Logger.debug(Kernel.inspect(response))
+        %HTTPoison.Response{status_code: 200, body: body} = response
 
         data = Jason.decode!(body)
 
@@ -101,7 +106,12 @@ defmodule M51.MatrixClient.Client do
                 "password" => password
               })
 
-            case httpoison.post!(base_url <> "/_matrix/client/r0/login", body) do
+            url = base_url <> "/_matrix/client/r0/login"
+            Logger.debug("(raw) POST #{url} " <> Kernel.inspect(body))
+            response = httpoison.post!(url, body)
+            Logger.debug(Kernel.inspect(response))
+
+            case response do
               %HTTPoison.Response{status_code: 200, body: body} ->
                 data = Jason.decode!(body)
 
@@ -369,17 +379,35 @@ defmodule M51.MatrixClient.Client do
   end
 
   defp get_base_url(hostname, httpoison) do
-    case httpoison.get!("https://" <> hostname <> "/.well-known/matrix/client") do
+    wellknown_url = "https://" <> hostname <> "/.well-known/matrix/client"
+
+    case httpoison.get!(wellknown_url) do
       %HTTPoison.Response{status_code: 200, body: body} ->
         data = Jason.decode!(body)
-        data["m.homeserver"]["base_url"]
+        base_url = data["m.homeserver"]["base_url"]
+        Logger.debug("Well-known request for #{wellknown_url} yielded #{base_url}")
+        base_url
 
       %HTTPoison.Response{status_code: 404} ->
-        "https://" <> hostname
+        base_url = "https://" <> hostname
 
-      _ ->
+        Logger.debug(
+          "Well-known request for #{wellknown_url} returned 404 error. " <>
+            "Assuming #{base_url} as base URL"
+        )
+
+        base_url
+
+      res ->
         # The next call will probably fail, but this spares error handling in this one.
-        "https://" <> hostname
+        base_url = "https://" <> hostname
+
+        Logger.warn(
+          "Well-known request for #{wellknown_url} returned #{Kernel.inspect(res)}. " <>
+            "Falling back to #{base_url}"
+        )
+
+        base_url
     end
   end
 

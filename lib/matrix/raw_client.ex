@@ -15,6 +15,8 @@
 ###
 
 defmodule M51.Matrix.RawClient do
+  require Logger
+
   @moduledoc """
     Sends queries to a Matrix homeserver.
   """
@@ -24,7 +26,14 @@ defmodule M51.Matrix.RawClient do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
     options = options |> Keyword.put_new(:timeout, 20000)
 
-    case client.httpoison.get(client.base_url <> path, headers, options) do
+    url = client.base_url <> path
+
+    Logger.debug("GET #{url}")
+
+    response = client.httpoison.get(url, headers, options)
+    Logger.debug(Kernel.inspect(response))
+
+    case response do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         {:ok, Jason.decode!(body)}
 
@@ -44,7 +53,15 @@ defmodule M51.Matrix.RawClient do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
     options = options |> Keyword.put_new(:timeout, 20000)
 
-    case client.httpoison.post(client.base_url <> path, body, headers, options) do
+    url = client.base_url <> path
+
+    Logger.debug("POST #{url} " <> Kernel.inspect(body))
+
+    response = client.httpoison.post(url, body, headers, options)
+
+    Logger.debug(Kernel.inspect(response))
+
+    case response do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         {:ok, Jason.decode!(body)}
 
@@ -60,7 +77,14 @@ defmodule M51.Matrix.RawClient do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
     options = options |> Keyword.put_new(:timeout, 20000)
 
-    case client.httpoison.put(client.base_url <> path, body, headers, options) do
+    url = client.base_url <> path
+
+    Logger.debug("POST #{url} " <> Kernel.inspect(body))
+
+    response = client.httpoison.put(url, body, headers, options)
+    Logger.debug(Kernel.inspect(response))
+
+    case response do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         {:ok, Jason.decode!(body)}
 

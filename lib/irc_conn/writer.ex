@@ -55,7 +55,7 @@ defmodule M51.IrcConn.Writer do
     case arg do
       {:line, line} ->
         {_supervisor, sock} = state
-        Logger.debug("S->C #{Regex.replace(~r/[\r\n]/, line, "")}")
+        Logger.debug("IRC S->C #{Regex.replace(~r/[\r\n]/, line, "")}")
         :gen_tcp.send(sock, line)
 
       {:close} ->
