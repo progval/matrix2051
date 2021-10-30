@@ -492,7 +492,57 @@ defmodule M51.IrcConn.HandlerTest do
     assert_welcome("user:example.org")
   end
 
-  test "unknown errors", %{handler: handler} do
+  test "unknown errors during registration", %{handler: handler} do
+    send(handler, cmd("CAP LS 302"))
+    assert_line(@cap_ls_302)
+
+    joined_caps = Enum.join(["batch", "labeled-response", "sasl"], " ")
+    send(handler, cmd("CAP REQ :" <> joined_caps))
+    assert_line(":server CAP * ACK :" <> joined_caps <> "\r\n")
+
+    send(handler, cmd("NICK foo:example.org"))
+
+    # cause an error
+    Logger.remove_backend(:console)
+    send(handler, %M51.Irc.Command{tags: %{"label" => "abcd"}, command: "PING", params: [:foo]})
+
+    receive do
+      msg ->
+        {:line, line} = msg
+
+        assert Regex.match?(
+                 ~r/@label=abcd :server 400 \* PING :An unknown error occured, please report it along with your IRC and console logs. Summary:[^\r\n]*ArgumentError[^\r\n]*\r\n/,
+                 line
+               )
+    end
+
+    Logger.add_backend(:console)
+
+    # make sure everything proceeds normally afterward
+
+    send(handler, cmd("USER ident * * :My GECOS"))
+
+    send(handler, cmd("@label=reg01 AUTHENTICATE PLAIN"))
+    assert_line("@label=reg01 AUTHENTICATE :+\r\n")
+
+    send(
+      handler,
+      cmd(
+        "@label=reg02 AUTHENTICATE Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk"
+      )
+    )
+
+    assert_line(
+      "@label=reg02 :server 900 foo:example.org foo:example.org!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
+    )
+
+    assert_line("@label=reg02 :server 903 foo:example.org :Authentication successful\r\n")
+
+    send(handler, cmd("CAP END"))
+    assert_welcome("foo:example.org")
+  end
+
+  test "unknown errors after registration", %{handler: handler} do
     do_connection_registration(handler)
 
     Logger.remove_backend(:console)
@@ -502,7 +552,11 @@ defmodule M51.IrcConn.HandlerTest do
     receive do
       msg ->
         {:line, line} = msg
-        assert Regex.match?(~r/@label=abcd :server 400 foo:example.org PING :An unknown error occured, please report it along with your IRC and console logs. Summary:[^\r\n]*ArgumentError[^\r\n]*\r\n/, line)
+
+        assert Regex.match?(
+                 ~r/@label=abcd :server 400 foo:example.org PING :An unknown error occured, please report it along with your IRC and console logs. Summary:[^\r\n]*ArgumentError[^\r\n]*\r\n/,
+                 line
+               )
     end
 
     Logger.add_backend(:console)

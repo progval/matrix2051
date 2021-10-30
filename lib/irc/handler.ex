@@ -117,69 +117,86 @@ defmodule M51.IrcConn.Handler do
          user_id \\ nil,
          waiting_cap_end \\ false
        ) do
+    receive do
+      command ->
+        res = try do
+          loop_connreg_iter(sup_pid, nick, gecos, user_id, waiting_cap_end, command)
+        rescue
+          e ->
+            rescue_error(sup_pid, command, e, __STACKTRACE__)
+            {:continue, {sup_pid, nick, gecos, user_id, waiting_cap_end}}
+        end
+        case res do
+          {:continue, {sup_pid, nick, gecos, user_id, waiting_cap_end}} ->
+            loop_connreg(sup_pid, nick, gecos, user_id, waiting_cap_end)
+          {:registered} ->
+            nil
+        end
+    end
+  end
+
+  defp loop_connreg_iter(sup_pid, nick, gecos, user_id, waiting_cap_end, command) do
     writer = M51.IrcConn.Supervisor.writer(sup_pid)
     send = fn cmd -> M51.IrcConn.Writer.write_command(writer, cmd) end
 
-    receive do
-      command ->
-        {nick, gecos, user_id, waiting_cap_end} =
-          case handle_connreg(sup_pid, command, nick) do
-            nil -> {nick, gecos, user_id, waiting_cap_end}
-            {:nick, nick} -> {nick, gecos, user_id, waiting_cap_end}
-            {:user, gecos} -> {nick, gecos, user_id, waiting_cap_end}
-            {:authenticate, user_id} -> {nick, gecos, user_id, waiting_cap_end}
-            :got_cap_ls -> {nick, gecos, user_id, true}
-            :got_cap_end -> {nick, gecos, user_id, false}
+    {nick, gecos, user_id, waiting_cap_end} =
+      case handle_connreg(sup_pid, command, nick) do
+        nil -> {nick, gecos, user_id, waiting_cap_end}
+        {:nick, nick} -> {nick, gecos, user_id, waiting_cap_end}
+        {:user, gecos} -> {nick, gecos, user_id, waiting_cap_end}
+        {:authenticate, user_id} -> {nick, gecos, user_id, waiting_cap_end}
+        :got_cap_ls -> {nick, gecos, user_id, true}
+        :got_cap_end -> {nick, gecos, user_id, false}
+      end
+
+    if nick != nil && gecos != nil && !waiting_cap_end do
+      # Registration finished. Send welcome messages and return to the main loop
+      state = M51.IrcConn.Supervisor.state(sup_pid)
+
+      M51.IrcConn.State.set_nick(state, nick)
+      M51.IrcConn.State.set_gecos(state, gecos)
+
+      case user_id do
+        # all good
+        ^nick ->
+          send_welcome(sup_pid, command)
+
+          M51.IrcConn.State.set_registered(state)
+
+          case Registry.lookup(M51.Registry, {sup_pid, :matrix_poller}) do
+            [{matrix_poller, _}] -> send(matrix_poller, :start_polling)
+            [] -> nil
           end
 
-        if nick != nil && gecos != nil && !waiting_cap_end do
-          # Registration finished. Send welcome messages and return to the main loop
-          state = M51.IrcConn.Supervisor.state(sup_pid)
+        nil ->
+          send.(%M51.Irc.Command{
+            command: "FAIL",
+            params: ["*", "ACCOUNT_REQUIRED", "You must authenticate."]
+          })
 
-          M51.IrcConn.State.set_nick(state, nick)
-          M51.IrcConn.State.set_gecos(state, gecos)
+          close_connection(sup_pid)
 
-          case user_id do
-            # all good
-            ^nick ->
-              send_welcome(sup_pid, command)
+        _ ->
+          # Nick does not match the matrix user id, forcefully change it.
+          send_welcome(sup_pid, command)
+          M51.IrcConn.State.set_nick(state, user_id)
 
-              M51.IrcConn.State.set_registered(state)
+          send.(%M51.Irc.Command{
+            source: nick <> "!" <> String.replace(user_id, ~r/:/, "@"),
+            command: "NICK",
+            params: [user_id]
+          })
 
-              case Registry.lookup(M51.Registry, {sup_pid, :matrix_poller}) do
-                [{matrix_poller, _}] -> send(matrix_poller, :start_polling)
-                [] -> nil
-              end
+          M51.IrcConn.State.set_registered(state)
 
-            nil ->
-              send.(%M51.Irc.Command{
-                command: "FAIL",
-                params: ["*", "ACCOUNT_REQUIRED", "You must authenticate."]
-              })
-
-              close_connection(sup_pid)
-
-            _ ->
-              # Nick does not match the matrix user id, forcefully change it.
-              send_welcome(sup_pid, command)
-              M51.IrcConn.State.set_nick(state, user_id)
-
-              send.(%M51.Irc.Command{
-                source: nick <> "!" <> String.replace(user_id, ~r/:/, "@"),
-                command: "NICK",
-                params: [user_id]
-              })
-
-              M51.IrcConn.State.set_registered(state)
-
-              case Registry.lookup(M51.Registry, {sup_pid, :matrix_poller}) do
-                [{matrix_poller, _}] -> send(matrix_poller, :start_polling)
-                [] -> nil
-              end
+          case Registry.lookup(M51.Registry, {sup_pid, :matrix_poller}) do
+            [{matrix_poller, _}] -> send(matrix_poller, :start_polling)
+            [] -> nil
           end
-        else
-          loop_connreg(sup_pid, nick, gecos, user_id, waiting_cap_end)
-        end
+      end
+      {:registered}
+    else
+      {:continue, {sup_pid, nick, gecos, user_id, waiting_cap_end}}
     end
   end
 
@@ -637,32 +654,38 @@ defmodule M51.IrcConn.Handler do
         try do
           handle_unbatched(sup_pid, command)
         rescue
-          e ->
-            Logger.error(Exception.format(:error, e, __STACKTRACE__))
-            send = make_send_function(command, sup_pid)
-            nick = M51.IrcConn.State.nick(state)
-
-            tags =
-              case Map.get(command.tags, "label") do
-                nil -> %{}
-                label -> %{"label" => label}
-              end
-
-            # ERR_UNKNOWNERROR
-            [error | _] = Exception.format_banner(:error, e, __STACKTRACE__) |> String.split("\n")
-            send.(%M51.Irc.Command{
-              tags: tags,
-              source: "server",
-              command: 400,
-              params: [
-                nick,
-                command.command,
-                "An unknown error occured, please report it along with your IRC and console logs. " <>
-                  "Summary: " <> error
-              ]
-            })
+          e -> rescue_error(sup_pid, command, e, __STACKTRACE__)
         end
     end
+  end
+
+  defp rescue_error(sup_pid, command, error, stacktrace) do
+    Logger.error(Exception.format(:error, error, stacktrace))
+
+    state = M51.IrcConn.Supervisor.state(sup_pid)
+    send = make_send_function(command, sup_pid)
+    nick = M51.IrcConn.State.nick(state)
+
+    tags =
+      case Map.get(command.tags, "label") do
+        nil -> %{}
+        label -> %{"label" => label}
+      end
+
+    # ERR_UNKNOWNERROR
+    [banner | _] = Exception.format_banner(:error, error, stacktrace) |> String.split("\n")
+
+    send.(%M51.Irc.Command{
+      tags: tags,
+      source: "server",
+      command: 400,
+      params: [
+        nick || "*",
+        command.command,
+        "An unknown error occured, please report it along with your IRC and console logs. " <>
+          "Summary: " <> banner
+      ]
+    })
   end
 
   # Called by handle/3 when the command isn't part of a batch
