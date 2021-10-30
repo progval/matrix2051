@@ -81,68 +81,73 @@ defmodule M51.MatrixClient.Client do
         Logger.debug("(raw) GET #{url}")
         response = httpoison.get!(url)
         Logger.debug(Kernel.inspect(response))
-        %HTTPoison.Response{status_code: 200, body: body} = response
+        case response do
+          %HTTPoison.Response{status_code: 200, body: body} ->
+            data = Jason.decode!(body)
 
-        data = Jason.decode!(body)
+            flow =
+              case data["flows"] do
+                flows when is_list(flows) ->
+                  Enum.find(flows, nil, fn flow -> flow["type"] == "m.login.password" end)
 
-        flow =
-          case data["flows"] do
-            flows when is_list(flows) ->
-              Enum.find(flows, nil, fn flow -> flow["type"] == "m.login.password" end)
+                _ ->
+                  nil
+              end
 
-            _ ->
-              nil
-          end
+            case flow do
+              nil ->
+                {:reply, {:error, :no_password_flow, "No password flow"}, state}
 
-        case flow do
-          nil ->
-            {:reply, {:error, :no_password_flow, "No password flow"}, state}
+              _ ->
+                body =
+                  Jason.encode!(%{
+                    "type" => "m.login.password",
+                    "user" => local_name,
+                    "password" => password
+                  })
 
-          _ ->
-            body =
-              Jason.encode!(%{
-                "type" => "m.login.password",
-                "user" => local_name,
-                "password" => password
-              })
+                url = base_url <> "/_matrix/client/r0/login"
+                Logger.debug("(raw) POST #{url} " <> Kernel.inspect(body))
+                response = httpoison.post!(url, body)
+                Logger.debug(Kernel.inspect(response))
 
-            url = base_url <> "/_matrix/client/r0/login"
-            Logger.debug("(raw) POST #{url} " <> Kernel.inspect(body))
-            response = httpoison.post!(url, body)
-            Logger.debug(Kernel.inspect(response))
+                case response do
+                  %HTTPoison.Response{status_code: 200, body: body} ->
+                    data = Jason.decode!(body)
 
-            case response do
-              %HTTPoison.Response{status_code: 200, body: body} ->
-                data = Jason.decode!(body)
+                    if data["user_id"] != "@" <> local_name <> ":" <> hostname do
+                      raise "Unexpected user_id: " <> data["user_id"]
+                    end
 
-                if data["user_id"] != "@" <> local_name <> ":" <> hostname do
-                  raise "Unexpected user_id: " <> data["user_id"]
+                    access_token = data["access_token"]
+
+                    raw_client = %M51.Matrix.RawClient{
+                      base_url: base_url,
+                      access_token: access_token,
+                      httpoison: httpoison
+                    }
+
+                    state = %M51.MatrixClient.Client{
+                      state: :connected,
+                      irc_pid: irc_pid,
+                      raw_client: raw_client,
+                      local_name: local_name,
+                      hostname: hostname
+                    }
+
+                    Registry.send({M51.Registry, {irc_pid, :matrix_poller}}, :connected)
+
+                    {:reply, {:ok}, state}
+
+                  %HTTPoison.Response{status_code: 403, body: body} ->
+                    data = Jason.decode!(body)
+                    {:reply, {:error, :denied, data["error"]}, state}
                 end
-
-                access_token = data["access_token"]
-
-                raw_client = %M51.Matrix.RawClient{
-                  base_url: base_url,
-                  access_token: access_token,
-                  httpoison: httpoison
-                }
-
-                state = %M51.MatrixClient.Client{
-                  state: :connected,
-                  irc_pid: irc_pid,
-                  raw_client: raw_client,
-                  local_name: local_name,
-                  hostname: hostname
-                }
-
-                Registry.send({M51.Registry, {irc_pid, :matrix_poller}}, :connected)
-
-                {:reply, {:ok}, state}
-
-              %HTTPoison.Response{status_code: 403, body: body} ->
-                data = Jason.decode!(body)
-                {:reply, {:error, :denied, data["error"]}, state}
             end
+
+          %HTTPoison.Response{status_code: status_code} ->
+            message = "Could not reach the Matrix homeserver for #{hostname}, #{url} returned HTTP #{status_code}. Make sure this is a Matrix homeserver and https://#{hostname}/.well-known/matrix/client is properly configured."
+            {:reply, {:error, :unknown, message}, state}
         end
 
       %M51.MatrixClient.Client{

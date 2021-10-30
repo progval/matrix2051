@@ -82,6 +82,42 @@ defmodule M51.MatrixClient.ClientTest do
              }
   end
 
+  test "connection to non-homeserver", %{sup_pid: sup_pid} do
+    MockHTTPoison
+    |> expect(:get!, fn url ->
+      assert url == "https://example.org/.well-known/matrix/client"
+
+      %HTTPoison.Response{
+        status_code: 404,
+        body: """
+          Error 404
+        """
+      }
+    end)
+    |> expect(:get!, fn url ->
+      assert url == "https://example.org/_matrix/client/r0/login"
+
+      %HTTPoison.Response{
+        status_code: 404,
+        body: """
+          Error 404
+        """
+      }
+    end)
+
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+
+    assert {:error, :unknown, message} = GenServer.call(client, {:connect, "user", "example.org", "p4ssw0rd"})
+    assert Regex.match?(~r/Could not reach the Matrix homeserver for example.org.*/, message)
+
+    assert GenServer.call(client, {:dump_state}) ==
+             %M51.MatrixClient.Client{
+               state: :initial_state,
+               irc_pid: sup_pid,
+               args: [httpoison: MockHTTPoison]
+             }
+  end
+
   test "connection without well-known", %{sup_pid: sup_pid} do
     MockHTTPoison
     |> expect(:get!, fn url ->
