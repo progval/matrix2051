@@ -19,8 +19,6 @@ defmodule M51.MatrixClient.PollerTest do
   doctest M51.MatrixClient.Poller
 
   setup do
-    start_supervised!({Registry, keys: :unique, name: M51.Registry})
-
     start_supervised!({M51.IrcConn.State, {self()}})
     |> Process.register(:process_ircconn_state)
 

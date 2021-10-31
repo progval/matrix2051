@@ -23,14 +23,11 @@ defmodule M51.MatrixClient.ClientTest do
   setup :verify_on_exit!
 
   setup do
-    start_supervised!({Registry, keys: :unique, name: M51.Registry})
-    config = start_supervised!({M51.Config, []})
-
     start_supervised!({M51.MatrixClient.State, {self()}})
 
     Registry.register(M51.Registry, {self(), :matrix_poller}, self())
 
-    %{config: config, sup_pid: self()}
+    %{sup_pid: self()}
   end
 
   def expect_login(mock_httpoison) do

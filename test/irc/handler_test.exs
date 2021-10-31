@@ -179,8 +179,6 @@ defmodule M51.IrcConn.HandlerTest do
   @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANTYPES=#! CHATHISTORY=1000 TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
-    start_supervised!({Registry, keys: :unique, name: M51.Registry})
-    start_supervised!({M51.Config, []})
     start_supervised!({MockMatrixClient, {self()}})
     state = start_supervised!({M51.IrcConn.State, {self()}})
 

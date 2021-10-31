@@ -19,8 +19,6 @@ defmodule M51.MatrixClient.StateTest do
   doctest M51.MatrixClient.State
 
   setup do
-    start_supervised!({Registry, keys: :unique, name: M51.Registry})
-
     start_supervised!({M51.MatrixClient.State, {nil}})
     |> Process.register(:process_matrix_state)
 

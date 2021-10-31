@@ -19,7 +19,6 @@ defmodule M51.IrcConn.StateTest do
   doctest M51.IrcConn.State
 
   test "batches" do
-    start_supervised!({Registry, keys: :unique, name: M51.Registry})
     state = start_supervised!({M51.IrcConn.State, {nil}})
 
     opening_command = %M51.Irc.Command{
