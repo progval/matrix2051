@@ -119,16 +119,19 @@ defmodule M51.IrcConn.Handler do
        ) do
     receive do
       command ->
-        res = try do
-          loop_connreg_iter(sup_pid, nick, gecos, user_id, waiting_cap_end, command)
-        rescue
-          e ->
-            rescue_error(sup_pid, command, e, __STACKTRACE__)
-            {:continue, {sup_pid, nick, gecos, user_id, waiting_cap_end}}
-        end
+        res =
+          try do
+            loop_connreg_iter(sup_pid, nick, gecos, user_id, waiting_cap_end, command)
+          rescue
+            e ->
+              rescue_error(sup_pid, command, e, __STACKTRACE__)
+              {:continue, {sup_pid, nick, gecos, user_id, waiting_cap_end}}
+          end
+
         case res do
           {:continue, {sup_pid, nick, gecos, user_id, waiting_cap_end}} ->
             loop_connreg(sup_pid, nick, gecos, user_id, waiting_cap_end)
+
           {:registered} ->
             nil
         end
@@ -194,6 +197,7 @@ defmodule M51.IrcConn.Handler do
             [] -> nil
           end
       end
+
       {:registered}
     else
       {:continue, {sup_pid, nick, gecos, user_id, waiting_cap_end}}

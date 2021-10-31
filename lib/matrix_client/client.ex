@@ -81,6 +81,7 @@ defmodule M51.MatrixClient.Client do
         Logger.debug("(raw) GET #{url}")
         response = httpoison.get!(url)
         Logger.debug(Kernel.inspect(response))
+
         case response do
           %HTTPoison.Response{status_code: 200, body: body} ->
             data = Jason.decode!(body)
@@ -146,7 +147,11 @@ defmodule M51.MatrixClient.Client do
             end
 
           %HTTPoison.Response{status_code: status_code} ->
-            message = "Could not reach the Matrix homeserver for #{hostname}, #{url} returned HTTP #{status_code}. Make sure this is a Matrix homeserver and https://#{hostname}/.well-known/matrix/client is properly configured."
+            message =
+              "Could not reach the Matrix homeserver for #{hostname}, #{url} returned HTTP #{
+                status_code
+              }. Make sure this is a Matrix homeserver and https://#{hostname}/.well-known/matrix/client is properly configured."
+
             {:reply, {:error, :unknown, message}, state}
         end
 

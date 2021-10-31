@@ -107,7 +107,9 @@ defmodule M51.MatrixClient.ClientTest do
 
     client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
-    assert {:error, :unknown, message} = GenServer.call(client, {:connect, "user", "example.org", "p4ssw0rd"})
+    assert {:error, :unknown, message} =
+             GenServer.call(client, {:connect, "user", "example.org", "p4ssw0rd"})
+
     assert Regex.match?(~r/Could not reach the Matrix homeserver for example.org.*/, message)
 
     assert GenServer.call(client, {:dump_state}) ==
