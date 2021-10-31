@@ -20,17 +20,28 @@ defmodule M51.Application do
   """
   use Application
 
+  require Logger
+
   @doc """
     Entrypoint. Takes the global config as args, and starts M51.Supervisor
   """
   @impl true
   def start(_type, args) do
+    if Enum.member?(System.argv(), "--debug") do
+      Logger.warn("Starting in debug mode")
+      Logger.configure(level: :debug)
+    else
+      Logger.configure(level: :info)
+    end
+
     HTTPoison.start()
 
     children = [
       {M51.Supervisor, args}
     ]
 
-    Supervisor.start_link(children, strategy: :one_for_one)
+    {:ok, res} = Supervisor.start_link(children, strategy: :one_for_one)
+    Logger.info("Matrix2051 started.")
+    {:ok, res}
   end
 end

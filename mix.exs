@@ -20,15 +20,26 @@ defmodule M51.MixProject do
   def project do
     [
       app: :matrix2051,
-      version: "0.1.0",
+      version: version(),
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      releases: [
+        matrix2051: [
+          version: version(),
+          applications: [matrix2051: :permanent]
+        ]
+      ]
     ]
+  end
+
+  defp version do
+    "0.1.0"
   end
 
   def application do
     [
+      mod: {M51.Application, []},
       extra_applications: [:logger]
     ]
   end

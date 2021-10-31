@@ -14,14 +14,5 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-require Logger
-
-if Enum.member?(System.argv(), "--debug") do
-  Logger.warn("Starting in debug mode")
-  Logger.configure(level: :debug)
-else
-  Logger.configure(level: :info)
-end
-{:ok, _} = M51.Application.start(:normal, [])
-Logger.info("Matrix2051 started.")
+{:ok, _} = Application.ensure_all_started(:matrix2051, :permanent)
 Process.sleep(:infinity)
