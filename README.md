@@ -56,6 +56,8 @@ Non-goals:
 
 See below for extra instructions to work with web clients.
 
+See `INSTALL.md` for a more production-oriented guide.
+
 ## Architecture
 
 * `matrix2051.exs` starts M51.Application, which starts M51.Supervisor, which
