@@ -38,10 +38,16 @@ defmodule M51.MixProject do
   end
 
   def application do
+    app =
+      if Mix.env() == :test do
+        []
+      else
+        [mod: {M51.Application, []}]
+      end
+
     [
-      mod: {M51.Application, []},
       extra_applications: [:logger]
-    ]
+    ] ++ app
   end
 
   defp deps do
