@@ -14,7 +14,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
-defmodule M51.Format.Matrix2Irc.Handler do
+defmodule M51.Format.Matrix2Irc do
   @simple_tags M51.Format.matrix2irc_map()
 
   def transform(s, _current_color) when is_binary(s) do
@@ -38,9 +38,18 @@ defmodule M51.Format.Matrix2Irc.Handler do
   end
 
   def transform({"img", attributes, children}, current_color) do
-    case attributes |> Map.new() |> Map.get("src") do
-      nil -> transform_children(children, current_color)
-      link -> link
+    attributes = attributes |> Map.new()
+    src = attributes |> Map.get("src")
+    alt = attributes |> Map.get("alt")
+    title = attributes |> Map.get("title")
+
+    case {src, alt, title} do
+      {nil, nil, nil} -> transform_children(children, current_color)
+      {nil, nil, title} -> title
+      {nil, alt, _} -> alt
+      {link, nil, nil} -> format_url(link)
+      {link, nil, title} -> "#{title} <#{format_url(link)}>"
+      {link, alt, _} -> "#{alt} <#{format_url(link)}>"
     end
   end
 
@@ -94,5 +103,16 @@ defmodule M51.Format.Matrix2Irc.Handler do
       [char]
     ])
     |> Enum.join()
+  end
+
+  @doc "Transforms a mxc:// \"URL\" into an actually usable URL."
+  def format_url(url) do
+    case URI.parse(url) do
+      %{scheme: "mxc", host: host, path: path} ->
+        "https://#{host}/_matrix/media/r0/download/#{host}#{path}"
+
+      _ ->
+        url
+    end
   end
 end

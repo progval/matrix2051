@@ -443,19 +443,19 @@ defmodule M51.MatrixClient.Poller do
           {"NOTICE", body}
 
         %{"msgtype" => "m.image", "body" => body, "url" => url} ->
-          {"PRIVMSG", body <> " " <> format_url(url)}
+          {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url)}
 
         %{"msgtype" => "m.file", "body" => body, "url" => url} ->
-          {"PRIVMSG", body <> " " <> format_url(url)}
+          {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url)}
 
         %{"msgtype" => "m.audio", "body" => body, "url" => url} ->
-          {"PRIVMSG", body <> " " <> format_url(url)}
+          {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url)}
 
         %{"msgtype" => "m.location", "body" => body, "geo_uri" => geo_uri} ->
           {"PRIVMSG", body <> " (" <> geo_uri <> ")"}
 
         %{"msgtype" => "m.video", "body" => body, "url" => url} ->
-          {"PRIVMSG", body <> " " <> format_url(url)}
+          {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url)}
 
         %{"body" => body} ->
           # fallback
@@ -904,16 +904,6 @@ defmodule M51.MatrixClient.Poller do
         canonical_alias_sender <> " renamed this room from " <> old_canonical_alias
       ]
     })
-  end
-
-  defp format_url(url) do
-    case URI.parse(url) do
-      %{scheme: "mxc", host: host, path: path} ->
-        "https://#{host}/_matrix/media/r0/download/#{host}#{path}"
-
-      _ ->
-        url
-    end
   end
 
   # Returns a function that can be used to send messages
