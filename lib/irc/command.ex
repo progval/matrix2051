@@ -288,6 +288,13 @@ defmodule M51.Irc.Command do
             nil
           end
 
+        %{command: "TAGMSG"} ->
+          if Enum.member?(capabilities, :message_tags) do
+            command
+          else
+            nil
+          end
+
         _ ->
           command
       end

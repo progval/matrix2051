@@ -159,6 +159,19 @@ defmodule M51.Irc.CommandTest do
     assert M51.Irc.Command.downgrade(cmd, [:message_tags]) == cmd
   end
 
+  test "downgrade TAGMSG" do
+    cmd = %M51.Irc.Command{
+      tags: %{"+foo" => "bar"},
+      source: "nick",
+      command: "TAGMSG",
+      params: ["#foo"]
+    }
+
+    assert M51.Irc.Command.downgrade(cmd, []) == nil
+
+    assert M51.Irc.Command.downgrade(cmd, [:message_tags]) == cmd
+  end
+
   test "downgrade extended-join" do
     cmd = %M51.Irc.Command{
       source: "nick",
