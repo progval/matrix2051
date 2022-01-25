@@ -112,6 +112,9 @@ defmodule M51.FormatTest do
     assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" />)) ==
              "https://example.org/_matrix/media/r0/download/example.org/foo"
 
+    assert M51.Format.matrix2irc(~s(<img alt="image.png" src="mxc://example.org/foo" />)) ==
+             "https://example.org/_matrix/media/r0/download/example.org/foo"
+
     assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" title="an image"/>)) ==
              "an image <https://example.org/_matrix/media/r0/download/example.org/foo>"
 

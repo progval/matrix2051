@@ -443,7 +443,11 @@ defmodule M51.MatrixClient.Poller do
           {"NOTICE", body}
 
         %{"msgtype" => "m.image", "body" => body, "url" => url} ->
-          {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url)}
+          if M51.Format.Matrix2Irc.useless_img_alt?(body) do
+            {"PRIVMSG", M51.Format.Matrix2Irc.format_url(url)}
+          else
+            {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url)}
+          end
 
         %{"msgtype" => "m.file", "body" => body, "url" => url} ->
           {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url)}

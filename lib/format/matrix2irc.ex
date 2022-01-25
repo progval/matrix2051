@@ -43,6 +43,8 @@ defmodule M51.Format.Matrix2Irc do
     alt = attributes |> Map.get("alt")
     title = attributes |> Map.get("title")
 
+    alt = if useless_img_alt?(alt) do nil else alt end
+
     case {src, alt, title} do
       {nil, nil, nil} -> transform_children(children, current_color)
       {nil, nil, title} -> title
@@ -114,5 +116,13 @@ defmodule M51.Format.Matrix2Irc do
       _ ->
         url
     end
+  end
+
+  @doc """
+    Returns whether the given string is a useless alt that should not
+    be displayed (eg. a stock filename).
+  """
+  def useless_img_alt?(s) do
+    s == nil or String.match?(s, ~r/(image|unknown)\.(png|jpe?g|gif)/i)
   end
 end
