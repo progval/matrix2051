@@ -106,7 +106,7 @@ and for me to learn the Matrix protocol.
 
 In theory, any IRC client should work. In particular, I test it with
 [Gamja](https://git.sr.ht/~emersion/gamja/), [IRCCloud](https://www.irccloud.com/),
-and [WeeChat](https://weechat.org/).
+[The Lounge](https://thelounge.chat/), and [WeeChat](https://weechat.org/).
 
 Please open an issue if your client has any issue.
 
