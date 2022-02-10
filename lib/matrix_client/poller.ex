@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021  Valentin Lorentz
+# Copyright (C) 2021-2022  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -858,8 +858,10 @@ defmodule M51.MatrixClient.Poller do
     # send RPL_NAMREPLY
     overhead = make_numeric.("353", ["=", channel, ""]) |> M51.Irc.Command.format() |> byte_size()
 
+    # note for later: if we ever implement prefixes, make sure to add them
+    # *after* calling nick2nuh; we don't want to have prefixes in the username part.
     M51.MatrixClient.State.room_members(state, room_id)
-    |> Enum.map(fn {user_id, _member} -> user_id <> " " end)
+    |> Enum.map(fn {user_id, _member} -> nick2nuh(user_id) <> " " end)
     |> Enum.sort()
     |> M51.Irc.WordWrap.join_tokens(512 - overhead)
     |> Enum.map(fn line ->

@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021  Valentin Lorentz
+# Copyright (C) 2021-2022  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -314,6 +314,25 @@ defmodule M51.MatrixClient.PollerTest do
 
     assert_line(
       ":server 353 mynick:example.com = #test:example.org :mynick:example.com nick2:example.org\r\n"
+    )
+
+    assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+
+    # try again with userhost-in-names:
+
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [:userhost_in_names])
+
+    M51.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
+
+    assert_line(
+      ":server 353 mynick:example.com = #test:example.org :mynick:example.com!mynick@example.com nick2:example.org!nick2@example.org\r\n"
     )
 
     assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")

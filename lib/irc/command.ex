@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021  Valentin Lorentz
+# Copyright (C) 2021-2022  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -293,6 +293,25 @@ defmodule M51.Irc.Command do
             command
           else
             nil
+          end
+
+        %{command: "353", params: params} ->
+          if Enum.member?(capabilities, :userhost_in_names) do
+            command
+          else
+            [client, symbol, channel, userlist] = params
+
+            nicklist =
+              userlist
+              |> String.split()
+              |> Enum.map(fn item ->
+                # item is a NUH, possibly with one (or more) prefix char.
+                [nick | _] = String.split(item, "!")
+                nick
+              end)
+              |> Enum.join(" ")
+
+            %M51.Irc.Command{command | params: [client, symbol, channel, nicklist]}
           end
 
         _ ->

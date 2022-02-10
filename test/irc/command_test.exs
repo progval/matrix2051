@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021  Valentin Lorentz
+# Copyright (C) 2021-2022  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -258,5 +258,27 @@ defmodule M51.Irc.CommandTest do
 
     assert M51.Irc.Command.downgrade(cmd, [:labeled_response, :echo_message]) == cmd
     assert M51.Irc.Command.downgrade(cmd, [:echo_message, :labeled_response]) == cmd
+  end
+
+  test "downgrade userhost-in-names" do
+    cmd = %M51.Irc.Command{
+      source: "server",
+      # RPL_NAMREPLY
+      command: "353",
+      params: [
+        "nick",
+        "=",
+        "#foo",
+        "nick:example.org!nick@example.org nick2:example.org!nick2@example.org"
+      ]
+    }
+
+    assert M51.Irc.Command.downgrade(cmd, []) == %M51.Irc.Command{
+             source: "server",
+             command: "353",
+             params: ["nick", "=", "#foo", "nick:example.org nick2:example.org"]
+           }
+
+    assert M51.Irc.Command.downgrade(cmd, [:userhost_in_names]) == cmd
   end
 end

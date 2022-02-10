@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021  Valentin Lorentz
+# Copyright (C) 2021-2022  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -76,7 +76,13 @@ defmodule M51.IrcConn.Handler do
     "sasl" => {:sasl, "PLAIN"},
 
     # https://ircv3.net/specs/extensions/server-time
-    "server-time" => {:server_time, nil}
+    "server-time" => {:server_time, nil},
+
+    # https://ircv3.net/specs/extensions/userhost-in-names
+    # not really useful; but kiwiirc/irc-framework interprets "foo:example.org"
+    # as {nick: '', user: '', hostname: 'foo:example.org'} without this,
+    # because there is a dot in the nick.
+    "userhost-in-names" => {:userhost_in_names, nil}
   }
 
   @valid_batch_types ["draft/multiline"]
