@@ -43,7 +43,12 @@ defmodule M51.Format.Matrix2Irc do
     alt = attributes |> Map.get("alt")
     title = attributes |> Map.get("title")
 
-    alt = if useless_img_alt?(alt) do nil else alt end
+    alt =
+      if useless_img_alt?(alt) do
+        nil
+      else
+        alt
+      end
 
     case {src, alt, title} do
       {nil, nil, nil} -> transform_children(children, current_color)
