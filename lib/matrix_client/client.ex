@@ -70,11 +70,10 @@ defmodule M51.MatrixClient.Client do
     case state do
       %M51.MatrixClient.Client{
         state: :initial_state,
-        irc_pid: irc_pid,
-        args: args
+        irc_pid: irc_pid
       } ->
-        httpoison = Keyword.get(args, :httpoison, HTTPoison)
-        base_url = get_base_url(hostname, httpoison)
+        httpoison = M51.Config.httpoison()
+        base_url = get_base_url(hostname)
 
         # Check the server supports password login
         url = base_url <> "/_matrix/client/r0/login"
@@ -169,10 +168,9 @@ defmodule M51.MatrixClient.Client do
     case state do
       %M51.MatrixClient.Client{
         state: :initial_state,
-        irc_pid: irc_pid,
-        args: args
+        irc_pid: irc_pid
       } ->
-        httpoison = Keyword.get(args, :httpoison, HTTPoison)
+        httpoison = M51.Config.httpoison()
         base_url = get_base_url(hostname, httpoison)
 
         # XXX: This is not part of the Matrix specification;
@@ -413,7 +411,13 @@ defmodule M51.MatrixClient.Client do
     end
   end
 
-  defp get_base_url(hostname, httpoison) do
+  def get_base_url(hostname, httpoison \\ nil) do
+    httpoison =
+      case httpoison do
+        nil -> M51.Config.httpoison()
+        httpoison -> httpoison
+      end
+
     wellknown_url = "https://" <> hostname <> "/.well-known/matrix/client"
 
     case httpoison.get!(wellknown_url) do

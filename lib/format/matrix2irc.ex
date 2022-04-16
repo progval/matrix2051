@@ -122,7 +122,8 @@ defmodule M51.Format.Matrix2Irc do
   def format_url(url) do
     case URI.parse(url) do
       %{scheme: "mxc", host: host, path: path} ->
-        "https://#{host}/_matrix/media/r0/download/#{host}#{path}"
+        base_url = M51.MatrixClient.Client.get_base_url(host, M51.Config.httpoison())
+        "#{base_url}/_matrix/media/r0/download/#{host}#{path}"
 
       _ ->
         url

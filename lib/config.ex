@@ -18,14 +18,33 @@ defmodule M51.Config do
   @moduledoc """
     Global configuration.
   """
-  use Agent
+  use GenServer
 
   def start_link(args) do
-    Agent.start_link(fn -> args end, name: __MODULE__)
+    GenServer.start_link(__MODULE__, fn -> args end, name: __MODULE__)
+  end
+
+  @impl true
+  def init(_args) do
+    {:ok, []}
+  end
+
+  @impl true
+  def handle_call({:get_httpoison}, _from, state) do
+    {:reply, Keyword.get(state, :httpoison, HTTPoison), state}
+  end
+
+  @impl true
+  def handle_call({:set_httpoison, httpoison}, _from, state) do
+    {:reply, {}, Keyword.put(state, :httpoison, httpoison)}
   end
 
   def httpoison() do
-    Agent.get(__MODULE__, &Keyword.get(&1, :httpoison, HTTPoison))
+    GenServer.call(__MODULE__, {:get_httpoison})
+  end
+
+  def set_httpoison(httpoison) do
+    GenServer.call(__MODULE__, {:set_httpoison, httpoison})
   end
 
   def port() do

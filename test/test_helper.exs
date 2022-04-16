@@ -18,6 +18,7 @@ ExUnit.start()
 ExUnit.start(timeout: 5000)
 
 Mox.defmock(MockHTTPoison, for: HTTPoison.Base)
+M51.Config.set_httpoison(MockHTTPoison)
 
 Logger.configure(level: :info)
 

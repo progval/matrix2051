@@ -18,6 +18,10 @@ defmodule M51.FormatTest do
   use ExUnit.Case
   doctest M51.Format
 
+  import Mox
+  setup :set_mox_from_context
+  setup :verify_on_exit!
+
   test "simple Matrix to IRC" do
     assert M51.Format.matrix2irc("foo") == "foo"
     assert M51.Format.matrix2irc("<b>foo</b>") == "\x02foo\x02"
@@ -104,6 +108,16 @@ defmodule M51.FormatTest do
   end
 
   test "Matrix link to IRC" do
+    MockHTTPoison
+    |> expect(:get!, 4, fn url ->
+      assert url == "https://example.org/.well-known/matrix/client"
+
+      %HTTPoison.Response{
+        status_code: 200,
+        body: ~s({"m.homeserver": {"base_url": "https://api.example.org"}})
+      }
+    end)
+
     assert M51.Format.matrix2irc(~s(<a href="https://example.org">foo</a>)) ==
              "foo <https://example.org>"
 
@@ -113,18 +127,18 @@ defmodule M51.FormatTest do
     assert M51.Format.matrix2irc(~s(<img src="https://example.org" />)) == "https://example.org"
 
     assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" />)) ==
-             "https://example.org/_matrix/media/r0/download/example.org/foo"
+             "https://api.example.org/_matrix/media/r0/download/example.org/foo"
 
     assert M51.Format.matrix2irc(~s(<img alt="image.png" src="mxc://example.org/foo" />)) ==
-             "https://example.org/_matrix/media/r0/download/example.org/foo"
+             "https://api.example.org/_matrix/media/r0/download/example.org/foo"
 
     assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" title="an image"/>)) ==
-             "an image <https://example.org/_matrix/media/r0/download/example.org/foo>"
+             "an image <https://api.example.org/_matrix/media/r0/download/example.org/foo>"
 
     assert M51.Format.matrix2irc(
              ~s(<img src="mxc://example.org/foo" alt="an image" title="blah"/>)
            ) ==
-             "an image <https://example.org/_matrix/media/r0/download/example.org/foo>"
+             "an image <https://api.example.org/_matrix/media/r0/download/example.org/foo>"
 
     assert M51.Format.matrix2irc(~s(<img" />)) ==
              ""
@@ -138,6 +152,21 @@ defmodule M51.FormatTest do
     assert M51.Format.matrix2irc(~s(<a>foo</a>)) == "foo"
 
     assert M51.Format.matrix2irc(~s(<img/>)) == ""
+  end
+
+  test "Matrix link to IRC (404 on well-known" do
+    MockHTTPoison
+    |> expect(:get!, 1, fn url ->
+      assert url == "https://example.org/.well-known/matrix/client"
+
+      %HTTPoison.Response{
+        status_code: 404,
+        body: ~s(this is not JSON)
+      }
+    end)
+
+    assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" />)) ==
+             "https://example.org/_matrix/media/r0/download/example.org/foo"
   end
 
   test "IRC link to Matrix" do

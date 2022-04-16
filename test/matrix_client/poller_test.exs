@@ -18,6 +18,10 @@ defmodule M51.MatrixClient.PollerTest do
   use ExUnit.Case
   doctest M51.MatrixClient.Poller
 
+  import Mox
+  setup :set_mox_from_context
+  setup :verify_on_exit!
+
   setup do
     start_supervised!({M51.IrcConn.State, {self()}})
     |> Process.register(:process_ircconn_state)
@@ -756,6 +760,16 @@ defmodule M51.MatrixClient.PollerTest do
   end
 
   test "messages" do
+    MockHTTPoison
+    |> expect(:get!, fn url ->
+      assert url == "https://matrix.org/.well-known/matrix/client"
+
+      %HTTPoison.Response{
+        status_code: 200,
+        body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
+      }
+    end)
+
     state_events = [
       %{
         "content" => %{"alias" => "#test:example.org"},
@@ -856,7 +870,7 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :cat.jpg https://matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb\r\n"
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :cat.jpg https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb\r\n"
     )
 
     assert_line(
