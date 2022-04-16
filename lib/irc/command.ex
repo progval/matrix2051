@@ -167,6 +167,37 @@ defmodule M51.Irc.Command do
           ]
       end
 
+    # Sanitize tokens, just in case (None of these should be generated from well-formed
+    # Matrix events; but servers do not validate them).
+    # So instead of exhaustively sanitizing in every part of the code, we do it here
+    tokens =
+      tokens
+      |> Enum.reverse()
+      |> Enum.with_index()
+      |> Enum.map(fn {token, i} ->
+        String.replace(token, ["\0", "\r", "\n", " "], fn <<char>> ->
+          case char do
+            0 ->
+              "\\0"
+
+            ?\r ->
+              "\\r"
+
+            ?\n ->
+              "\\n"
+
+            ?\s ->
+              if i == 0 && String.starts_with?(token, ":") do
+                # trailing param; no need to escape spaces
+                " "
+              else
+                "\\s"
+              end
+          end
+        end)
+      end)
+      |> Enum.reverse()
+
     Enum.join(tokens, " ") <> "\r\n"
   end
 

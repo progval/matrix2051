@@ -56,6 +56,22 @@ defmodule M51.Irc.CommandTest do
            }) == "001 :welcome\r\n"
   end
 
+  test "format invalid characters" do
+    assert M51.Irc.Command.format(%M51.Irc.Command{
+             source: "foo\0bar\rbaz\nqux:example.org!foo\\0bar\\rbaz\\nqux@example.org",
+             command: "PRIVMSG",
+             params: ["#room:example.org", "hi there"]
+           }) ==
+             ":foo\\0bar\\rbaz\\nqux:example.org!foo\\0bar\\rbaz\\nqux@example.org PRIVMSG #room:example.org :hi there\r\n"
+
+    assert M51.Irc.Command.format(%M51.Irc.Command{
+             source: "foo bar:example.org!foo bar@example.org",
+             command: "PRIVMSG",
+             params: ["#bad room:example.org", "hi there"]
+           }) ==
+             ":foo\\sbar:example.org!foo\\sbar@example.org PRIVMSG #bad\\sroom:example.org :hi there\r\n"
+  end
+
   test "escape message tags" do
     assert M51.Irc.Command.format(%M51.Irc.Command{
              tags: %{"foo" => "semi;space backslash\\cr\rlf\ndone", "bar" => "baz"},
