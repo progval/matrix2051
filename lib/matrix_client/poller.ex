@@ -211,29 +211,34 @@ defmodule M51.MatrixClient.Poller do
     # "Clients SHOULD NOT treat the aliases as accurate. They SHOULD be checked before
     # they are used or shared with another user."
     # -- https://matrix.org/docs/spec/client_server/r0.6.1#room-aliases
-    is_valid_alias = M51.MatrixClient.Client.valid_alias?(client, room_id, new_canonical_alias)
+    if new_canonical_alias do
+      is_valid_alias = M51.MatrixClient.Client.valid_alias?(client, room_id, new_canonical_alias)
 
-    if is_valid_alias do
-      old_canonical_alias =
-        M51.MatrixClient.State.set_room_canonical_alias(
-          state,
-          room_id,
-          new_canonical_alias
-        )
+      if is_valid_alias do
+        old_canonical_alias =
+          M51.MatrixClient.State.set_room_canonical_alias(
+            state,
+            room_id,
+            new_canonical_alias
+          )
 
-      if !state_event do
-        send_channel_welcome(sup_pid, room_id, sender, old_canonical_alias, write, event)
+        if !state_event do
+          send_channel_welcome(sup_pid, room_id, sender, old_canonical_alias, write, event)
+        end
+
+        {room_id, {sender, old_canonical_alias}}
+      else
+        channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
+        send = make_send_function(sup_pid, event, write)
+        send.(%M51.Irc.Command{
+          source: "server",
+          command: "NOTICE",
+          params: [channel, "Invalid room renaming to #{new_canonical_alias} (sent by #{sender})"]
+        })
+        nil
       end
-
-      {room_id, {sender, old_canonical_alias}}
     else
-      channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
-      send = make_send_function(sup_pid, event, write)
-      send.(%M51.Irc.Command{
-        source: "server",
-        command: "NOTICE",
-        params: [channel, "Invalid room renaming to #{new_canonical_alias} (sent by #{sender})"]
-      })
+      nil
     end
   end
 
