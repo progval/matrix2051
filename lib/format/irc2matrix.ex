@@ -430,7 +430,7 @@ defmodule M51.Format.Irc2Matrix do
   defp linkify_nicks(text, nicklist) when is_binary(text) do
     [first_part | other_parts] =
       Regex.split(
-        ~r/\b[a-z0-9._=\/-]+:\S+\b/,
+        ~r/\b[a-zA-Z0-9._=\/-]+:\S+\b/,
         text,
         include_captures: true
       )

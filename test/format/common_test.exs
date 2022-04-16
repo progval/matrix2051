@@ -195,5 +195,9 @@ defmodule M51.FormatTest do
     assert M51.Format.irc2matrix("mentioning user:example.org", ["foo", "user:example.org"]) ==
              {"mentioning user:example.org",
               "mentioning <a href=\"https://matrix.to/#/@user:example.org\">user</a>"}
+
+    assert M51.Format.irc2matrix("mentioning EarlyAdopter:example.org", ["foo", "EarlyAdopter:example.org"]) ==
+             {"mentioning EarlyAdopter:example.org",
+              "mentioning <a href=\"https://matrix.to/#/@EarlyAdopter:example.org\">EarlyAdopter</a>"}
   end
 end
