@@ -4,6 +4,22 @@
 
 Matrix2051 (or M51 for short) is an IRC server backed by Matrix. You can also see it
 as an IRC bouncer that connects to Matrix homeservers instead of IRC servers.
+In order words:
+
+```
+         IRC client
+  (eg. weechat or hexchat)
+             |
+             |     IRC protocol
+             v
+         Matrix2051
+             |
+             |     Matrix protocol
+             v
+     Your Homeserver
+     (eg. matrix.org)
+```
+
 
 Goals:
 
