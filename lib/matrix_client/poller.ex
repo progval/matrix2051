@@ -230,11 +230,13 @@ defmodule M51.MatrixClient.Poller do
       else
         channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
         send = make_send_function(sup_pid, event, write)
+
         send.(%M51.Irc.Command{
           source: "server",
           command: "NOTICE",
           params: [channel, "Invalid room renaming to #{new_canonical_alias} (sent by #{sender})"]
         })
+
         nil
       end
     else

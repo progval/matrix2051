@@ -396,6 +396,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@msgid=$event1 :server NOTICE #test1:example.org :Invalid room renaming to #invalidalias:example.org (sent by nick2:example.org)\r\n"
     )
+
     assert_line(
       "@msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #test1:example.org :my message\r\n"
     )

@@ -688,7 +688,7 @@ defmodule M51.IrcConn.Handler do
     send.(%M51.Irc.Command{
       tags: tags,
       source: "server",
-      command: 400,
+      command: "400",
       params: [
         nick || "*",
         command.command,
@@ -946,7 +946,7 @@ defmodule M51.IrcConn.Handler do
         # no RPL_WHOREPLY because no operators
 
         # RPL_ENDOFWHO
-        send_numeric.(315, [target, "End of WHO list"])
+        send_numeric.("315", [target, "End of WHO list"])
 
       {"WHO", [target | _]} ->
         if Enum.member?(["#", "!"], String.slice(target, 0, 1)) do
@@ -973,7 +973,7 @@ defmodule M51.IrcConn.Handler do
                 end)
 
               # RPL_ENDOFWHO
-              last_command = make_numeric.(315, [target, "End of WHO list"])
+              last_command = make_numeric.("315", [target, "End of WHO list"])
 
               send_batch.(Stream.concat(commands, [last_command]), "labeled-response")
             end
@@ -985,7 +985,7 @@ defmodule M51.IrcConn.Handler do
           send_batch.(
             [
               make_numeric.("352", ["*", local_name, hostname, "*", target, "H", "0 " <> target]),
-              make_numeric.(315, [target, "End of WHO list"])
+              make_numeric.("315", [target, "End of WHO list"])
             ],
             "labeled-response"
           )
