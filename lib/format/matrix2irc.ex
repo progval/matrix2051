@@ -29,7 +29,13 @@ defmodule M51.Format.Matrix2Irc do
       link ->
         case Regex.named_captures(~R(https://matrix.to/#/@(?<userid>.*\)), link) do
           nil ->
-            "#{transform_children(children, current_color)} <#{link}>"
+            text = transform_children(children, current_color)
+
+            if text == link do
+              link
+            else
+              "#{text} <#{link}>"
+            end
 
           %{"userid" => user_id} ->
             user_id

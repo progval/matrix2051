@@ -1151,7 +1151,7 @@ defmodule M51.IrcConn.Handler do
 
     nicklist =
       case M51.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
-        {_room_id, room} -> room.members |> Map.keys
+        {_room_id, room} -> room.members |> Map.keys()
         nil -> []
       end
 

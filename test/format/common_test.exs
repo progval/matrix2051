@@ -107,6 +107,9 @@ defmodule M51.FormatTest do
     assert M51.Format.matrix2irc(~s(<a href="https://example.org">foo</a>)) ==
              "foo <https://example.org>"
 
+    assert M51.Format.matrix2irc(~s(<a href="https://example.org">https://example.org</a>)) ==
+             "https://example.org"
+
     assert M51.Format.matrix2irc(~s(<img src="https://example.org" />)) == "https://example.org"
 
     assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" />)) ==
@@ -196,7 +199,10 @@ defmodule M51.FormatTest do
              {"mentioning user:example.org",
               "mentioning <a href=\"https://matrix.to/#/@user:example.org\">user</a>"}
 
-    assert M51.Format.irc2matrix("mentioning EarlyAdopter:example.org", ["foo", "EarlyAdopter:example.org"]) ==
+    assert M51.Format.irc2matrix("mentioning EarlyAdopter:example.org", [
+             "foo",
+             "EarlyAdopter:example.org"
+           ]) ==
              {"mentioning EarlyAdopter:example.org",
               "mentioning <a href=\"https://matrix.to/#/@EarlyAdopter:example.org\">EarlyAdopter</a>"}
   end
