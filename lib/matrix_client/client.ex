@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021  Valentin Lorentz
+# Copyright (C) 2021-2022  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -329,6 +329,31 @@ defmodule M51.MatrixClient.Client do
     {:reply, reply, state}
   end
 
+  @impl true
+  def handle_call({:is_valid_alias, room_id, room_alias}, _from, state) do
+    %M51.MatrixClient.Client{
+      raw_client: raw_client
+    } = state
+
+    path = "/_matrix/client/r0/directory/room/#{urlquote(room_alias)}"
+
+    case M51.Matrix.RawClient.get(raw_client, path) do
+      {:ok, event} ->
+        if Map.get(event, "room_id") == room_id do
+          {:reply, true, state}
+        else
+          {:reply, false, state}
+        end
+
+      {:error, 404, _} ->
+        {:reply, false, state}
+
+      {:error, _, _} ->
+        # TODO: retry
+        {:reply, false, state}
+    end
+  end
+
   @doc """
     Generates a unique transaction id, assuming the 'label' is either a unique string,
     or 'nil'.
@@ -481,5 +506,9 @@ defmodule M51.MatrixClient.Client do
 
   defp urlquote(s) do
     URI.encode(s, &URI.char_unreserved?/1)
+  end
+
+  def valid_alias?(pid, room_id, room_alias) do
+    GenServer.call(pid, {:is_valid_alias, room_id, room_alias})
   end
 end

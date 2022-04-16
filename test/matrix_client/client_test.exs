@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021  Valentin Lorentz
+# Copyright (C) 2021-2022  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -498,5 +498,113 @@ defmodule M51.MatrixClient.ClientTest do
              "$event3",
              5
            ) == {:ok, %{"event" => "foo", "events_after" => [], "events_before" => []}}
+  end
+
+  test "checking valid alias", %{sup_pid: sup_pid} do
+    MockHTTPoison
+    |> expect_login
+    |> expect(:get, fn url, headers, _options ->
+      assert headers == [Authorization: "Bearer t0ken"]
+
+      assert url ==
+               "https://matrix.example.org/_matrix/client/r0/directory/room/%23validalias%3Aexample.org"
+
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 200,
+         body: ~s({"room_id": "!roomid:example.org"})
+       }}
+    end)
+
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+
+    assert M51.MatrixClient.Client.connect(
+             client,
+             "user",
+             "matrix.example.org",
+             "p4ssw0rd"
+           ) == {:ok}
+
+    receive do
+      msg -> assert msg == :connected
+    end
+
+    assert M51.MatrixClient.Client.valid_alias?(
+             client,
+             "!roomid:example.org",
+             "#validalias:example.org"
+           ) == true
+  end
+
+  test "checking nonexistent alias", %{sup_pid: sup_pid} do
+    MockHTTPoison
+    |> expect_login
+    |> expect(:get, fn url, headers, _options ->
+      assert headers == [Authorization: "Bearer t0ken"]
+
+      assert url ==
+               "https://matrix.example.org/_matrix/client/r0/directory/room/%23validalias%3Aexample.org"
+
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 404,
+         body: ~s({"foo": "bar"})
+       }}
+    end)
+
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+
+    assert M51.MatrixClient.Client.connect(
+             client,
+             "user",
+             "matrix.example.org",
+             "p4ssw0rd"
+           ) == {:ok}
+
+    receive do
+      msg -> assert msg == :connected
+    end
+
+    assert M51.MatrixClient.Client.valid_alias?(
+             client,
+             "!roomid:example.org",
+             "#validalias:example.org"
+           ) == false
+  end
+
+  test "checking alias to wrong room", %{sup_pid: sup_pid} do
+    MockHTTPoison
+    |> expect_login
+    |> expect(:get, fn url, headers, _options ->
+      assert headers == [Authorization: "Bearer t0ken"]
+
+      assert url ==
+               "https://matrix.example.org/_matrix/client/r0/directory/room/%23validalias%3Aexample.org"
+
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 200,
+         body: ~s({"room_id": "!otherroomid:example.org"})
+       }}
+    end)
+
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+
+    assert M51.MatrixClient.Client.connect(
+             client,
+             "user",
+             "matrix.example.org",
+             "p4ssw0rd"
+           ) == {:ok}
+
+    receive do
+      msg -> assert msg == :connected
+    end
+
+    assert M51.MatrixClient.Client.valid_alias?(
+             client,
+             "!roomid:example.org",
+             "#validalias:example.org"
+           ) == false
   end
 end
