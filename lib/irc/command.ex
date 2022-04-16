@@ -175,7 +175,7 @@ defmodule M51.Irc.Command do
       |> Enum.reverse()
       |> Enum.with_index()
       |> Enum.map(fn {token, i} ->
-        String.replace(token, ["\0", "\r", "\n", " "], fn <<char>> ->
+        Regex.replace(~r/[\0\r\n ]/, token, fn <<char>> ->
           case char do
             0 ->
               "\\0"
