@@ -186,7 +186,12 @@ defmodule M51.FormatTest do
   test "Matrix newline to IRC" do
     assert M51.Format.matrix2irc("foo<br>bar") == "foo\nbar"
     assert M51.Format.matrix2irc("foo<br/>bar") == "foo\nbar"
+    assert M51.Format.matrix2irc("foo<br/><br/>bar") == "foo\n\nbar"
     assert M51.Format.matrix2irc("<p>foo</p>bar") == "foo\nbar"
+    assert M51.Format.matrix2irc("foo\nbar") == "foo bar"
+    assert M51.Format.matrix2irc("foo\n \nbar") == "foo bar"
+    assert M51.Format.matrix2irc("<p>foo</p>\n<p>bar</p>") == "foo\nbar"
+    assert M51.Format.matrix2irc("<p>foo</p>\n<p>bar</p>\n<p>baz</p>") == "foo\nbar\nbaz"
   end
 
   test "IRC newline to Matrix" do

@@ -18,7 +18,9 @@ defmodule M51.Format.Matrix2Irc do
   @simple_tags M51.Format.matrix2irc_map()
 
   def transform(s, _current_color) when is_binary(s) do
-    s
+    # Pure text; just replace sequences of newlines with a space
+    # (unless there is already a space)
+    Regex.replace(~r/([\n\r]+ ?[\n\r]*| [\n\r]+)/, s, " ")
   end
 
   def transform({"a", attributes, children}, current_color) do
@@ -106,6 +108,7 @@ defmodule M51.Format.Matrix2Irc do
 
   def transform({tag, _, children}, current_color) do
     char = Map.get(@simple_tags, tag, "")
+    children = paragraph_to_newline(children, [])
     transform_children(children, current_color, char)
   end
 
@@ -116,6 +119,32 @@ defmodule M51.Format.Matrix2Irc do
       [char]
     ])
     |> Enum.join()
+  end
+
+  defp paragraph_to_newline([], acc) do
+    Enum.reverse(acc)
+  end
+
+  defp paragraph_to_newline([{"p", _, children1}, {"p", _, children2} | tail], acc) do
+    paragraph_to_newline(tail, [
+      {"span", [], children2},
+      {"br", [], []},
+      {"span", [], children1}
+      | acc
+    ])
+  end
+
+  defp paragraph_to_newline([{"p", _, text} | tail], acc) do
+    paragraph_to_newline(tail, [
+      {"br", [], []},
+      {"span", [], text},
+      {"br", [], []}
+      | acc
+    ])
+  end
+
+  defp paragraph_to_newline([head | tail], acc) do
+    paragraph_to_newline(tail, [head | acc])
   end
 
   @doc "Transforms a mxc:// \"URL\" into an actually usable URL."

@@ -27,7 +27,7 @@ defmodule M51.Format do
     {"\x1e", "del"},
     {"\x1e", "strike"},
     {"\x1f", "u"},
-    {"\n", "p"}
+    {"\n", "br"}
   ]
 
   def matrix2irc_map() do
