@@ -205,6 +205,7 @@ defmodule M51.FormatTest do
   end
 
   test "Matrix mentions to IRC" do
+    # Format emitted by Element and many other apps:
     assert M51.Format.matrix2irc(
              "<a href=\"https://matrix.to/#/@user:example.org\">user</a>: mention"
            ) == "user:example.org: mention"
@@ -212,6 +213,11 @@ defmodule M51.FormatTest do
     assert M51.Format.matrix2irc(
              "mentioning <a href=\"https://matrix.to/#/@user:example.org\">user</a>"
            ) == "mentioning user:example.org"
+
+    # Correct format according to the spec:
+    assert M51.Format.matrix2irc(
+             "mentioning <a href=\"https://matrix.to/#/%40correctlyencoded%3Aexample.org\">correctly encoded user</a>"
+           ) == "mentioning correctlyencoded:example.org"
   end
 
   test "IRC mentions to Matrix" do

@@ -29,7 +29,7 @@ defmodule M51.Format.Matrix2Irc do
         transform_children(children, current_color)
 
       link ->
-        case Regex.named_captures(~R(https://matrix.to/#/@(?<userid>.*\)), link) do
+        case Regex.named_captures(~R(https://matrix.to/#/(@|%40\)(?<userid>.*\)), link) do
           nil ->
             text = transform_children(children, current_color)
 
@@ -39,8 +39,8 @@ defmodule M51.Format.Matrix2Irc do
               "#{text} <#{link}>"
             end
 
-          %{"userid" => user_id} ->
-            user_id
+          %{"userid" => encoded_user_id} ->
+            URI.decode(encoded_user_id)
         end
     end
   end
