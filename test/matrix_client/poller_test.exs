@@ -841,6 +841,14 @@ defmodule M51.MatrixClient.PollerTest do
         "sender" => "@nick:example.org",
         "type" => "m.room.message",
         "unsigned" => %{}
+      },
+      %{
+        "content" => %{"body" => "Landing", "url" => "mxc://matrix.org/sHhqkFCvSkFwtmvtETOtKnLP"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.sticker",
+        "unsigned" => %{}
       }
     ]
 
@@ -880,6 +888,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       ":nick:example.org!nick@example.org PRIVMSG #test:example.org :https://example.org/chat.jpg\r\n"
     )
+
+    assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :Landing\r\n")
   end
 
   test "message with tags" do

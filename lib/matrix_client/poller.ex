@@ -615,6 +615,55 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
+        _state_event,
+        write,
+        %{"type" => "m.sticker"} = event
+      ) do
+    state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+    channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
+    member = M51.MatrixClient.State.room_member(state, room_id, sender)
+    send = make_send_function(sup_pid, event, write)
+
+    tags = %{"account" => sender}
+
+    # TODO: dedup this with m.reaction handler
+    tags =
+      case member do
+        %M51.Matrix.RoomMember{display_name: display_name} when display_name != nil ->
+          Map.put(tags, "+draft/display-name", display_name)
+
+        _ ->
+          tags
+      end
+
+    {_reply_to, tags} =
+      case event["content"] do
+        %{"m.relates_to" => %{"m.in_reply_to" => %{"event_id" => reply_to}}} ->
+          {reply_to, Map.put(tags, "+draft/reply", reply_to)}
+
+        _ ->
+          {nil, tags}
+      end
+
+    # TODO: strip fallback if reply_to is not false?
+
+    case event["content"] do
+      %{
+        "body" => body
+      } ->
+        send.(%M51.Irc.Command{
+          tags: tags,
+          source: nick2nuh(sender),
+          command: "PRIVMSG",
+          params: [channel, body]
+        })
+    end
+  end
+
+  def handle_event(
+        sup_pid,
+        room_id,
+        sender,
         state_event,
         write,
         %{"type" => "m.room.name"} = event
