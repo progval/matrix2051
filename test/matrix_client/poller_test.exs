@@ -761,7 +761,7 @@ defmodule M51.MatrixClient.PollerTest do
 
   test "messages" do
     MockHTTPoison
-    |> expect(:get!, fn url ->
+    |> expect(:get!, 5, fn url ->
       assert url == "https://matrix.org/.well-known/matrix/client"
 
       %HTTPoison.Response{
@@ -811,6 +811,57 @@ defmodule M51.MatrixClient.PollerTest do
           "body" => "cat.jpg",
           "msgtype" => "m.image",
           "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "this is my cat",
+          "msgtype" => "m.image",
+          "filename" => "cat.jpg",
+          "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "cat.jpg",
+          "msgtype" => "m.image",
+          "filename" => "cat.jpg",
+          "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "hello",
+          "msgtype" => "m.file",
+          "url" => "mxc://matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe",
+          "filename" => "blah.txt"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "hello",
+          "msgtype" => "m.file",
+          "url" => "mxc://matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe"
         },
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
@@ -879,6 +930,23 @@ defmodule M51.MatrixClient.PollerTest do
 
     assert_line(
       ":nick:example.org!nick@example.org PRIVMSG #test:example.org :cat.jpg https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :this is my cat https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb/cat.jpg\r\n"
+    )
+
+    # body is the same as file name -> it's useless
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb/cat.jpg\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :hello https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe/blah.txt\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :hello https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe\r\n"
     )
 
     assert_line(

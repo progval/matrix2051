@@ -148,11 +148,15 @@ defmodule M51.Format.Matrix2Irc do
   end
 
   @doc "Transforms a mxc:// \"URL\" into an actually usable URL."
-  def format_url(url) do
+  def format_url(url, filename \\ nil) do
     case URI.parse(url) do
       %{scheme: "mxc", host: host, path: path} ->
         base_url = M51.MatrixClient.Client.get_base_url(host, M51.Config.httpoison())
-        "#{base_url}/_matrix/media/r0/download/#{host}#{path}"
+
+        case filename do
+          nil -> "#{base_url}/_matrix/media/r0/download/#{host}#{path}"
+          _ -> "#{base_url}/_matrix/media/r0/download/#{host}#{path}/#{filename}"
+        end
 
       _ ->
         url
