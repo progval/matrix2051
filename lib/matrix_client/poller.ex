@@ -131,13 +131,42 @@ defmodule M51.MatrixClient.Poller do
     end)
   end
 
+  defp well_formed_event?(event, irc_state, write) do
+    case event do
+      %{
+        "content" => %{},
+        "event_id" => event_id,
+        "origin_server_ts" => origin_server_ts,
+        "sender" => sender,
+        "type" => type
+      }
+      when is_binary(event_id) and is_integer(origin_server_ts) and
+             is_binary(sender) and is_binary(type) ->
+        true
+
+      _ ->
+        nick = M51.IrcConn.State.nick(irc_state)
+        write.(%M51.Irc.Command{
+          source: "server",
+          command: "NOTICE",
+          params: [
+            nick,
+            "Malformed event: " <> Kernel.inspect(event)
+          ]
+        })
+        false
+    end
+  end
+
   defp handle_joined_room(sup_pid, handled_event_ids, room_id, write, room_event) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+    irc_state = M51.IrcConn.Supervisor.state(sup_pid)
 
     new_rooms =
       room_event
       |> Map.get("state", %{})
       |> Map.get("events", [])
+      |> Enum.filter(fn event -> well_formed_event?(event, irc_state, write) end)
       # oldest first
       |> Enum.map(fn event ->
         event_id = Map.get(event, "event_id")
@@ -145,8 +174,8 @@ defmodule M51.MatrixClient.Poller do
         if !MapSet.member?(handled_event_ids, event_id) do
           sender =
             case Map.get(event, "sender") do
-              nil -> nil
-              sender -> String.replace_prefix(sender, "@", "")
+              sender when is_binary(sender) -> String.replace_prefix(sender, "@", "")
+              _ -> nil
             end
 
           handle_event(sup_pid, room_id, sender, true, write, event)
@@ -178,6 +207,7 @@ defmodule M51.MatrixClient.Poller do
     room_event
     |> Map.get("timeline", %{})
     |> Map.get("events", [])
+    |> Enum.filter(fn event -> well_formed_event?(event, irc_state, write) end)
     # oldest first
     |> Enum.map(fn event ->
       event_id = Map.get(event, "event_id")
@@ -185,8 +215,8 @@ defmodule M51.MatrixClient.Poller do
       if !MapSet.member?(handled_event_ids, event_id) do
         sender =
           case Map.get(event, "sender") do
-            nil -> nil
-            sender -> String.replace_prefix(sender, "@", "")
+            sender when is_binary(sender) -> String.replace_prefix(sender, "@", "")
+            _ -> nil
           end
 
         handle_event(sup_pid, room_id, sender, false, write, event)
@@ -202,45 +232,54 @@ defmodule M51.MatrixClient.Poller do
         sender,
         state_event,
         write,
-        %{"type" => "m.room.canonical_alias"} = event
+        %{
+          "type" => "m.room.canonical_alias",
+          "state_key" => _,
+          "content" => content
+        } = event
       ) do
-    new_canonical_alias = event["content"]["alias"]
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
 
-    # "Clients SHOULD NOT treat the aliases as accurate. They SHOULD be checked before
-    # they are used or shared with another user."
-    # -- https://matrix.org/docs/spec/client_server/r0.6.1#room-aliases
-    if new_canonical_alias do
-      is_valid_alias = M51.MatrixClient.Client.valid_alias?(client, room_id, new_canonical_alias)
+    case content do
+      %{"alias" => new_canonical_alias} when is_binary(new_canonical_alias) ->
+        # "Clients SHOULD NOT treat the aliases as accurate. They SHOULD be checked before
+        # they are used or shared with another user."
+        # -- https://matrix.org/docs/spec/client_server/r0.6.1#room-aliases
+        is_valid_alias =
+          M51.MatrixClient.Client.valid_alias?(client, room_id, new_canonical_alias)
 
-      if is_valid_alias do
-        old_canonical_alias =
-          M51.MatrixClient.State.set_room_canonical_alias(
-            state,
-            room_id,
-            new_canonical_alias
-          )
+        if is_valid_alias do
+          old_canonical_alias =
+            M51.MatrixClient.State.set_room_canonical_alias(
+              state,
+              room_id,
+              new_canonical_alias
+            )
 
-        if !state_event do
-          send_channel_welcome(sup_pid, room_id, sender, old_canonical_alias, write, event)
+          if !state_event do
+            send_channel_welcome(sup_pid, room_id, sender, old_canonical_alias, write, event)
+          end
+
+          {room_id, {sender, old_canonical_alias}}
+        else
+          channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
+          send = make_send_function(sup_pid, event, write)
+
+          send.(%M51.Irc.Command{
+            source: "server",
+            command: "NOTICE",
+            params: [
+              channel,
+              "Invalid room renaming to #{new_canonical_alias} (sent by #{sender})"
+            ]
+          })
+
+          nil
         end
 
-        {room_id, {sender, old_canonical_alias}}
-      else
-        channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
-        send = make_send_function(sup_pid, event, write)
-
-        send.(%M51.Irc.Command{
-          source: "server",
-          command: "NOTICE",
-          params: [channel, "Invalid room renaming to #{new_canonical_alias} (sent by #{sender})"]
-        })
-
+      _ ->
         nil
-      end
-    else
-      nil
     end
   end
 
@@ -250,7 +289,11 @@ defmodule M51.MatrixClient.Poller do
         sender,
         state_event,
         write,
-        %{"type" => "m.room.join_rules"} = event
+        %{
+          "type" => "m.room.join_rules",
+          "content" => %{"join_rule" => join_rule},
+          "state_key" => _
+        } = event
       ) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
@@ -258,19 +301,22 @@ defmodule M51.MatrixClient.Poller do
 
     if !state_event do
       mode =
-        case event["content"]["join_rule"] do
+        case join_rule do
           "public" -> "-i"
           "knock" -> "+i"
           "invite" -> "+i"
           "private" -> "+i"
+          _ -> nil
         end
 
-      send.(%M51.Irc.Command{
-        tags: %{"account" => sender},
-        source: nick2nuh(sender),
-        command: "MODE",
-        params: [channel, mode]
-      })
+      if mode != nil do
+        send.(%M51.Irc.Command{
+          tags: %{"account" => sender},
+          source: nick2nuh(sender),
+          command: "MODE",
+          params: [channel, mode]
+        })
+      end
     end
 
     nil
@@ -282,22 +328,33 @@ defmodule M51.MatrixClient.Poller do
         sender,
         state_event,
         write,
-        %{"type" => "m.room.member"} = event
-      ) do
+        %{
+          "type" => "m.room.member",
+          "content" => %{"membership" => membership},
+          "state_key" => state_key
+        } = event
+      )
+      when is_binary(state_key) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_pid, event, write)
 
-    target = event |> Map.get("state_key", sender) |> String.replace_prefix("@", "")
+    target = String.replace_prefix(state_key, "@", "")
 
-    case event["content"]["membership"] do
+    case membership do
       "join" ->
+        displayname =
+          case event["content"] do
+            %{"displayname" => displayname} when is_binary(displayname) -> displayname
+            _ -> nil
+          end
+
         was_already_member =
           M51.MatrixClient.State.room_member_add(
             state,
             room_id,
             target,
-            %M51.Matrix.RoomMember{display_name: Map.get(event["content"], "displayname")}
+            %M51.Matrix.RoomMember{display_name: displayname}
           )
 
         if !state_event and !was_already_member do
@@ -311,9 +368,9 @@ defmodule M51.MatrixClient.Poller do
 
       "leave" ->
         params_tail =
-          case Map.get(event["content"], "reason") do
-            nil -> []
-            reason -> [reason]
+          case event do
+            %{"content" => %{"reason" => reason}} when is_binary(reason) -> [reason]
+            _ -> []
           end
 
         was_already_member = M51.MatrixClient.State.room_member_del(state, room_id, target)
@@ -352,7 +409,7 @@ defmodule M51.MatrixClient.Poller do
             tags: %{"account" => sender},
             source: nick2nuh(sender),
             command: "INVITE",
-            params: [String.replace_prefix(event["state_key"], "@", ""), room_id]
+            params: [target, room_id]
           })
         end
 
@@ -373,7 +430,7 @@ defmodule M51.MatrixClient.Poller do
         sender,
         _state_event,
         write,
-        %{"type" => "m.room.message"} = event
+        %{"type" => "m.room.message", "content" => %{}} = event
       ) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
@@ -394,7 +451,8 @@ defmodule M51.MatrixClient.Poller do
 
     {reply_to, tags} =
       case event["content"] do
-        %{"m.relates_to" => %{"m.in_reply_to" => %{"event_id" => reply_to}}} ->
+        %{"m.relates_to" => %{"m.in_reply_to" => %{"event_id" => reply_to}}}
+        when is_binary(reply_to) ->
           {reply_to, Map.put(tags, "+draft/reply", reply_to)}
 
         _ ->
@@ -408,7 +466,8 @@ defmodule M51.MatrixClient.Poller do
           "format" => "org.matrix.custom.html",
           "formatted_body" => formatted_body,
           "body" => body
-        } ->
+        }
+        when is_binary(formatted_body) and is_binary(body) ->
           # TODO: dedup with below
           body =
             if reply_to do
@@ -425,7 +484,7 @@ defmodule M51.MatrixClient.Poller do
 
           {"PRIVMSG", M51.Format.matrix2irc(formatted_body) || body}
 
-        %{"msgtype" => "m.text", "body" => body} ->
+        %{"msgtype" => "m.text", "body" => body} when is_binary(body) ->
           body =
             if reply_to do
               # Strip the fallback, as described in
@@ -449,7 +508,7 @@ defmodule M51.MatrixClient.Poller do
         } ->
           {"PRIVMSG", "\x01ACTION " <> (M51.Format.matrix2irc(formatted_body) || body) <> "\x01"}
 
-        %{"msgtype" => "m.emote", "body" => body} ->
+        %{"msgtype" => "m.emote", "body" => body} when is_binary(body) ->
           # TODO: ditto
           {"PRIVMSG", "\x01ACTION " <> body <> "\x01"}
 
@@ -461,19 +520,20 @@ defmodule M51.MatrixClient.Poller do
         } ->
           {"NOTICE", M51.Format.matrix2irc(formatted_body) || body}
 
-        %{"msgtype" => "m.notice", "body" => body} ->
+        %{"msgtype" => "m.notice", "body" => body} when is_binary(body) ->
           # TODO: ditto
           {"NOTICE", body}
 
         %{"msgtype" => "m.image", "body" => body, "url" => url, "filename" => filename}
-        when is_binary(filename) ->
+        when is_binary(body) and is_binary(url) and is_binary(filename) ->
           if M51.Format.Matrix2Irc.useless_img_alt?(body) or body == filename do
             {"PRIVMSG", M51.Format.Matrix2Irc.format_url(url, filename)}
           else
             {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url, filename)}
           end
 
-        %{"msgtype" => "m.image", "body" => body, "url" => url} ->
+        %{"msgtype" => "m.image", "body" => body, "url" => url}
+        when is_binary(body) and is_binary(url) ->
           if M51.Format.Matrix2Irc.useless_img_alt?(body) do
             {"PRIVMSG", M51.Format.Matrix2Irc.format_url(url)}
           else
@@ -481,22 +541,26 @@ defmodule M51.MatrixClient.Poller do
           end
 
         %{"msgtype" => "m.file", "body" => body, "url" => url, "filename" => filename}
-        when is_binary(filename) ->
+        when is_binary(body) and is_binary(url) and is_binary(filename) ->
           {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url, filename)}
 
-        %{"msgtype" => "m.file", "body" => body, "url" => url} ->
+        %{"msgtype" => "m.file", "body" => body, "url" => url}
+        when is_binary(body) and is_binary(url) ->
           {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url)}
 
-        %{"msgtype" => "m.audio", "body" => body, "url" => url} ->
+        %{"msgtype" => "m.audio", "body" => body, "url" => url}
+        when is_binary(body) and is_binary(url) ->
           {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url)}
 
-        %{"msgtype" => "m.location", "body" => body, "geo_uri" => geo_uri} ->
+        %{"msgtype" => "m.location", "body" => body, "geo_uri" => geo_uri}
+        when is_binary(body) and is_binary(geo_uri) ->
           {"PRIVMSG", body <> " (" <> geo_uri <> ")"}
 
-        %{"msgtype" => "m.video", "body" => body, "url" => url} ->
+        %{"msgtype" => "m.video", "body" => body, "url" => url}
+        when is_binary(body) and is_binary(url) ->
           {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url)}
 
-        %{"body" => body} ->
+        %{"body" => body} when is_binary(body) ->
           # fallback
           {"PRIVMSG", body}
 
@@ -573,7 +637,7 @@ defmodule M51.MatrixClient.Poller do
         sender,
         _state_event,
         write,
-        %{"type" => "m.reaction"} = event
+        %{"type" => "m.reaction", "content" => %{}} = event
       ) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
@@ -599,7 +663,8 @@ defmodule M51.MatrixClient.Poller do
           "event_id" => reply_to,
           "key" => react
         }
-      } ->
+      }
+      when is_binary(reply_to) and is_binary(react) ->
         send.(%M51.Irc.Command{
           tags: Map.merge(tags, %{"+draft/reply" => reply_to, "+draft/react" => react}),
           source: nick2nuh(sender),
@@ -629,7 +694,7 @@ defmodule M51.MatrixClient.Poller do
         sender,
         _state_event,
         write,
-        %{"type" => "m.sticker"} = event
+        %{"type" => "m.sticker", "content" => %{}} = event
       ) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
@@ -650,7 +715,8 @@ defmodule M51.MatrixClient.Poller do
 
     {_reply_to, tags} =
       case event["content"] do
-        %{"m.relates_to" => %{"m.in_reply_to" => %{"event_id" => reply_to}}} ->
+        %{"m.relates_to" => %{"m.in_reply_to" => %{"event_id" => reply_to}}}
+        when is_binary(reply_to) ->
           {reply_to, Map.put(tags, "+draft/reply", reply_to)}
 
         _ ->
@@ -660,9 +726,7 @@ defmodule M51.MatrixClient.Poller do
     # TODO: strip fallback if reply_to is not false?
 
     case event["content"] do
-      %{
-        "body" => body
-      } ->
+      %{"body" => body} when is_binary(body) ->
         send.(%M51.Irc.Command{
           tags: tags,
           source: nick2nuh(sender),
@@ -678,13 +742,15 @@ defmodule M51.MatrixClient.Poller do
         sender,
         state_event,
         write,
-        %{"type" => "m.room.name"} = event
-      ) do
+        %{"type" => "m.room.name", "content" => %{"name" => new_room_name}, "state_key" => _} =
+          event
+      )
+      when is_binary(new_room_name) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     send = make_send_function(sup_pid, event, write)
 
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
-    M51.MatrixClient.State.set_room_name(state, room_id, event["content"]["name"])
+    M51.MatrixClient.State.set_room_name(state, room_id, new_room_name)
 
     if !state_event do
       topic =
@@ -709,8 +775,10 @@ defmodule M51.MatrixClient.Poller do
         sender,
         state_event,
         write,
-        %{"type" => "m.room.topic"} = event
-      ) do
+        %{"type" => "m.room.topic", "content" => %{"topic" => new_topic}, "state_key" => _} =
+          event
+      )
+      when is_binary(new_topic) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_pid, event, write)
@@ -718,7 +786,7 @@ defmodule M51.MatrixClient.Poller do
     M51.MatrixClient.State.set_room_topic(
       state,
       room_id,
-      {event["content"]["topic"], sender, event["origin_server_ts"]}
+      {new_topic, sender, event["origin_server_ts"]}
     )
 
     if !state_event do
@@ -767,14 +835,27 @@ defmodule M51.MatrixClient.Poller do
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_pid, event, write)
 
-    send.(%M51.Irc.Command{
-      source: "server",
-      command: "NOTICE",
-      params: [
-        channel,
-        "Unknown event (#{event["type"]}): #{Kernel.inspect(event)}"
-      ]
-    })
+    case event do
+      %{"type" => event_type} when is_binary(event_type) ->
+        send.(%M51.Irc.Command{
+          source: "server",
+          command: "NOTICE",
+          params: [
+            channel,
+            "Unknown event (#{event_type}): #{Kernel.inspect(event)}"
+          ]
+        })
+
+      _ ->
+        send.(%M51.Irc.Command{
+          source: "server",
+          command: "NOTICE",
+          params: [
+            channel,
+            "Malformed event: #{Kernel.inspect(event)}"
+          ]
+        })
+    end
   end
 
   defp handle_left_room(sup_pid, _handled_event_ids, _room_id, _write, _event) do
@@ -791,6 +872,7 @@ defmodule M51.MatrixClient.Poller do
     room_event
     |> Map.get("invite_state", %{})
     |> Map.get("events", [])
+    |> Enum.filter(fn event -> well_formed_event?(event, irc_state, write) end)
     # oldest first
     |> Enum.map(fn event ->
       event_id = Map.get(event, "event_id")
@@ -800,8 +882,8 @@ defmodule M51.MatrixClient.Poller do
 
         sender =
           case Map.get(event, "sender") do
-            nil -> nil
-            sender -> String.replace_prefix(sender, "@", "")
+            sender when is_binary(sender) -> String.replace_prefix(sender, "@", "")
+            _ -> nil
           end
 
         case event do
@@ -951,7 +1033,8 @@ defmodule M51.MatrixClient.Poller do
     M51.MatrixClient.State.room_members(state, room_id)
     |> Enum.map(fn {user_id, _member} ->
       nuh = nick2nuh(user_id)
-      String.replace(nuh, " ", "\\s") <> " "  # M51.Irc.Command does not escape " " in trailing
+      # M51.Irc.Command does not escape " " in trailing
+      String.replace(nuh, " ", "\\s") <> " "
     end)
     |> Enum.sort()
     |> M51.Irc.WordWrap.join_tokens(512 - overhead)
@@ -1023,24 +1106,24 @@ defmodule M51.MatrixClient.Poller do
 
     new_tags =
       case Map.get(event, "origin_server_ts") do
-        nil ->
-          new_tags
-
-        origin_server_ts ->
+        origin_server_ts when is_integer(origin_server_ts) ->
           time = origin_server_ts |> DateTime.from_unix!(:millisecond) |> DateTime.to_iso8601()
 
           Map.put(new_tags, "time", time)
+
+        _ ->
+          new_tags
       end
 
     new_tags =
       case Map.get(event, "event_id") do
-        nil -> new_tags
-        event_id -> Map.put(new_tags, "msgid", event_id)
+        event_id when is_binary(event_id) -> Map.put(new_tags, "msgid", event_id)
+        _ -> new_tags
       end
 
     {is_echo, new_tags} =
       case Map.get(event, "unsigned") do
-        %{"transaction_id" => transaction_id} ->
+        %{"transaction_id" => transaction_id} when is_binary(transaction_id) ->
           label = M51.MatrixClient.Client.transaction_id_to_label(transaction_id)
 
           if label == nil do

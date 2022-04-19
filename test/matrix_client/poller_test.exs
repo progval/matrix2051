@@ -50,6 +50,23 @@ defmodule M51.MatrixClient.PollerTest do
     M51.MatrixClient.Poller.handle_events(self(), %{})
   end
 
+  test "malformed event" do
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event1",
+      }
+    ]
+
+    M51.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
+      }
+    })
+
+    assert_line(":server NOTICE mynick:example.com :Malformed event: %{\"content\" => %{\"alias\" => \"#test:example.org\"}, \"event_id\" => \"$event1\"}\r\n")
+  end
+
   test "new room" do
     state_events = [
       %{
@@ -57,6 +74,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -78,6 +96,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_975,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.name",
         "unsigned" => %{}
       },
@@ -86,6 +105,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -115,6 +135,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick1:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -126,6 +147,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick2:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -159,6 +181,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick1:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -170,6 +193,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick2:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -211,6 +235,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick1:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       },
@@ -219,6 +244,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_975,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.name",
         "unsigned" => %{}
       },
@@ -227,6 +253,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event3",
         "origin_server_ts" => 1_633_176_350_104,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.topic",
         "unsigned" => %{}
       }
@@ -238,6 +265,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event4",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick2:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -289,6 +317,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       },
@@ -297,6 +326,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_648_797_438,
         "sender" => "nick2:example.org",
+        "state_key" => "nick2:example.org",
         "type" => "m.room.member",
         "unsigned" => %{}
       },
@@ -305,6 +335,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event3",
         "origin_server_ts" => 1_632_648_797_438,
         "sender" => "mynick:example.com",
+        "state_key" => "mynick:example.com",
         "type" => "m.room.member",
         "unsigned" => %{}
       },
@@ -313,6 +344,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event4",
         "origin_server_ts" => 1_632_648_797_438,
         "sender" => "malicious nick:for example.org",
+        "state_key" => "malicious nick:for example.org",
         "type" => "m.room.member",
         "unsigned" => %{}
       }
@@ -365,6 +397,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick1:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -376,6 +409,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick2:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       },
@@ -426,6 +460,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick1:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -437,6 +472,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick2:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       },
@@ -478,6 +514,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event3",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -489,6 +526,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_648_797_438,
         "sender" => "nick2:example.org",
+        "state_key" => "nick2:example.org",
         "type" => "m.room.member",
         "unsigned" => %{}
       },
@@ -497,6 +535,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_648_797_438,
         "sender" => "mynick:example.org",
+        "state_key" => "mynick:example.org",
         "type" => "m.room.member",
         "unsigned" => %{}
       }
@@ -531,6 +570,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event3",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.com",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -671,6 +711,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event3",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -682,6 +723,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_644_251_803,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.join_rules",
         "unsigned" => %{}
       },
@@ -690,6 +732,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_803,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.join_rules",
         "unsigned" => %{}
       }
@@ -721,19 +764,25 @@ defmodule M51.MatrixClient.PollerTest do
           "creator" => "@inviter:example.org",
           "room_version" => "6"
         },
+        "event_id" => "$event2",
         "sender" => "@inviter:example.org",
+        "origin_server_ts" => 1_634_330_707_082,
         "state_key" => "",
         "type" => "m.room.create"
       },
       %{
         "content" => %{"join_rule" => "invite"},
+        "event_id" => "$event3",
         "sender" => "@inviter:example.org",
+        "origin_server_ts" => 1_634_330_707_082,
         "state_key" => "",
         "type" => "m.room.join_rules"
       },
       %{
         "content" => %{"displayname" => "invited user", "membership" => "join"},
+        "event_id" => "$event4",
         "sender" => "@inviter:example.org",
+        "origin_server_ts" => 1_634_330_707_082,
         "state_key" => "@inviter:example.org",
         "type" => "m.room.member"
       },
@@ -743,7 +792,7 @@ defmodule M51.MatrixClient.PollerTest do
           "is_direct" => true,
           "membership" => "invite"
         },
-        "event_id" => "$event1",
+        "event_id" => "$event5",
         "origin_server_ts" => 1_634_330_707_082,
         "sender" => "@inviter:example.org",
         "state_key" => "invited:example.com",
@@ -784,6 +833,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -980,6 +1030,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1028,12 +1079,15 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       },
       %{
         "content" => %{"displayname" => "cool user", "membership" => "join"},
+        "event_id" => "$event3",
         "sender" => "@nick:example.org",
+        "origin_server_ts" => 1_632_644_251_623,
         "state_key" => "@nick:example.org",
         "type" => "m.room.member"
       }
@@ -1088,6 +1142,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event0",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1161,6 +1216,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event0",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1226,6 +1282,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1296,6 +1353,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1368,6 +1426,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1436,6 +1495,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1497,6 +1557,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1588,6 +1649,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1650,6 +1712,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1714,6 +1777,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1765,6 +1829,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
@@ -1836,6 +1901,7 @@ defmodule M51.MatrixClient.PollerTest do
         "event_id" => "$event2",
         "origin_server_ts" => 1_632_644_251_623,
         "sender" => "@nick:example.org",
+        "state_key" => "",
         "type" => "m.room.canonical_alias",
         "unsigned" => %{}
       }
