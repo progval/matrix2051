@@ -752,7 +752,11 @@ defmodule M51.MatrixClient.Poller do
              "m.room.related_groups",
              "m.room.server_acl",
              "m.room.third_party_invite",
+             "m.room.plumbing",
+             "m.room.bridging",
+             "m.room.retention",
              "m.space.child",
+             "m.space.parent",
              "uk.half-shot.bridge"
            ] do
     # ignore these
