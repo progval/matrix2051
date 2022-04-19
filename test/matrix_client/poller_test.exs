@@ -307,6 +307,14 @@ defmodule M51.MatrixClient.PollerTest do
         "sender" => "mynick:example.com",
         "type" => "m.room.member",
         "unsigned" => %{}
+      },
+      %{
+        "content" => %{"avatar_url" => nil, "displayname" => "Name 2", "membership" => "join"},
+        "event_id" => "$event4",
+        "origin_server_ts" => 1_632_648_797_438,
+        "sender" => "malicious nick:for example.org",
+        "type" => "m.room.member",
+        "unsigned" => %{}
       }
     ]
 
@@ -320,7 +328,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
 
     assert_line(
-      ":server 353 mynick:example.com = #test:example.org :mynick:example.com nick2:example.org\r\n"
+      ":server 353 mynick:example.com = #test:example.org :malicious\\snick:for\\sexample.org mynick:example.com nick2:example.org\r\n"
     )
 
     assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
@@ -339,7 +347,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
 
     assert_line(
-      ":server 353 mynick:example.com = #test:example.org :mynick:example.com!mynick@example.com nick2:example.org!nick2@example.org\r\n"
+      ":server 353 mynick:example.com = #test:example.org :malicious\\snick:for\\sexample.org!malicious\\snick@for\\sexample.org mynick:example.com!mynick@example.com nick2:example.org!nick2@example.org\r\n"
     )
 
     assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")

@@ -945,7 +945,10 @@ defmodule M51.MatrixClient.Poller do
     # note for later: if we ever implement prefixes, make sure to add them
     # *after* calling nick2nuh; we don't want to have prefixes in the username part.
     M51.MatrixClient.State.room_members(state, room_id)
-    |> Enum.map(fn {user_id, _member} -> nick2nuh(user_id) <> " " end)
+    |> Enum.map(fn {user_id, _member} ->
+      nuh = nick2nuh(user_id)
+      String.replace(nuh, " ", "\\s") <> " "  # M51.Irc.Command does not escape " " in trailing
+    end)
     |> Enum.sort()
     |> M51.Irc.WordWrap.join_tokens(512 - overhead)
     |> Enum.map(fn line ->
