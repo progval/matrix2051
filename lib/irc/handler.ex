@@ -959,7 +959,7 @@ defmodule M51.IrcConn.Handler do
               commands =
                 room.members
                 |> Stream.map(fn {user_id, _member} ->
-                  [local_name, hostname] = String.split(nick, ":", parts: 2)
+                  [local_name, hostname] = String.split(user_id, ":", parts: 2)
                   # RPL_WHOREPLY
                   make_numeric.("352", [
                     target,

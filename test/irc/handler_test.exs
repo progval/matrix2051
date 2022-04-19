@@ -687,11 +687,11 @@ defmodule M51.IrcConn.HandlerTest do
     assert line == "@label=l2 BATCH +#{batch_id} :labeled-response\r\n"
 
     assert_line(
-      "@batch=#{batch_id} :server 352 foo:example.org #existing_room:example.org foo example.org * user1:example.org H :0 user1:example.org\r\n"
+      "@batch=#{batch_id} :server 352 foo:example.org #existing_room:example.org user1 example.org * user1:example.org H :0 user1:example.org\r\n"
     )
 
     assert_line(
-      "@batch=#{batch_id} :server 352 foo:example.org #existing_room:example.org foo example.org * user2:example.com H :0 user2:example.com\r\n"
+      "@batch=#{batch_id} :server 352 foo:example.org #existing_room:example.org user2 example.com * user2:example.com H :0 user2:example.com\r\n"
     )
 
     assert_line(
@@ -713,11 +713,11 @@ defmodule M51.IrcConn.HandlerTest do
     send(handler, cmd("WHO #existing_room:example.org"))
 
     assert_line(
-      ":server 352 foo:example.org #existing_room:example.org foo example.org * user1:example.org H :0 user1:example.org\r\n"
+      ":server 352 foo:example.org #existing_room:example.org user1 example.org * user1:example.org H :0 user1:example.org\r\n"
     )
 
     assert_line(
-      ":server 352 foo:example.org #existing_room:example.org foo example.org * user2:example.com H :0 user2:example.com\r\n"
+      ":server 352 foo:example.org #existing_room:example.org user2 example.com * user2:example.com H :0 user2:example.com\r\n"
     )
 
     assert_line(":server 315 foo:example.org #existing_room:example.org :End of WHO list\r\n")
