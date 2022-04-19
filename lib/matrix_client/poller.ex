@@ -823,6 +823,11 @@ defmodule M51.MatrixClient.Poller do
              "m.room.plumbing",
              "m.room.bridging",
              "m.room.retention",
+             "m.room.pinned_events",
+             "org.matrix.room.preview_urls",
+             "io.element.widgets.layout",
+             "im.ponies.room_emotes",
+             "uk.half-shot.spanner",
              "m.space.child",
              "m.space.parent",
              "uk.half-shot.bridge"
