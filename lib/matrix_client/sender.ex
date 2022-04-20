@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021  Valentin Lorentz
+# Copyright (C) 2021-2022  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -55,7 +55,10 @@ defmodule M51.MatrixClient.Sender do
         loop_send(sup_pid, room_id, event_type, transaction_id, event)
 
       raw_client ->
-        path = "/_matrix/client/r0/rooms/#{room_id}/send/#{event_type}/#{transaction_id}"
+        path =
+          "/_matrix/client/r0/rooms/#{urlquote(room_id)}/send/#{urlquote(event_type)}/#{
+            urlquote(transaction_id)
+          }"
 
         body = Jason.encode!(event)
 
@@ -120,5 +123,9 @@ defmodule M51.MatrixClient.Sender do
       {M51.Registry, {sup_pid, :matrix_sender}},
       {:send, room_id, event_type, transaction_id, event}
     )
+  end
+
+  defp urlquote(s) do
+    M51.Matrix.Utils.urlquote(s)
   end
 end

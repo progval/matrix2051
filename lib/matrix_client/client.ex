@@ -509,7 +509,7 @@ defmodule M51.MatrixClient.Client do
   end
 
   defp urlquote(s) do
-    URI.encode(s, &URI.char_unreserved?/1)
+    M51.Matrix.Utils.urlquote(s)
   end
 
   def valid_alias?(pid, room_id, room_alias) do
