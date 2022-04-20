@@ -154,8 +154,11 @@ defmodule M51.Format.Matrix2Irc do
         base_url = M51.MatrixClient.Client.get_base_url(host, M51.Config.httpoison())
 
         case filename do
-          nil -> "#{base_url}/_matrix/media/r0/download/#{urlquote(host)}#{path}"
-          _ -> "#{base_url}/_matrix/media/r0/download/#{urlquote(host)}#{path}/#{urlquote(filename)}"
+          nil ->
+            "#{base_url}/_matrix/media/r0/download/#{urlquote(host)}#{path}"
+
+          _ ->
+            "#{base_url}/_matrix/media/r0/download/#{urlquote(host)}#{path}/#{urlquote(filename)}"
         end
 
       _ ->

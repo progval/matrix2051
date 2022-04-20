@@ -146,6 +146,7 @@ defmodule M51.MatrixClient.Poller do
 
       _ ->
         nick = M51.IrcConn.State.nick(irc_state)
+
         write.(%M51.Irc.Command{
           source: "server",
           command: "NOTICE",
@@ -154,6 +155,7 @@ defmodule M51.MatrixClient.Poller do
             "Malformed event: " <> Kernel.inspect(event)
           ]
         })
+
         false
     end
   end

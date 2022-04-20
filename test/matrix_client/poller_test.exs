@@ -54,7 +54,7 @@ defmodule M51.MatrixClient.PollerTest do
     state_events = [
       %{
         "content" => %{"alias" => "#test:example.org"},
-        "event_id" => "$event1",
+        "event_id" => "$event1"
       }
     ]
 
@@ -64,7 +64,9 @@ defmodule M51.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":server NOTICE mynick:example.com :Malformed event: %{\"content\" => %{\"alias\" => \"#test:example.org\"}, \"event_id\" => \"$event1\"}\r\n")
+    assert_line(
+      ":server NOTICE mynick:example.com :Malformed event: %{\"content\" => %{\"alias\" => \"#test:example.org\"}, \"event_id\" => \"$event1\"}\r\n"
+    )
   end
 
   test "new room" do
