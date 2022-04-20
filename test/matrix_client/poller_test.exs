@@ -69,6 +69,34 @@ defmodule M51.MatrixClient.PollerTest do
     )
   end
 
+  test "encrypted event" do
+    timeline_events = [
+      %{
+        "content" => %{
+          "algorithm" => "m.megolm.v1.aes-sha2",
+          "ciphertext" => "blah",
+          "sender_key" => "blih",
+          "session_id" => "bluh"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_650_470_634_565,
+        "sender" => "@someone:example.org",
+        "type" => "m.room.encrypted",
+        "unsigned" => %{}
+      }
+    ]
+
+    M51.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{"!testid:example.org" => %{"timeline" => %{"events" => timeline_events}}}
+      }
+    })
+
+    assert_line(
+      ":server NOTICE !testid:example.org :someone:example.org sent an encrypted message\r\n"
+    )
+  end
+
   test "new room" do
     state_events = [
       %{

@@ -742,6 +742,27 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
+        _state_event,
+        write,
+        %{"type" => "m.room.encrypted", "content" => %{}} = event
+      ) do
+    state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+    channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
+    send = make_send_function(sup_pid, event, write)
+
+    sender = String.replace_prefix(sender, "@", "")
+
+    send.(%M51.Irc.Command{
+      source: "server",
+      command: "NOTICE",
+      params: [channel, "#{sender} sent an encrypted message"]
+    })
+  end
+
+  def handle_event(
+        sup_pid,
+        room_id,
+        sender,
         state_event,
         write,
         %{"type" => "m.room.name", "content" => %{"name" => new_room_name}, "state_key" => _} =
