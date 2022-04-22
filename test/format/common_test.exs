@@ -246,4 +246,22 @@ defmodule M51.FormatTest do
              {"mentioning EarlyAdopter:example.org",
               "mentioning <a href=\"https://matrix.to/#/@EarlyAdopter:example.org\">EarlyAdopter</a>"}
   end
+
+  test "Matrix room mentions to IRC" do
+    assert M51.Format.matrix2irc(
+             "join <a href=\"https://matrix.to/#/#room:example.org\">#room</a>"
+           ) == "join #room:example.org"
+
+    assert M51.Format.matrix2irc(
+             "join <a href=\"https://matrix.to/#/%23room%3Aexample.org\">#room</a>"
+           ) == "join #room:example.org"
+
+    assert M51.Format.matrix2irc(
+             "join <a href=\"https://matrix.to/#/!room:example.org\">#room</a>"
+           ) == "join !room:example.org"
+
+    assert M51.Format.matrix2irc(
+             "join <a href=\"https://matrix.to/#/%21room%3Aexample.org\">#room</a>"
+           ) == "join !room:example.org"
+  end
 end

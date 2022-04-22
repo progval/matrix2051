@@ -29,7 +29,10 @@ defmodule M51.Format.Matrix2Irc do
         transform_children(children, current_color)
 
       link ->
-        case Regex.named_captures(~R(https://matrix.to/#/(@|%40\)(?<userid>.*\)), link) do
+        case Regex.named_captures(
+               ~r[https://matrix.to/#/((@|%40)(?<userid>.*)|(!|%21)(?<roomid>.*)|(#|%23)(?<roomalias>.*))],
+               link
+             ) do
           nil ->
             text = transform_children(children, current_color)
 
@@ -39,8 +42,14 @@ defmodule M51.Format.Matrix2Irc do
               "#{text} <#{link}>"
             end
 
-          %{"userid" => encoded_user_id} ->
+          %{"userid" => encoded_user_id} when encoded_user_id != "" ->
             URI.decode(encoded_user_id)
+
+          %{"roomid" => encoded_room_id} when encoded_room_id != "" ->
+            "!" <> URI.decode(encoded_room_id)
+
+          %{"roomalias" => encoded_room_alias} when encoded_room_alias != "" ->
+            "#" <> URI.decode(encoded_room_alias)
         end
     end
   end
