@@ -30,7 +30,7 @@ defmodule M51.Format.Matrix2Irc do
 
       link ->
         case Regex.named_captures(
-               ~r[https://matrix.to/#/((@|%40)(?<userid>.*)|(!|%21)(?<roomid>.*)|(#|%23)(?<roomalias>.*))],
+               ~r{https://matrix.to/#/((@|%40)(?<userid>[^/?]*)|(!|%21)(?<roomid>[^/#]*)|(#|%23)(?<roomalias>[^/?]*))(/.*)?(\?.*)?},
                link
              ) do
           nil ->

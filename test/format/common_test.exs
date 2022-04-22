@@ -263,5 +263,21 @@ defmodule M51.FormatTest do
     assert M51.Format.matrix2irc(
              "join <a href=\"https://matrix.to/#/%21room%3Aexample.org\">#room</a>"
            ) == "join !room:example.org"
+
+    assert M51.Format.matrix2irc(
+             "join <a href=\"https://matrix.to/#/#room:example.org/%24event%3Aexample.org\">#room</a>"
+           ) == "join #room:example.org"
+
+    assert M51.Format.matrix2irc(
+             "join <a href=\"https://matrix.to/#/%23room%3Aexample.org/%24event%3Aexample.org\">#room</a>"
+           ) == "join #room:example.org"
+
+    assert M51.Format.matrix2irc(
+             "join <a href=\"https://matrix.to/#/#room:example.org?via=elsewhere\">#room</a>"
+           ) == "join #room:example.org"
+
+    assert M51.Format.matrix2irc(
+             "join <a href=\"https://matrix.to/#/%23room%3Aexample.org?via=elsewhere\">#room</a>"
+           ) == "join #room:example.org"
   end
 end
