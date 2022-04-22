@@ -60,7 +60,7 @@ defmodule M51.Format do
   """
   def matrix2irc(html) do
     tree = :mochiweb_html.parse("<html>" <> html <> "</html>")
-    String.trim(M51.Format.Matrix2Irc.transform(tree, {nil, nil}))
+    String.trim(M51.Format.Matrix2Irc.transform(tree, %M51.Format.Matrix2Irc.State{}))
   end
 
   @doc ~S"""

@@ -26,10 +26,15 @@ defmodule M51.FormatTest do
     assert M51.Format.matrix2irc("foo") == "foo"
     assert M51.Format.matrix2irc("<b>foo</b>") == "\x02foo\x02"
     assert M51.Format.matrix2irc("<i>foo</i>") == "\x1dfoo\x1d"
-    assert M51.Format.matrix2irc("<pre>foo</pre>") == "\x11foo\x11"
     assert M51.Format.matrix2irc("<code>foo</code>") == "\x11foo\x11"
-
+    assert M51.Format.matrix2irc("<pre>foo</pre>") == "\x11foo\x11"
     assert M51.Format.matrix2irc("<b>foo <i>bar</i> baz</b>") == "\x02foo \x1dbar\x1d baz\x02"
+
+    assert M51.Format.matrix2irc("foo<br/>bar") == "foo\nbar"
+    assert M51.Format.matrix2irc("foo<br/><br/>bar") == "foo\n\nbar"
+
+    assert M51.Format.matrix2irc("<pre>foo<br/>bar</pre>") == "\x11foo\nbar\x11"
+    assert M51.Format.matrix2irc("<pre>foo<br/><br/>bar</pre>") == "\x11foo\n\nbar\x11"
   end
 
   test "simple IRC to Matrix" do

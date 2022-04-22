@@ -14,19 +14,28 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ###
 
+defmodule M51.Format.Matrix2Irc.State do
+  defstruct preserve_whitespace: false,
+            color: {nil, nil}
+end
+
 defmodule M51.Format.Matrix2Irc do
   @simple_tags M51.Format.matrix2irc_map()
 
-  def transform(s, _current_color) when is_binary(s) do
+  def transform(s, state) when is_binary(s) do
     # Pure text; just replace sequences of newlines with a space
     # (unless there is already a space)
-    Regex.replace(~r/([\n\r]+ ?[\n\r]*| [\n\r]+)/, s, " ")
+    if state.preserve_whitespace do
+      s
+    else
+      Regex.replace(~r/([\n\r]+ ?[\n\r]*| [\n\r]+)/, s, " ")
+    end
   end
 
-  def transform({"a", attributes, children}, current_color) do
+  def transform({"a", attributes, children}, state) do
     case attributes |> Map.new() |> Map.get("href") do
       nil ->
-        transform_children(children, current_color)
+        transform_children(children, state)
 
       link ->
         case Regex.named_captures(
@@ -34,7 +43,7 @@ defmodule M51.Format.Matrix2Irc do
                link
              ) do
           nil ->
-            text = transform_children(children, current_color)
+            text = transform_children(children, state)
 
             if text == link do
               link
@@ -54,7 +63,7 @@ defmodule M51.Format.Matrix2Irc do
     end
   end
 
-  def transform({"img", attributes, children}, current_color) do
+  def transform({"img", attributes, children}, state) do
     attributes = attributes |> Map.new()
     src = attributes |> Map.get("src")
     alt = attributes |> Map.get("alt")
@@ -68,7 +77,7 @@ defmodule M51.Format.Matrix2Irc do
       end
 
     case {src, alt, title} do
-      {nil, nil, nil} -> transform_children(children, current_color)
+      {nil, nil, nil} -> transform_children(children, state)
       {nil, nil, title} -> title
       {nil, alt, _} -> alt
       {link, nil, nil} -> format_url(link)
@@ -77,37 +86,39 @@ defmodule M51.Format.Matrix2Irc do
     end
   end
 
-  def transform({"br", _, []}, _current_color) do
+  def transform({"br", _, []}, _state) do
     "\n"
   end
 
-  def transform({tag, _, children}, current_color) when tag in ["ol", "ul"] do
-    "\n" <> transform_children(children, current_color)
+  def transform({tag, _, children}, state) when tag in ["ol", "ul"] do
+    "\n" <> transform_children(children, state)
   end
 
-  def transform({"li", _, children}, current_color) do
-    "* " <> transform_children(children, current_color) <> "\n"
+  def transform({"li", _, children}, state) do
+    "* " <> transform_children(children, state) <> "\n"
   end
 
-  def transform({tag, attributes, children}, current_color) when tag in ["font", "span"] do
+  def transform({tag, attributes, children}, state) when tag in ["font", "span"] do
     attributes = Map.new(attributes)
     fg = Map.get(attributes, "data-mx-color")
     bg = Map.get(attributes, "data-mx-bg-color")
 
     case {fg, bg} do
       {nil, nil} ->
-        transform_children(children, current_color)
+        transform_children(children, state)
 
       _ ->
         restored_colors =
-          case current_color do
+          case state.color do
             # reset
             {nil, nil} -> "\x0399,99"
             {fg, bg} -> "\x04#{fg || "000000"},#{bg || "FFFFFF"}"
           end
 
+        state = %M51.Format.Matrix2Irc.State{state | color: {fg, bg}}
+
         ~s(\x04#{fg || "000000"},#{bg || "FFFFFF"}) <>
-          transform_children(children, {fg, bg}) <> restored_colors
+          transform_children(children, state) <> restored_colors
     end
   end
 
@@ -115,16 +126,23 @@ defmodule M51.Format.Matrix2Irc do
     ""
   end
 
-  def transform({tag, _, children}, current_color) do
+  def transform({tag, _, children}, state) do
     char = Map.get(@simple_tags, tag, "")
     children = paragraph_to_newline(children, [])
-    transform_children(children, current_color, char)
+
+    state =
+      case tag do
+        "pre" -> %M51.Format.Matrix2Irc.State{state | preserve_whitespace: true}
+        _ -> state
+      end
+
+    transform_children(children, state, char)
   end
 
-  defp transform_children(children, current_color, char \\ "") do
+  defp transform_children(children, state, char \\ "") do
     Stream.concat([
       [char],
-      Stream.map(children, fn child -> transform(child, current_color) end),
+      Stream.map(children, fn child -> transform(child, state) end),
       [char]
     ])
     |> Enum.join()
