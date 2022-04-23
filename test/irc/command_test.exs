@@ -297,4 +297,27 @@ defmodule M51.Irc.CommandTest do
 
     assert M51.Irc.Command.downgrade(cmd, [:userhost_in_names]) == cmd
   end
+
+  test "linewrap" do
+    assert M51.Irc.Command.linewrap(
+             %M51.Irc.Command{
+               command: "PRIVMSG",
+               params: ["#chan", "hello world"]
+             },
+             25
+           ) == [
+             %M51.Irc.Command{
+               tags: %{},
+               source: nil,
+               command: "PRIVMSG",
+               params: ["#chan", "hello "]
+             },
+             %M51.Irc.Command{
+               tags: %{"draft/multiline-concat" => nil},
+               source: nil,
+               command: "PRIVMSG",
+               params: ["#chan", "world"]
+             }
+           ]
+  end
 end
