@@ -787,7 +787,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":nick:example.org!nick@example.org MODE #test:example.org :+i\r\n")
   end
 
-  test "invited to room" do
+  test "invited to room with no alias" do
     state_events = [
       %{
         "content" => %{
@@ -822,7 +822,7 @@ defmodule M51.MatrixClient.PollerTest do
           "is_direct" => true,
           "membership" => "invite"
         },
-        "event_id" => "$event5",
+        "event_id" => "$event6",
         "origin_server_ts" => 1_634_330_707_082,
         "sender" => "@inviter:example.org",
         "state_key" => "invited:example.com",
@@ -843,6 +843,87 @@ defmodule M51.MatrixClient.PollerTest do
 
     assert_line(
       ":inviter:example.org!inviter@example.org INVITE mynick:example.com :!testid:example.org\r\n"
+    )
+  end
+
+  test "someone else invited to room with canonical alias" do
+    state_events = [
+      %{
+        "content" => %{
+          "creator" => "@inviter:example.org",
+          "room_version" => "6"
+        },
+        "event_id" => "$event2",
+        "sender" => "@inviter:example.org",
+        "origin_server_ts" => 1_634_330_707_082,
+        "state_key" => "",
+        "type" => "m.room.create"
+      },
+      %{
+        "content" => %{"join_rule" => "invite"},
+        "event_id" => "$event3",
+        "sender" => "@inviter:example.org",
+        "origin_server_ts" => 1_634_330_707_082,
+        "state_key" => "",
+        "type" => "m.room.join_rules"
+      },
+      %{
+        "content" => %{"displayname" => "invited user", "membership" => "join"},
+        "event_id" => "$event4",
+        "sender" => "@inviter:example.org",
+        "origin_server_ts" => 1_634_330_707_082,
+        "state_key" => "@inviter:example.org",
+        "type" => "m.room.member"
+      },
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event5",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "state_key" => "",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{
+          "displayname" => "valtest",
+          "is_direct" => true,
+          "membership" => "invite"
+        },
+        "event_id" => "$event6",
+        "origin_server_ts" => 1_634_330_707_082,
+        "sender" => "@inviter:example.org",
+        "state_key" => "invited:example.com",
+        "type" => "m.room.member",
+        "unsigned" => %{"age" => 54}
+      }
+    ]
+
+    M51.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
+
+    assert_line(
+      ":server 353 mynick:example.com = #test:example.org :inviter:example.org mynick:example.com\r\n"
+    )
+
+    assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+
+    assert_line(
+      ":inviter:example.org!inviter@example.org INVITE invited:example.com :#test:example.org\r\n"
     )
   end
 

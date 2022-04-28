@@ -411,7 +411,7 @@ defmodule M51.MatrixClient.Poller do
             tags: %{"account" => sender},
             source: nick2nuh(sender),
             command: "INVITE",
-            params: [target, room_id]
+            params: [target, channel]
           })
         end
 
@@ -896,6 +896,7 @@ defmodule M51.MatrixClient.Poller do
     irc_state = M51.IrcConn.Supervisor.state(sup_pid)
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = M51.IrcConn.State.nick(irc_state)
+    channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
 
     room_event
     |> Map.get("invite_state", %{})
@@ -920,7 +921,7 @@ defmodule M51.MatrixClient.Poller do
               tags: %{"account" => sender},
               source: nick2nuh(sender),
               command: "INVITE",
-              params: [nick, room_id]
+              params: [nick, channel]
             })
 
           _ ->
