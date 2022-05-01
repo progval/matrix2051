@@ -135,13 +135,10 @@ defmodule M51.MatrixClient.Poller do
     case event do
       %{
         "content" => %{},
-        "event_id" => event_id,
-        "origin_server_ts" => origin_server_ts,
         "sender" => sender,
         "type" => type
       }
-      when is_binary(event_id) and is_integer(origin_server_ts) and
-             is_binary(sender) and is_binary(type) ->
+      when is_binary(sender) and is_binary(type) ->
         true
 
       _ ->
@@ -666,7 +663,7 @@ defmodule M51.MatrixClient.Poller do
           "key" => react
         }
       }
-      when is_binary(reply_to) and is_binary(react) ->
+      when is_binary(reply_to) and is_binary(reply_to) and is_binary(react) ->
         send.(%M51.Irc.Command{
           tags: Map.merge(tags, %{"+draft/reply" => reply_to, "+draft/react" => react}),
           source: nick2nuh(sender),
@@ -806,10 +803,16 @@ defmodule M51.MatrixClient.Poller do
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_pid, event, write)
 
+    origin_server_ts =
+      case Map.get(event, "origin_server_ts") do
+        ts when is_integer(ts) -> ts
+        _ -> 0
+      end
+
     M51.MatrixClient.State.set_room_topic(
       state,
       room_id,
-      {new_topic, sender, event["origin_server_ts"]}
+      {new_topic, sender, origin_server_ts}
     )
 
     if !state_event do
@@ -1172,8 +1175,14 @@ defmodule M51.MatrixClient.Poller do
     writer = M51.IrcConn.Supervisor.writer(sup_pid)
     irc_state = M51.IrcConn.Supervisor.state(sup_pid)
     capabilities = M51.IrcConn.State.capabilities(irc_state)
-    batch_reference_tag = Base.encode32(event["event_id"], padding: false)
     send = make_send_function(sup_pid, event, write)
+
+    batch_reference_tag =
+      case Map.get(event, "event_id") do
+        event_id when is_binary(event_id) -> event_id
+        _ -> :crypto.strong_rand_bytes(20)
+      end
+      |> Base.encode32(padding: false)
 
     if Enum.member?(capabilities, :multiline) do
       # open batch

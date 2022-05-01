@@ -1654,6 +1654,77 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
   end
 
+  test "multiline with invalid event_id" do
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :multiline,
+      :batch,
+      :message_tags
+    ])
+
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "state_key" => "",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "a\nb", "msgtype" => "m.text"},
+        "event_id" => 42,
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      }
+    ]
+
+    M51.MatrixClient.Poller.handle_events(self(), %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "state" => %{"events" => state_events},
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line(":server 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
+    assert_line(":server 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+
+    batch_id =
+      receive do
+        msg ->
+          {:line, line} = msg
+          {:ok, parsed_msg} = M51.Irc.Command.parse(line)
+          [<<"+", batch_id::binary>> | _] = parsed_msg.params
+
+          assert msg ==
+                   {:line,
+                    ":nick:example.org!nick@example.org BATCH +#{batch_id} draft/multiline :#test:example.org\r\n"}
+
+          batch_id
+      end
+
+    assert_line(
+      "@batch=#{batch_id} :nick:example.org!nick@example.org PRIVMSG #test:example.org :a\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id} :nick:example.org!nick@example.org PRIVMSG #test:example.org :b\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
   test "replies and multiline" do
     M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :multiline,
