@@ -570,6 +570,7 @@ defmodule M51.IrcConn.Handler do
       "CHANLIMIT=",
       "CHANTYPES=#!",
       "CHATHISTORY=1000",
+      "PREFIX=",
       "TARGMAX=JOIN:1,PART:1",
       "UTF8ONLY",
       "are supported by this server"
