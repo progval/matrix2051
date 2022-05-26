@@ -295,7 +295,7 @@ defmodule M51.IrcConn.Handler do
         end
 
       send.(%M51.Irc.Command{
-        source: "server",
+        source: "server.",
         command: numeric,
         params: [first_param | params]
       })
@@ -333,7 +333,7 @@ defmodule M51.IrcConn.Handler do
           end)
           |> Enum.join(" ")
 
-        send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "LS", caps]})
+        send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
         :got_cap_ls
 
       {"CAP", ["LS" | _]} ->
@@ -344,12 +344,12 @@ defmodule M51.IrcConn.Handler do
           |> Enum.map(fn {k, _v} -> k end)
           |> Enum.join(" ")
 
-        send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "LS", caps]})
+        send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
         :got_cap_ls
 
       {"CAP", ["LIST" | _]} ->
         # TODO: return sasl when relevant
-        send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "LIST"]})
+        send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LIST"]})
         nil
 
       {"CAP", ["REQ", caps | _]} ->
@@ -366,11 +366,11 @@ defmodule M51.IrcConn.Handler do
         all_caps_known = Enum.all?(cap_atoms, fn atom -> atom != nil end)
 
         if all_caps_known do
-          send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "ACK", caps]})
+          send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "ACK", caps]})
           state = M51.IrcConn.Supervisor.state(sup_pid)
           M51.IrcConn.State.add_capabilities(state, cap_atoms)
         else
-          send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "NAK", caps]})
+          send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "NAK", caps]})
         end
 
         nil
@@ -558,7 +558,7 @@ defmodule M51.IrcConn.Handler do
     nick = M51.IrcConn.State.nick(state)
 
     send_numeric = fn numeric, params ->
-      send.(%M51.Irc.Command{source: "server", command: numeric, params: [nick | params]})
+      send.(%M51.Irc.Command{source: "server.", command: numeric, params: [nick | params]})
     end
 
     # RPL_WELCOME
@@ -591,7 +591,7 @@ defmodule M51.IrcConn.Handler do
     send = make_send_function(command, sup_pid)
 
     send_numeric = fn numeric, params ->
-      send.(%M51.Irc.Command{source: "server", command: numeric, params: [nick | params]})
+      send.(%M51.Irc.Command{source: "server.", command: numeric, params: [nick | params]})
     end
 
     # This function is only called if the nick matches the user_id, and the
@@ -688,7 +688,7 @@ defmodule M51.IrcConn.Handler do
 
     send.(%M51.Irc.Command{
       tags: tags,
-      source: "server",
+      source: "server.",
       command: "400",
       params: [
         nick || "*",
@@ -716,7 +716,7 @@ defmodule M51.IrcConn.Handler do
           _ -> nick
         end
 
-      %M51.Irc.Command{source: "server", command: numeric, params: [first_param | params]}
+      %M51.Irc.Command{source: "server.", command: numeric, params: [first_param | params]}
     end
 
     send_numeric = fn numeric, params ->
@@ -741,7 +741,7 @@ defmodule M51.IrcConn.Handler do
         nil
 
       {"CAP", ["LIST" | _]} ->
-        send.(%M51.Irc.Command{source: "server", command: "CAP", params: ["*", "LIST", "sasl"]})
+        send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LIST", "sasl"]})
 
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD
@@ -1199,7 +1199,7 @@ defmodule M51.IrcConn.Handler do
 
       {:error, error} ->
         send.(%M51.Irc.Command{
-          source: "server",
+          source: "server.",
           command: "NOTICE",
           params: [channel, "Error while sending message: " <> Kernel.inspect(error)]
         })

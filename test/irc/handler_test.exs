@@ -18,8 +18,8 @@ defmodule M51.IrcConn.HandlerTest do
   use ExUnit.Case, async: false
   doctest M51.IrcConn.Handler
 
-  @cap_ls_302 ":server CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time userhost-in-names\r\n"
-  @cap_ls ":server CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/multiline echo-message extended-join labeled-response message-tags sasl server-time userhost-in-names\r\n"
+  @cap_ls_302 ":server. CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time userhost-in-names\r\n"
+  @cap_ls ":server. CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/multiline echo-message extended-join labeled-response message-tags sasl server-time userhost-in-names\r\n"
   @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANTYPES=#! CHATHISTORY=1000 PREFIX= TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
@@ -64,11 +64,11 @@ defmodule M51.IrcConn.HandlerTest do
   end
 
   def assert_welcome(nick) do
-    assert_line(":server 001 #{nick} :Welcome to this Matrix bouncer.\r\n")
-    assert_line(":server 005 #{nick} #{@isupport}")
-    assert_line(":server 375 #{nick} :- Message of the day\r\n")
-    assert_line(":server 372 #{nick} :Welcome to Matrix2051, a Matrix bouncer.\r\n")
-    assert_line(":server 376 #{nick} :End of /MOTD command.\r\n")
+    assert_line(":server. 001 #{nick} :Welcome to this Matrix bouncer.\r\n")
+    assert_line(":server. 005 #{nick} #{@isupport}")
+    assert_line(":server. 375 #{nick} :- Message of the day\r\n")
+    assert_line(":server. 372 #{nick} :Welcome to Matrix2051, a Matrix bouncer.\r\n")
+    assert_line(":server. 376 #{nick} :End of /MOTD command.\r\n")
   end
 
   def do_connection_registration(handler, capabilities \\ []) do
@@ -77,7 +77,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     joined_caps = Enum.join(["batch", "labeled-response", "sasl"] ++ capabilities, " ")
     send(handler, cmd("CAP REQ :" <> joined_caps))
-    assert_line(":server CAP * ACK :" <> joined_caps <> "\r\n")
+    assert_line(":server. CAP * ACK :" <> joined_caps <> "\r\n")
 
     send(handler, cmd("NICK foo:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -93,10 +93,10 @@ defmodule M51.IrcConn.HandlerTest do
     )
 
     assert_line(
-      "@label=reg02 :server 900 foo:example.org foo:example.org!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
+      "@label=reg02 :server. 900 foo:example.org foo:example.org!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
     )
 
-    assert_line("@label=reg02 :server 903 foo:example.org :Authentication successful\r\n")
+    assert_line("@label=reg02 :server. 903 foo:example.org :Authentication successful\r\n")
 
     send(handler, cmd("CAP END"))
     assert_welcome("foo:example.org")
@@ -133,7 +133,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line(":server CAP * ACK :sasl\r\n")
+    assert_line(":server. CAP * ACK :sasl\r\n")
 
     send(handler, cmd("PING sync1"))
     assert_line("PONG :sync1\r\n")
@@ -151,7 +151,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls_302)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line(":server CAP * ACK :sasl\r\n")
+    assert_line(":server. CAP * ACK :sasl\r\n")
 
     send(handler, cmd("NICK foo:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -166,10 +166,10 @@ defmodule M51.IrcConn.HandlerTest do
     )
 
     assert_line(
-      ":server 900 foo:example.org foo:example.org!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
+      ":server. 900 foo:example.org foo:example.org!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
     )
 
-    assert_line(":server 903 foo:example.org :Authentication successful\r\n")
+    assert_line(":server. 903 foo:example.org :Authentication successful\r\n")
 
     send(handler, cmd("CAP END"))
     assert_welcome("foo:example.org")
@@ -183,7 +183,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls_302)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line(":server CAP * ACK :sasl\r\n")
+    assert_line(":server. CAP * ACK :sasl\r\n")
 
     send(handler, cmd("AUTHENTICATE PLAIN"))
     assert_line("AUTHENTICATE :+\r\n")
@@ -194,9 +194,9 @@ defmodule M51.IrcConn.HandlerTest do
       cmd("AUTHENTICATE Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk")
     )
 
-    assert_line(":server 900 * * foo:example.org :You are now logged in as foo:example.org\r\n")
+    assert_line(":server. 900 * * foo:example.org :You are now logged in as foo:example.org\r\n")
 
-    assert_line(":server 903 * :Authentication successful\r\n")
+    assert_line(":server. 903 * :Authentication successful\r\n")
 
     send(handler, cmd("NICK foo:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -213,7 +213,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls_302)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line(":server CAP * ACK :sasl\r\n")
+    assert_line(":server. CAP * ACK :sasl\r\n")
 
     send(handler, cmd("NICK initial_nick"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -228,10 +228,10 @@ defmodule M51.IrcConn.HandlerTest do
     )
 
     assert_line(
-      ":server 900 initial_nick initial_nick!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
+      ":server. 900 initial_nick initial_nick!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
     )
 
-    assert_line(":server 903 initial_nick :Authentication successful\r\n")
+    assert_line(":server. 903 initial_nick :Authentication successful\r\n")
 
     send(handler, cmd("CAP END"))
     assert_welcome("initial_nick")
@@ -246,7 +246,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line(":server CAP * ACK :sasl\r\n")
+    assert_line(":server. CAP * ACK :sasl\r\n")
 
     send(handler, cmd("NICK foo:bar"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -268,35 +268,35 @@ defmodule M51.IrcConn.HandlerTest do
 
     try_userid.(
       "foo",
-      ":server 904 foo:bar :Invalid account/user id: must contain a colon (':'), to separate the username and hostname. For example: foo:matrix.org\r\n"
+      ":server. 904 foo:bar :Invalid account/user id: must contain a colon (':'), to separate the username and hostname. For example: foo:matrix.org\r\n"
     )
 
     try_userid.(
       "foo:bar:baz",
-      ":server 904 foo:bar :Invalid account/user id: must not contain more than one colon.\r\n"
+      ":server. 904 foo:bar :Invalid account/user id: must not contain more than one colon.\r\n"
     )
 
     try_userid.(
       "foo bar:baz",
-      ":server 904 foo:bar :Invalid account/user id: your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"
+      ":server. 904 foo:bar :Invalid account/user id: your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"
     )
 
     try_userid.(
       "café:baz",
-      ":server 904 foo:bar :Invalid account/user id: your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"
+      ":server. 904 foo:bar :Invalid account/user id: your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"
     )
 
     try_userid.(
       "café:baz",
-      ":server 904 foo:bar :Invalid account/user id: your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"
+      ":server. 904 foo:bar :Invalid account/user id: your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/\r\n"
     )
 
     try_userid.(
       "foo:bar",
-      ":server 900 foo:bar foo:bar!foo@bar foo:bar :You are now logged in as foo:bar\r\n"
+      ":server. 900 foo:bar foo:bar!foo@bar foo:bar :You are now logged in as foo:bar\r\n"
     )
 
-    assert_line(":server 903 foo:bar :Authentication successful\r\n")
+    assert_line(":server. 903 foo:bar :Authentication successful\r\n")
 
     send(handler, cmd("CAP END"))
 
@@ -314,7 +314,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls_302)
 
     send(handler, cmd("CAP REQ sasl"))
-    assert_line(":server CAP * ACK :sasl\r\n")
+    assert_line(":server. CAP * ACK :sasl\r\n")
 
     send(handler, cmd("NICK user:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -326,7 +326,7 @@ defmodule M51.IrcConn.HandlerTest do
     )
 
     assert_line(
-      ":server 900 user:example.org user:example.org!user@example.org user:example.org :You are now logged in as user:example.org\r\n"
+      ":server. 900 user:example.org user:example.org!user@example.org user:example.org :You are now logged in as user:example.org\r\n"
     )
 
     send(handler, cmd("CAP END"))
@@ -340,7 +340,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     joined_caps = Enum.join(["batch", "labeled-response", "sasl"], " ")
     send(handler, cmd("CAP REQ :" <> joined_caps))
-    assert_line(":server CAP * ACK :" <> joined_caps <> "\r\n")
+    assert_line(":server. CAP * ACK :" <> joined_caps <> "\r\n")
 
     send(handler, cmd("NICK foo:example.org"))
 
@@ -353,7 +353,7 @@ defmodule M51.IrcConn.HandlerTest do
         {:line, line} = msg
 
         assert Regex.match?(
-                 ~r/@label=abcd :server 400 \* PING :An unknown error occured, please report it along with your IRC and console logs. Summary:[^\r\n]*ArgumentError[^\r\n]*\r\n/,
+                 ~r/@label=abcd :server. 400 \* PING :An unknown error occured, please report it along with your IRC and console logs. Summary:[^\r\n]*ArgumentError[^\r\n]*\r\n/,
                  line
                )
     end
@@ -375,10 +375,10 @@ defmodule M51.IrcConn.HandlerTest do
     )
 
     assert_line(
-      "@label=reg02 :server 900 foo:example.org foo:example.org!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
+      "@label=reg02 :server. 900 foo:example.org foo:example.org!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
     )
 
-    assert_line("@label=reg02 :server 903 foo:example.org :Authentication successful\r\n")
+    assert_line("@label=reg02 :server. 903 foo:example.org :Authentication successful\r\n")
 
     send(handler, cmd("CAP END"))
     assert_welcome("foo:example.org")
@@ -396,7 +396,7 @@ defmodule M51.IrcConn.HandlerTest do
         {:line, line} = msg
 
         assert Regex.match?(
-                 ~r/@label=abcd :server 400 foo:example.org PING :An unknown error occured, please report it along with your IRC and console logs. Summary:[^\r\n]*ArgumentError[^\r\n]*\r\n/,
+                 ~r/@label=abcd :server. 400 foo:example.org PING :An unknown error occured, please report it along with your IRC and console logs. Summary:[^\r\n]*ArgumentError[^\r\n]*\r\n/,
                  line
                )
     end
@@ -662,13 +662,13 @@ defmodule M51.IrcConn.HandlerTest do
     send(handler, cmd("@label=l1 WHO #nonexistant_room:example.org o"))
 
     assert_line(
-      "@label=l1 :server 315 foo:example.org #nonexistant_room:example.org :End of WHO list\r\n"
+      "@label=l1 :server. 315 foo:example.org #nonexistant_room:example.org :End of WHO list\r\n"
     )
 
     send(handler, cmd("@label=l2 WHO #existing_room:example.org o"))
 
     assert_line(
-      "@label=l2 :server 315 foo:example.org #existing_room:example.org :End of WHO list\r\n"
+      "@label=l2 :server. 315 foo:example.org #existing_room:example.org :End of WHO list\r\n"
     )
   end
 
@@ -687,15 +687,15 @@ defmodule M51.IrcConn.HandlerTest do
     assert line == "@label=l2 BATCH +#{batch_id} :labeled-response\r\n"
 
     assert_line(
-      "@batch=#{batch_id} :server 352 foo:example.org #existing_room:example.org user1 example.org * user1:example.org H :0 user1:example.org\r\n"
+      "@batch=#{batch_id} :server. 352 foo:example.org #existing_room:example.org user1 example.org * user1:example.org H :0 user1:example.org\r\n"
     )
 
     assert_line(
-      "@batch=#{batch_id} :server 352 foo:example.org #existing_room:example.org user2 example.com * user2:example.com H :0 user2:example.com\r\n"
+      "@batch=#{batch_id} :server. 352 foo:example.org #existing_room:example.org user2 example.com * user2:example.com H :0 user2:example.com\r\n"
     )
 
     assert_line(
-      "@batch=#{batch_id} :server 315 foo:example.org #existing_room:example.org :End of WHO list\r\n"
+      "@batch=#{batch_id} :server. 315 foo:example.org #existing_room:example.org :End of WHO list\r\n"
     )
 
     assert_line("BATCH :-#{batch_id}\r\n")
@@ -713,14 +713,14 @@ defmodule M51.IrcConn.HandlerTest do
     send(handler, cmd("WHO #existing_room:example.org"))
 
     assert_line(
-      ":server 352 foo:example.org #existing_room:example.org user1 example.org * user1:example.org H :0 user1:example.org\r\n"
+      ":server. 352 foo:example.org #existing_room:example.org user1 example.org * user1:example.org H :0 user1:example.org\r\n"
     )
 
     assert_line(
-      ":server 352 foo:example.org #existing_room:example.org user2 example.com * user2:example.com H :0 user2:example.com\r\n"
+      ":server. 352 foo:example.org #existing_room:example.org user2 example.com * user2:example.com H :0 user2:example.com\r\n"
     )
 
-    assert_line(":server 315 foo:example.org #existing_room:example.org :End of WHO list\r\n")
+    assert_line(":server. 315 foo:example.org #existing_room:example.org :End of WHO list\r\n")
   end
 
   test "WHO on user", %{handler: handler} do
@@ -732,11 +732,11 @@ defmodule M51.IrcConn.HandlerTest do
     assert line == "@label=l1 BATCH +#{batch_id} :labeled-response\r\n"
 
     assert_line(
-      "@batch=#{batch_id} :server 352 foo:example.org * otheruser example.org * otheruser:example.org H :0 otheruser:example.org\r\n"
+      "@batch=#{batch_id} :server. 352 foo:example.org * otheruser example.org * otheruser:example.org H :0 otheruser:example.org\r\n"
     )
 
     assert_line(
-      "@batch=#{batch_id} :server 315 foo:example.org otheruser:example.org :End of WHO list\r\n"
+      "@batch=#{batch_id} :server. 315 foo:example.org otheruser:example.org :End of WHO list\r\n"
     )
 
     assert_line("BATCH :-#{batch_id}\r\n")

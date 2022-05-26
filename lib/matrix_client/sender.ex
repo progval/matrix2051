@@ -88,7 +88,7 @@ defmodule M51.MatrixClient.Sender do
               channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
 
               send.(%M51.Irc.Command{
-                source: "server",
+                source: "server.",
                 command: "NOTICE",
                 params: [channel, "Error while sending message: " <> Kernel.inspect(reason)]
               })

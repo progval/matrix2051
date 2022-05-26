@@ -145,7 +145,7 @@ defmodule M51.MatrixClient.Poller do
         nick = M51.IrcConn.State.nick(irc_state)
 
         write.(%M51.Irc.Command{
-          source: "server",
+          source: "server.",
           command: "NOTICE",
           params: [
             nick,
@@ -266,7 +266,7 @@ defmodule M51.MatrixClient.Poller do
           send = make_send_function(sup_pid, event, write)
 
           send.(%M51.Irc.Command{
-            source: "server",
+            source: "server.",
             command: "NOTICE",
             params: [
               channel,
@@ -677,7 +677,7 @@ defmodule M51.MatrixClient.Poller do
 
       _ ->
         send.(%M51.Irc.Command{
-          source: "server",
+          source: "server.",
           command: "NOTICE",
           params: [
             channel,
@@ -750,7 +750,7 @@ defmodule M51.MatrixClient.Poller do
     sender = String.replace_prefix(sender, "@", "")
 
     send.(%M51.Irc.Command{
-      source: "server",
+      source: "server.",
       command: "NOTICE",
       params: [channel, "#{sender} sent an encrypted message"]
     })
@@ -869,7 +869,7 @@ defmodule M51.MatrixClient.Poller do
     case event do
       %{"type" => event_type} when is_binary(event_type) ->
         send.(%M51.Irc.Command{
-          source: "server",
+          source: "server.",
           command: "NOTICE",
           params: [
             channel,
@@ -879,7 +879,7 @@ defmodule M51.MatrixClient.Poller do
 
       _ ->
         send.(%M51.Irc.Command{
-          source: "server",
+          source: "server.",
           command: "NOTICE",
           params: [
             channel,
@@ -981,7 +981,7 @@ defmodule M51.MatrixClient.Poller do
 
         source =
           case canonical_alias_sender do
-            nil -> "server"
+            nil -> "server."
             _ -> nick2nuh(canonical_alias_sender)
           end
 
@@ -1016,7 +1016,7 @@ defmodule M51.MatrixClient.Poller do
     send = make_send_function(sup_pid, event, write)
 
     make_numeric = fn numeric, params ->
-      %M51.Irc.Command{source: "server", command: numeric, params: [nick | params]}
+      %M51.Irc.Command{source: "server.", command: numeric, params: [nick | params]}
     end
 
     send_numeric = fn numeric, params ->
@@ -1109,7 +1109,7 @@ defmodule M51.MatrixClient.Poller do
 
     # Announce the rename in the new room
     send.(%M51.Irc.Command{
-      source: "server",
+      source: "server.",
       command: "NOTICE",
       params: [
         new_canonical_alias,
