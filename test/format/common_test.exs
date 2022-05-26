@@ -159,7 +159,7 @@ defmodule M51.FormatTest do
     assert M51.Format.matrix2irc(~s(<img/>)) == ""
   end
 
-  test "Matrix link to IRC (404 on well-known" do
+  test "Matrix link to IRC (404 on well-known)" do
     MockHTTPoison
     |> expect(:get!, 1, fn url ->
       assert url == "https://example.org/.well-known/matrix/client"
@@ -218,6 +218,12 @@ defmodule M51.FormatTest do
     assert M51.Format.matrix2irc(
              "mentioning <a href=\"https://matrix.to/#/@user:example.org\">user</a>"
            ) == "mentioning user:example.org"
+
+    # Fails because mochiweb_html drops the space, see:
+    # https://github.com/mochi/mochiweb/issues/166
+    # assert M51.Format.matrix2irc(
+    #          "mentioning <a href=\"https://matrix.to/#/@user1:example.org\">user1</a> <a href=\"https://matrix.to/#/@user2:example.org\">user2</a>"
+    #        ) == "mentioning user1:example.org user2:example.org"
 
     # Correct format according to the spec:
     assert M51.Format.matrix2irc(
