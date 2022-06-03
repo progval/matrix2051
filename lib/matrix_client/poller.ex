@@ -335,6 +335,7 @@ defmodule M51.MatrixClient.Poller do
       )
       when is_binary(state_key) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+    irc_state = M51.IrcConn.Supervisor.state(sup_pid)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_pid, event, write)
 
@@ -357,12 +358,28 @@ defmodule M51.MatrixClient.Poller do
           )
 
         if !state_event and !was_already_member do
-          send.(%M51.Irc.Command{
-            tags: %{"account" => target},
-            source: nick2nuh(target),
-            command: "JOIN",
-            params: [channel, target, target]
-          })
+          my_nick = M51.IrcConn.State.nick(irc_state)
+
+          if sender == my_nick do
+            old_canonical_alias = nil
+            canonical_alias_sender = nil
+
+            send_channel_welcome(
+              sup_pid,
+              room_id,
+              canonical_alias_sender,
+              old_canonical_alias,
+              write,
+              event
+            )
+          else
+            send.(%M51.Irc.Command{
+              tags: %{"account" => target},
+              source: nick2nuh(target),
+              command: "JOIN",
+              params: [channel, target, target]
+            })
+          end
         end
 
       "leave" ->
@@ -1013,14 +1030,15 @@ defmodule M51.MatrixClient.Poller do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = M51.IrcConn.State.nick(irc_state)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
-    send = make_send_function(sup_pid, event, write)
+    send_join = make_send_function(sup_pid, event, write)
+    send_nonjoin = make_send_function(sup_pid, nil, write)
 
     make_numeric = fn numeric, params ->
       %M51.Irc.Command{source: "server.", command: numeric, params: [nick | params]}
     end
 
     send_numeric = fn numeric, params ->
-      send.(make_numeric.(numeric, params))
+      send_nonjoin.(make_numeric.(numeric, params))
     end
 
     # Join the new channel
@@ -1031,7 +1049,7 @@ defmodule M51.MatrixClient.Poller do
       %M51.Matrix.RoomMember{display_name: nil}
     )
 
-    send.(%M51.Irc.Command{
+    send_join.(%M51.Irc.Command{
       tags: %{"account" => nick},
       source: nick2nuh(nick),
       command: "JOIN",
