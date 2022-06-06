@@ -15,7 +15,8 @@
 ###
 
 defmodule M51.Format.Matrix2Irc.State do
-  defstruct preserve_whitespace: false,
+  defstruct homeserver: nil,
+            preserve_whitespace: false,
             color: {nil, nil}
 end
 
@@ -80,9 +81,9 @@ defmodule M51.Format.Matrix2Irc do
       {nil, nil, nil} -> transform_children(children, state)
       {nil, nil, title} -> title
       {nil, alt, _} -> alt
-      {link, nil, nil} -> format_url(link)
-      {link, nil, title} -> "#{title} <#{format_url(link)}>"
-      {link, alt, _} -> "#{alt} <#{format_url(link)}>"
+      {link, nil, nil} -> format_url(link, state.homeserver)
+      {link, nil, title} -> "#{title} <#{format_url(link, state.homeserver)}>"
+      {link, alt, _} -> "#{alt} <#{format_url(link, state.homeserver)}>"
     end
   end
 
@@ -175,10 +176,14 @@ defmodule M51.Format.Matrix2Irc do
   end
 
   @doc "Transforms a mxc:// \"URL\" into an actually usable URL."
-  def format_url(url, filename \\ nil) do
+  def format_url(url, homeserver \\ nil, filename \\ nil) do
     case URI.parse(url) do
       %{scheme: "mxc", host: host, path: path} ->
-        base_url = M51.MatrixClient.Client.get_base_url(host, M51.Config.httpoison())
+        # prefer the homeserver when available, it is more reliable than arbitrary
+        # hosts chosen by message senders
+        homeserver = homeserver || host
+
+        base_url = M51.MatrixClient.Client.get_base_url(homeserver, M51.Config.httpoison())
 
         case filename do
           nil ->

@@ -122,6 +122,14 @@ defmodule M51.FormatTest do
         body: ~s({"m.homeserver": {"base_url": "https://api.example.org"}})
       }
     end)
+    |> expect(:get!, 1, fn url ->
+      assert url == "https://homeserver.org/.well-known/matrix/client"
+
+      %HTTPoison.Response{
+        status_code: 200,
+        body: ~s({"m.homeserver": {"base_url": "https://api.homeserver.org"}})
+      }
+    end)
 
     assert M51.Format.matrix2irc(~s(<a href="https://example.org">foo</a>)) ==
              "foo <https://example.org>"
@@ -144,6 +152,12 @@ defmodule M51.FormatTest do
              ~s(<img src="mxc://example.org/foo" alt="an image" title="blah"/>)
            ) ==
              "an image <https://api.example.org/_matrix/media/r0/download/example.org/foo>"
+
+    assert M51.Format.matrix2irc(
+             ~s(<img src="mxc://example.org/foo" alt="an image" title="blah"/>),
+             "homeserver.org"
+           ) ==
+             "an image <https://api.homeserver.org/_matrix/media/r0/download/example.org/foo>"
 
     assert M51.Format.matrix2irc(~s(<img" />)) ==
              ""

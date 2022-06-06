@@ -481,6 +481,19 @@ defmodule M51.MatrixClient.Client do
     end
   end
 
+  def hostname(pid) do
+    case GenServer.call(pid, {:dump_state}) do
+      %M51.MatrixClient.Client{
+        state: :connected,
+        hostname: hostname
+      } ->
+        hostname
+
+      %M51.MatrixClient.Client{state: :initial_state} ->
+        nil
+    end
+  end
+
   def register(pid, local_name, hostname, password) do
     GenServer.call(pid, {:register, local_name, hostname, password}, @timeout)
   end
