@@ -763,6 +763,53 @@ defmodule M51.MatrixClient.Poller do
         sender,
         _state_event,
         write,
+        %{"type" => "m.room.redaction", "content" => %{}} = event
+      ) do
+    state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+    channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
+    member = M51.MatrixClient.State.room_member(state, room_id, sender)
+    send = make_send_function(sup_pid, event, write)
+
+    reason =
+      case event["content"] do
+        %{"reason" => reason} when is_binary(reason) -> ": #{reason}"
+        _ -> ""
+      end
+
+    # TODO: dedup this with m.reaction handler
+    display_name =
+      case member do
+        %M51.Matrix.RoomMember{display_name: display_name} when display_name != nil ->
+          " (#{display_name})"
+
+        _ ->
+          ""
+      end
+
+    tags =
+      case event do
+        %{"redacts" => redacts_id}
+        when is_binary(redacts_id) ->
+          %{"+draft/reply" => redacts_id}
+
+        _ ->
+          %{}
+      end
+
+    send.(%M51.Irc.Command{
+      tags: tags,
+      source: "server.",
+      command: "NOTICE",
+      params: [channel, "#{sender}#{display_name} deleted an event#{reason}"]
+    })
+  end
+
+  def handle_event(
+        sup_pid,
+        room_id,
+        sender,
+        _state_event,
+        write,
         %{"type" => "m.room.encrypted", "content" => %{}} = event
       ) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
