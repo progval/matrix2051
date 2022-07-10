@@ -43,6 +43,7 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/opt/matrix2051/_build/prod/rel/matrix2051/bin/matrix2051 start
+ExecStop=/opt/matrix2051/_build/prod/rel/matrix2051/bin/matrix2051 stop
 Restart=always
 SyslogIdentifier=Matrix2051
 Environment=HOME=/tmp/
