@@ -37,9 +37,14 @@ defmodule M51.MixProject do
     "0.1.0"
   end
 
+  defp source_code_url do
+    "https://github.com/progval/matrix2051"
+  end
+
   def application do
     [
       mod: {M51.Application, []},
+      env: [source_code_url: source_code_url()],
       extra_applications: [:logger]
     ]
   end

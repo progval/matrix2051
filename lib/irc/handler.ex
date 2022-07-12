@@ -580,6 +580,12 @@ defmodule M51.IrcConn.Handler do
     send_numeric.("375", ["- Message of the day"])
     # RPL_MOTD
     send_numeric.("372", ["Welcome to Matrix2051, a Matrix bouncer."])
+    send_numeric.("372", [""])
+    send_numeric.("372", ["This program is free software. You may find its source"])
+    send_numeric.("372", ["code at the following address:"])
+    send_numeric.("372", [""])
+    send_numeric.("372", [Application.fetch_env!(:matrix2051, :source_code_url)])
+    send_numeric.("372", [""])
     # RPL_ENDOFMOTD
     send_numeric.("376", ["End of /MOTD command."])
   end

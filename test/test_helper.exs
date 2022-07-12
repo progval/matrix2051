@@ -20,6 +20,10 @@ ExUnit.start(timeout: 5000)
 Mox.defmock(MockHTTPoison, for: HTTPoison.Base)
 M51.Config.set_httpoison(MockHTTPoison)
 
+# Replaces the value defined in mix.exs, so tests don't depend on a particular
+# value (which may be inconvenient for forks)
+Application.put_env(:matrix2051, :source_code_url, "http://example.org/source.git")
+
 Logger.configure(level: :info)
 
 defmodule MockIrcConnWriter do

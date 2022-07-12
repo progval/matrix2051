@@ -68,6 +68,12 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(":server. 005 #{nick} #{@isupport}")
     assert_line(":server. 375 #{nick} :- Message of the day\r\n")
     assert_line(":server. 372 #{nick} :Welcome to Matrix2051, a Matrix bouncer.\r\n")
+    assert_line(":server. 372 #{nick} :\r\n")
+    assert_line(":server. 372 #{nick} :This program is free software. You may find its source\r\n")
+    assert_line(":server. 372 #{nick} :code at the following address:\r\n")
+    assert_line(":server. 372 #{nick} :\r\n")
+    assert_line(":server. 372 #{nick} :http://example.org/source.git\r\n")
+    assert_line(":server. 372 #{nick} :\r\n")
     assert_line(":server. 376 #{nick} :End of /MOTD command.\r\n")
   end
 
