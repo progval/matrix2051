@@ -59,6 +59,15 @@ Non-goals:
 * IRC clients without advanced IRCv3 support work miss out on many features:
   [quote replies](https://github.com/progval/matrix2051/issues/16), reacts, display names.
 
+## Screenshot
+
+![screenshot of #synapse:matrix.org with Element and IRCCloud side-by-side](https://raw.githubusercontent.com/progval/matrix2051/assets/screenshot_element_irccloud.png)
+
+Two notes on this screenshot:
+
+* Edits are rendered with a fallback, as message edits are [not yet supported by IRC](https://github.com/ircv3/ircv3-specifications/pull/425) (and on the Matrix side, they are also [still a MSC proposal](https://github.com/matrix-org/matrix-spec-proposals/pull/2676))
+* Replies on IRCCloud are rendered with colored icons, and clicking these icons opens a column showing the whole thread. Other clients may render replies differently.
+
 ## Usage
 
 * Install system dependencies. For example, on Debian: `sudo apt install elixir erlang erlang-dev erlang-inets erlang-xmerl`
