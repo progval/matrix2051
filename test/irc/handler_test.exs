@@ -44,7 +44,8 @@ defmodule M51.IrcConn.HandlerTest do
 
   defp assert_message(expected) do
     receive do
-      msg -> assert msg == expected
+      msg ->
+        assert msg == expected
     end
   end
 
@@ -69,7 +70,11 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(":server. 375 #{nick} :- Message of the day\r\n")
     assert_line(":server. 372 #{nick} :Welcome to Matrix2051, a Matrix bouncer.\r\n")
     assert_line(":server. 372 #{nick} :\r\n")
-    assert_line(":server. 372 #{nick} :This program is free software. You may find its source\r\n")
+
+    assert_line(
+      ":server. 372 #{nick} :This program is free software. You may find its source\r\n"
+    )
+
     assert_line(":server. 372 #{nick} :code at the following address:\r\n")
     assert_line(":server. 372 #{nick} :\r\n")
     assert_line(":server. 372 #{nick} :http://example.org/source.git\r\n")
@@ -743,6 +748,64 @@ defmodule M51.IrcConn.HandlerTest do
 
     assert_line(
       "@batch=#{batch_id} :server. 315 foo:example.org otheruser:example.org :End of WHO list\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
+  test "WHOIS known user", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=l1 WHOIS user1:example.org"))
+
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l1 BATCH +#{batch_id} :labeled-response\r\n"
+
+    assert_line(
+      "@batch=#{batch_id} :server. 311 foo:example.org user1:example.org user1 example.org * :user1:example.org\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id} :server. 319 foo:example.org user1:example.org :#existing_room:example.org\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id} :server. 312 foo:example.org user1:example.org example.org :example.org\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id} :server. 330 foo:example.org user1:example.org user1:example.org :is logged in as\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id} :server. 318 foo:example.org user1:example.org :End of WHOIS\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
+  test "WHOIS", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=l1 WHOIS unknown_user:example.com"))
+
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l1 BATCH +#{batch_id} :labeled-response\r\n"
+
+    assert_line(
+      "@batch=#{batch_id} :server. 311 foo:example.org unknown_user:example.com unknown_user example.com * :unknown_user:example.com\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id} :server. 312 foo:example.org unknown_user:example.com example.com :example.com\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id} :server. 330 foo:example.org unknown_user:example.com unknown_user:example.com :is logged in as\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id} :server. 318 foo:example.org unknown_user:example.com :End of WHOIS\r\n"
     )
 
     assert_line("BATCH :-#{batch_id}\r\n")

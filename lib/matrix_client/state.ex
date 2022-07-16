@@ -119,6 +119,22 @@ defmodule M51.MatrixClient.State do
   end
 
   @doc """
+    Returns [member: %{room_id => %M51.Matrix.RoomMember{...}}]
+  """
+  def user(pid, user_id) do
+    Agent.get(pid, fn state ->
+      [
+        member:
+          state.rooms
+          |> Map.to_list()
+          |> Enum.map(fn {room_id, room} -> {room_id, Map.get(room.members, user_id)} end)
+          |> Enum.filter(fn {_room_id, member} -> member != nil end)
+          |> Map.new()
+      ]
+    end)
+  end
+
+  @doc """
     Returns %{user_id => %M51.Matrix.RoomMember{...}}
   """
   def room_members(pid, room_id) do

@@ -1148,6 +1148,7 @@ defmodule M51.MatrixClient.Poller do
         send_numeric.("353", ["=", channel, line])
       end
     end)
+    |> Enum.filter(fn line -> line != nil end)
 
     # RPL_ENDOFNAMES
     send_numeric.("366", [channel, "End of /NAMES list"])

@@ -2276,8 +2276,7 @@ defmodule M51.MatrixClient.PollerTest do
         "unsigned" => %{}
       },
       %{
-        "content" => %{
-        },
+        "content" => %{},
         "event_id" => "$event2",
         "redacts" => "$event1",
         "origin_server_ts" => 1_633_808_172_505,
