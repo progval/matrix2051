@@ -305,4 +305,11 @@ defmodule M51.FormatTest do
              "join <a href=\"https://matrix.to/#/%23room%3Aexample.org?via=elsewhere\">#room</a>"
            ) == "join #room:example.org"
   end
+
+  test "Corrupt matrix.to link" do
+    assert M51.Format.matrix2irc(
+             "join <a href=\"https://matrix.to/#/%23\">oh no</a>"
+           ) == "join oh no <https://matrix.to/#/%23\>"
+  end
+
 end

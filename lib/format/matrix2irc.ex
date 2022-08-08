@@ -43,14 +43,6 @@ defmodule M51.Format.Matrix2Irc do
                ~r{https://matrix.to/#/((@|%40)(?<userid>[^/?]*)|(!|%21)(?<roomid>[^/#]*)|(#|%23)(?<roomalias>[^/?]*))(/.*)?(\?.*)?},
                link
              ) do
-          nil ->
-            text = transform_children(children, state)
-
-            if text == link do
-              link
-            else
-              "#{text} <#{link}>"
-            end
 
           %{"userid" => encoded_user_id} when encoded_user_id != "" ->
             URI.decode(encoded_user_id)
@@ -60,6 +52,15 @@ defmodule M51.Format.Matrix2Irc do
 
           %{"roomalias" => encoded_room_alias} when encoded_room_alias != "" ->
             "#" <> URI.decode(encoded_room_alias)
+
+          _ ->
+            text = transform_children(children, state)
+
+            if text == link do
+              link
+            else
+              "#{text} <#{link}>"
+            end
         end
     end
   end
