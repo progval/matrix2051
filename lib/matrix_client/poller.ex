@@ -588,6 +588,18 @@ defmodule M51.MatrixClient.Poller do
         event when map_size(event) == 0 ->
           # TODO: redaction
           {nil, ""}
+
+        _ ->
+          send.(%M51.Irc.Command{
+            source: "server.",
+            command: "NOTICE",
+            params: [
+              channel,
+              "Invalid m.room.message event by #{sender}: #{Kernel.inspect(event)}"
+            ]
+          })
+
+          {nil, ""}
       end
 
     case String.split(body, "\n") do
