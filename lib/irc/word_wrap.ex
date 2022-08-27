@@ -191,6 +191,7 @@ defmodule M51.Irc.WordWrap do
 
   defp split_reverse_graphemes(graphemes, acc, nbytes) do
     {first_part, rest} = split_reverse_graphemes_at(graphemes, [], nbytes)
+
     case first_part do
       [] ->
         # grapheme does not fit, give up. (this will send an oversized message
@@ -199,6 +200,7 @@ defmodule M51.Irc.WordWrap do
           [] -> split_reverse_graphemes([], acc, nbytes)
           [head | tail] -> split_reverse_graphemes(tail, [head | acc], nbytes)
         end
+
       _ ->
         split_reverse_graphemes(rest, [Enum.join(Enum.reverse(first_part)) | acc], nbytes)
     end
