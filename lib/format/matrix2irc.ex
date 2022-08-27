@@ -43,7 +43,6 @@ defmodule M51.Format.Matrix2Irc do
                ~r{https://matrix.to/#/((@|%40)(?<userid>[^/?]*)|(!|%21)(?<roomid>[^/#]*)|(#|%23)(?<roomalias>[^/?]*))(/.*)?(\?.*)?},
                link
              ) do
-
           %{"userid" => encoded_user_id} when encoded_user_id != "" ->
             URI.decode(encoded_user_id)
 
