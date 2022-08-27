@@ -754,6 +754,10 @@ defmodule M51.MatrixClient.Poller do
           command: "PRIVMSG",
           params: [channel, body]
         })
+
+      # invalid event, discard it
+      _ ->
+        nil
     end
   end
 
