@@ -195,7 +195,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test1:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test1:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test1:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test1:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
 
@@ -241,11 +241,11 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test1:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test1:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test1:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test1:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test2:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test2:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test2:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test2:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test2:example.org :End of /NAMES list\r\n")
 
@@ -387,7 +387,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
 
     assert_line(
       ":server. 353 mynick:example.com = #test:example.org :malicious\\snick:for\\sexample.org mynick:example.com nick2:example.org\r\n"
@@ -406,7 +406,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
 
     assert_line(
       ":server. 353 mynick:example.com = #test:example.org :malicious\\snick:for\\sexample.org!malicious\\snick@for\\sexample.org mynick:example.com!mynick@example.com nick2:example.org!nick2@example.org\r\n"
@@ -465,7 +465,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test1:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test1:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test1:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test1:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
 
@@ -543,7 +543,7 @@ defmodule M51.MatrixClient.PollerTest do
 
     # first welcome
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
 
     assert_line(
       ":server. 353 mynick:example.com = #test:example.org :mynick:example.com nick2:example.org\r\n"
@@ -555,7 +555,7 @@ defmodule M51.MatrixClient.PollerTest do
 
     # second welcome
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
 
     assert_line(
       ":server. 353 mynick:example.com = #test:example.org :mynick:example.com nick2:example.org\r\n"
@@ -614,7 +614,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test1:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test1:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test1:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test1:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
 
@@ -669,7 +669,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line(":nick2:example.org!nick2@example.org JOIN :#test:example.org\r\n")
@@ -788,7 +788,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.com\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.com\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.com :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.com :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.com :End of /NAMES list\r\n")
     assert_line("@msgid=$event1 :nick2:example.com!nick2@example.com JOIN :#test:example.com\r\n")
@@ -811,7 +811,7 @@ defmodule M51.MatrixClient.PollerTest do
       "@msgid=$event7 :mynick:example.com!mynick@example.com JOIN :#test:example.com\r\n"
     )
 
-    assert_line(":server. 331 mynick:example.com :#test:example.com\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.com :No topic is set\r\n")
 
     assert_line(
       ":server. 353 mynick:example.com = #test:example.com :mynick:example.com nick2:example.com\r\n"
@@ -874,7 +874,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line(":nick:example.org!nick@example.org MODE #test:example.org :-i\r\n")
@@ -1008,7 +1008,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
 
     assert_line(
       ":server. 353 mynick:example.com = #test:example.org :inviter:example.org mynick:example.com\r\n"
@@ -1178,7 +1178,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n")
@@ -1264,7 +1264,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -1321,7 +1321,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
 
     assert_line(
       ":server. 353 mynick:example.com = #test:example.org :mynick:example.com nick:example.org\r\n"
@@ -1392,7 +1392,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -1466,7 +1466,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -1533,7 +1533,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -1606,7 +1606,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -1674,7 +1674,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -1729,7 +1729,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -1790,7 +1790,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -1879,7 +1879,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -1954,7 +1954,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -2017,7 +2017,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -2082,7 +2082,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -2151,7 +2151,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
@@ -2238,7 +2238,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
     assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n")
@@ -2309,7 +2309,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 

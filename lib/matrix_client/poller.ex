@@ -1127,7 +1127,7 @@ defmodule M51.MatrixClient.Poller do
     case compute_topic(sup_pid, room_id) do
       nil ->
         # RPL_NOTOPIC
-        send_numeric.("331", [channel])
+        send_numeric.("331", [channel, "No topic is set"])
 
       {topic, whotime} ->
         # RPL_TOPIC
