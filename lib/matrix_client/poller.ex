@@ -770,6 +770,9 @@ defmodule M51.MatrixClient.Poller do
 
     case event["content"] do
       %{"body" => body} when is_binary(body) ->
+        # Strip CTCP control chars
+        body = String.trim(body, "\x01")
+
         send.(%M51.Irc.Command{
           tags: tags,
           source: nick2nuh(sender),

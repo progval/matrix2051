@@ -1230,6 +1230,17 @@ defmodule M51.MatrixClient.PollerTest do
         "sender" => "@nick:example.org",
         "type" => "m.sticker",
         "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "\x01DCC SEND STARTKEYLOGGER 0 0 0\x01",
+          "url" => "mxc://matrix.org/sHhqkFCvSkFwtmvtETOtKnLP"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.sticker",
+        "unsigned" => %{}
       }
     ]
 
@@ -1312,6 +1323,10 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :Landing\r\n")
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :DCC SEND STARTKEYLOGGER 0 0 0\r\n"
+    )
   end
 
   test "message with tags" do
