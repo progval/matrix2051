@@ -478,7 +478,7 @@ defmodule M51.MatrixClient.Poller do
           {nil, tags}
       end
 
-    {command, body} =
+    {command, action, body} =
       case event["content"] do
         %{
           "msgtype" => "m.text",
@@ -501,7 +501,7 @@ defmodule M51.MatrixClient.Poller do
               body
             end
 
-          {"PRIVMSG", M51.Format.matrix2irc(formatted_body, homeserver) || body}
+          {"PRIVMSG", false, M51.Format.matrix2irc(formatted_body, homeserver) || body}
 
         %{"msgtype" => "m.text", "body" => body} when is_binary(body) ->
           body =
@@ -517,7 +517,7 @@ defmodule M51.MatrixClient.Poller do
               body
             end
 
-          {"PRIVMSG", body}
+          {"PRIVMSG", false, body}
 
         %{
           "msgtype" => "m.emote",
@@ -525,12 +525,11 @@ defmodule M51.MatrixClient.Poller do
           "formatted_body" => formatted_body,
           "body" => body
         } ->
-          {"PRIVMSG",
-           "\x01ACTION " <> (M51.Format.matrix2irc(formatted_body, homeserver) || body) <> "\x01"}
+          {"PRIVMSG", true, M51.Format.matrix2irc(formatted_body, homeserver) || body}
 
         %{"msgtype" => "m.emote", "body" => body} when is_binary(body) ->
           # TODO: ditto
-          {"PRIVMSG", "\x01ACTION " <> body <> "\x01"}
+          {"PRIVMSG", true, body}
 
         %{
           "msgtype" => "m.notice",
@@ -538,56 +537,57 @@ defmodule M51.MatrixClient.Poller do
           "formatted_body" => formatted_body,
           "body" => body
         } ->
-          {"NOTICE", M51.Format.matrix2irc(formatted_body, homeserver) || body}
+          {"NOTICE", false, M51.Format.matrix2irc(formatted_body, homeserver) || body}
 
         %{"msgtype" => "m.notice", "body" => body} when is_binary(body) ->
           # TODO: ditto
-          {"NOTICE", body}
+          {"NOTICE", false, body}
 
         %{"msgtype" => "m.image", "body" => body, "url" => url, "filename" => filename}
         when is_binary(body) and is_binary(url) and is_binary(filename) ->
           if M51.Format.Matrix2Irc.useless_img_alt?(body) or body == filename do
-            {"PRIVMSG", M51.Format.Matrix2Irc.format_url(url, homeserver, filename)}
+            {"PRIVMSG", false, M51.Format.Matrix2Irc.format_url(url, homeserver, filename)}
           else
-            {"PRIVMSG",
+            {"PRIVMSG", false,
              body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver, filename)}
           end
 
         %{"msgtype" => "m.image", "body" => body, "url" => url}
         when is_binary(body) and is_binary(url) ->
           if M51.Format.Matrix2Irc.useless_img_alt?(body) do
-            {"PRIVMSG", M51.Format.Matrix2Irc.format_url(url, homeserver)}
+            {"PRIVMSG", false, M51.Format.Matrix2Irc.format_url(url, homeserver)}
           else
-            {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver)}
+            {"PRIVMSG", false, body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver)}
           end
 
         %{"msgtype" => "m.file", "body" => body, "url" => url, "filename" => filename}
         when is_binary(body) and is_binary(url) and is_binary(filename) ->
-          {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver, filename)}
+          {"PRIVMSG", false,
+           body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver, filename)}
 
         %{"msgtype" => "m.file", "body" => body, "url" => url}
         when is_binary(body) and is_binary(url) ->
-          {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver)}
+          {"PRIVMSG", false, body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver)}
 
         %{"msgtype" => "m.audio", "body" => body, "url" => url}
         when is_binary(body) and is_binary(url) ->
-          {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver)}
+          {"PRIVMSG", false, body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver)}
 
         %{"msgtype" => "m.location", "body" => body, "geo_uri" => geo_uri}
         when is_binary(body) and is_binary(geo_uri) ->
-          {"PRIVMSG", body <> " (" <> geo_uri <> ")"}
+          {"PRIVMSG", false, body <> " (" <> geo_uri <> ")"}
 
         %{"msgtype" => "m.video", "body" => body, "url" => url}
         when is_binary(body) and is_binary(url) ->
-          {"PRIVMSG", body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver)}
+          {"PRIVMSG", false, body <> " " <> M51.Format.Matrix2Irc.format_url(url, homeserver)}
 
         %{"body" => body} when is_binary(body) ->
           # fallback
-          {"PRIVMSG", body}
+          {"PRIVMSG", false, body}
 
         event when map_size(event) == 0 ->
           # TODO: redaction
-          {nil, ""}
+          {nil, false, ""}
 
         _ ->
           send.(%M51.Irc.Command{
@@ -599,7 +599,14 @@ defmodule M51.MatrixClient.Poller do
             ]
           })
 
-          {nil, ""}
+          {nil, false, ""}
+      end
+
+    body =
+      if action do
+        "\x01ACTION #{body}\x01"
+      else
+        body
       end
 
     case String.split(body, "\n") do
