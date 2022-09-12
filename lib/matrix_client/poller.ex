@@ -602,6 +602,9 @@ defmodule M51.MatrixClient.Poller do
           {nil, false, ""}
       end
 
+    # Strip CTCP control chars
+    body = String.trim(body, "\x01")
+
     body =
       if action do
         "\x01ACTION #{body}\x01"

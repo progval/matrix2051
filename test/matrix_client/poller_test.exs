@@ -1062,6 +1062,61 @@ defmodule M51.MatrixClient.PollerTest do
         "unsigned" => %{}
       },
       %{
+        "content" => %{
+          "body" => "\x01DCC SEND STARTKEYLOGGER 0 0 0\x01",
+          "msgtype" => "m.message"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "\x01ACTION is pretending to use emotes\x01",
+          "msgtype" => "m.message"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "\x01ACTION is pretending to use emotes again",
+          "msgtype" => "m.message"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "\x01\x01ACTION is pretending to use emotes again again\x01\x01",
+          "msgtype" => "m.message"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "body" => "\x01ACTION is nesting emotes\x01",
+          "msgtype" => "m.emote"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
         "content" => %{"body" => "this is a notice", "msgtype" => "m.notice"},
         "event_id" => "$event1",
         "origin_server_ts" => 1_632_946_233_579,
@@ -1185,6 +1240,26 @@ defmodule M51.MatrixClient.PollerTest do
 
     assert_line(
       ":nick:example.org!nick@example.org PRIVMSG #test:example.org :\x01ACTION is using emotes\x01\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :DCC SEND STARTKEYLOGGER 0 0 0\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :ACTION is pretending to use emotes\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :ACTION is pretending to use emotes again\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :ACTION is pretending to use emotes again again\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :\x01ACTION ACTION is nesting emotes\x01\r\n"
     )
 
     assert_line(
