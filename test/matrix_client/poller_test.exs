@@ -1201,6 +1201,18 @@ defmodule M51.MatrixClient.PollerTest do
       },
       %{
         "content" => %{
+          "body" => "\x01DCC SEND STARTKEYLOGGER 0 0 0\x01",
+          "msgtype" => "m.image",
+          "url" => "https://example.org/chat.jpg"
+        },
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
           "body" => "image.jpg",
           "msgtype" => "m.image",
           "url" => "https://example.org/chat.jpg"
@@ -1289,6 +1301,10 @@ defmodule M51.MatrixClient.PollerTest do
 
     assert_line(
       ":nick:example.org!nick@example.org PRIVMSG #test:example.org :chat.jpg https://example.org/chat.jpg\r\n"
+    )
+
+    assert_line(
+      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :DCC SEND STARTKEYLOGGER 0 0 0\x01 https://example.org/chat.jpg\r\n"
     )
 
     assert_line(
