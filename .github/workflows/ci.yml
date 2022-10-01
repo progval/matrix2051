@@ -5,13 +5,21 @@ jobs:
     runs-on: ubuntu-latest
     name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
+      fail-fast: false
       matrix:
-        otp: ['21.2.6', '23.x', '24.x']
-        elixir: ['1.7.4', '1.9.x', '1.11.x']
-        exclude:
-          # this old Elixir + new OTP shows a bunch of wrong warnings
-          - otp: '24.x'
+        include:
+          - otp: '20'  # for some reason, erlef/setup-beam@v1 fails on 19
             elixir: '1.7.4'
+          - otp: '22'
+            elixir: '1.7.4'
+          - otp: '20'
+            elixir: '1.9'
+          - otp: '22'
+            elixir: '1.9'
+          - otp: '21'
+            elixir: '1.11'
+          - otp: '24'
+            elixir: '1.11'
     steps:
       - uses: actions/checkout@v2
       - uses: erlef/setup-beam@v1
