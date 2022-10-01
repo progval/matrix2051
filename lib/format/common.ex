@@ -55,7 +55,7 @@ defmodule M51.Format do
         iex> M51.Format.matrix2irc(~s(foo<br/>bar))
         "foo\nbar"
 
-        iex> M51.Format.matrix2irc(~s(foo <font data-mx-color="FF0000">bar</font> baz))
+        iex> M51.Format.matrix2irc(~s(foo <font data-mx-color="#FF0000">bar</font> baz))
         "foo \x04FF0000,FFFFFFbar\x0399,99 baz"
   """
   def matrix2irc(html, homeserver \\ nil) do
@@ -81,8 +81,8 @@ defmodule M51.Format do
         {"foo\nbar", ~s(foo<br/>bar)}
 
         iex> M51.Format.irc2matrix("foo \x0304bar")
-        {"foo bar", ~s(foo <font data-mx-color="FF0000">bar</font>)}
-        
+        {"foo bar", ~s(foo <font data-mx-color="#FF0000">bar</font>)}
+
   """
   def irc2matrix(text, nicklist \\ []) do
     stateful_tokens =
