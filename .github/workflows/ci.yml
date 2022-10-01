@@ -8,7 +8,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - otp: '19'
+          - otp: '20'  # for some reason, erlef/setup-beam@v1 fails on 19
             elixir: '1.7.4'
           - otp: '22'
             elixir: '1.7.4'
