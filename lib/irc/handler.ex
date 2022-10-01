@@ -758,10 +758,10 @@ defmodule M51.IrcConn.Handler do
         send_numeric.("410", ["CAP", "Missing CAP subcommand"])
 
       {"PING", [cookie]} ->
-        send.(%M51.Irc.Command{command: "PONG", params: [cookie]})
+        send.(%M51.Irc.Command{source: "server.", command: "PONG", params: [cookie]})
 
       {"PING", [_, cookie | _]} ->
-        send.(%M51.Irc.Command{command: "PONG", params: [cookie]})
+        send.(%M51.Irc.Command{source: "server.", command: "PONG", params: [cookie]})
 
       {"PING", []} ->
         send_needmoreparams.()
