@@ -109,16 +109,18 @@ defmodule M51.Format.Matrix2Irc do
         transform_children(children, state)
 
       _ ->
+        fg = String.trim_leading(fg || "000000", "#")
+        bg = String.trim_leading(bg || "FFFFFF", "#")
         restored_colors =
           case state.color do
             # reset
             {nil, nil} -> "\x0399,99"
-            {fg, bg} -> "\x04#{fg || "000000"},#{bg || "FFFFFF"}"
+            {fg, bg} -> "\x04#{fg},#{bg}"
           end
 
         state = %M51.Format.Matrix2Irc.State{state | color: {fg, bg}}
 
-        ~s(\x04#{fg || "000000"},#{bg || "FFFFFF"}) <>
+        ~s(\x04#{fg},#{bg}) <>
           transform_children(children, state) <> restored_colors
     end
   end
