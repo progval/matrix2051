@@ -42,6 +42,10 @@ defmodule M51.IrcConn.Reader do
 
       {:error, :closed} ->
         Supervisor.stop(supervisor)
+
+      {:error, :einval} ->
+        # happens sometimes when Goguma tries to connect, for some reason
+        Supervisor.stop(supervisor)
     end
   end
 end
