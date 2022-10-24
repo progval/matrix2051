@@ -117,7 +117,7 @@ defmodule M51.IrcConn.HandlerTest do
     send(handler, cmd("NICK foo:example.org"))
 
     send(handler, cmd("PING sync1"))
-    assert_line("PONG :sync1\r\n")
+    assert_line("PONG server. :sync1\r\n")
 
     send(handler, cmd("USER ident * * :My GECOS"))
     assert_line("FAIL * ACCOUNT_REQUIRED :You must authenticate.\r\n")
@@ -129,7 +129,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(@cap_ls)
 
     send(handler, cmd("PING sync1"))
-    assert_line("PONG :sync1\r\n")
+    assert_line("PONG server. :sync1\r\n")
 
     send(handler, cmd("NICK foo:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -147,7 +147,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line(":server. CAP * ACK :sasl\r\n")
 
     send(handler, cmd("PING sync1"))
-    assert_line("PONG :sync1\r\n")
+    assert_line("PONG server. :sync1\r\n")
 
     send(handler, cmd("NICK foo:example.org"))
     send(handler, cmd("USER ident * * :My GECOS"))
@@ -314,7 +314,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_welcome("foo:bar")
 
     send(handler, cmd("PING sync2"))
-    assert_line(":server. PONG :sync2\r\n")
+    assert_line(":server. PONG server. :sync2\r\n")
 
     assert M51.IrcConn.State.nick(state) == "foo:bar"
     assert M51.IrcConn.State.gecos(state) == "My GECOS"
@@ -419,7 +419,7 @@ defmodule M51.IrcConn.HandlerTest do
     do_connection_registration(handler)
 
     send(handler, cmd("@label=abcd PING sync1"))
-    assert_line("@label=abcd :server. PONG :sync1\r\n")
+    assert_line("@label=abcd :server. PONG server. :sync1\r\n")
   end
 
   test "joining a room", %{handler: handler} do
@@ -435,7 +435,7 @@ defmodule M51.IrcConn.HandlerTest do
     send(handler, cmd("TAGMSG #"))
 
     send(handler, cmd("PING sync1"))
-    assert_line(":server. PONG :sync1\r\n")
+    assert_line(":server. PONG server. :sync1\r\n")
   end
 
   test "sending privmsg", %{handler: handler} do
@@ -690,7 +690,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     # No reply because the room is not synced (and never will be)
     send(handler, cmd("PING sync1"))
-    assert_line(":server. PONG :sync1\r\n")
+    assert_line(":server. PONG server. :sync1\r\n")
 
     send(handler, cmd("@label=l2 WHO #existing_room:example.org"))
 
@@ -719,7 +719,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     # No reply because the room is not synced (and never will be)
     send(handler, cmd("PING sync1"))
-    assert_line(":server. PONG :sync1\r\n")
+    assert_line(":server. PONG server. :sync1\r\n")
 
     send(handler, cmd("WHO #existing_room:example.org"))
 
