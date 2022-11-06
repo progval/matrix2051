@@ -65,7 +65,7 @@ Non-goals:
 
 Two notes on this screenshot:
 
-* Edits are rendered with a fallback, as message edits are [not yet supported by IRC](https://github.com/ircv3/ircv3-specifications/pull/425) (and on the Matrix side, they are also [still a MSC proposal](https://github.com/matrix-org/matrix-spec-proposals/pull/2676))
+* [Message edits](https://spec.matrix.org/v1.4/client-server-api/#event-replacements) are rendered with a fallback, as message edits are [not yet supported by IRC](https://github.com/ircv3/ircv3-specifications/pull/425),
 * Replies on IRCCloud are rendered with colored icons, and clicking these icons opens a column showing the whole thread. Other clients may render replies differently.
 
 ## Usage
