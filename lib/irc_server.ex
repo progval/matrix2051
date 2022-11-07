@@ -19,32 +19,24 @@ defmodule M51.IrcServer do
     Holds the main server socket and spawns a supervised
     M51.IrcConn.Supervisor process for each incoming IRC connection.
   """
-  use DynamicSupervisor
+  use Supervisor
 
   require Logger
 
   def start_link(args) do
-    DynamicSupervisor.start_link(__MODULE__, args, name: __MODULE__)
+    Supervisor.start_link(__MODULE__, args, name: __MODULE__)
   end
 
   @impl true
   def init(_args) do
     port = M51.Config.port()
-    ret = DynamicSupervisor.init(strategy: :one_for_one)
 
-    Task.start_link(fn ->
-      DynamicSupervisor.start_child(
-        __MODULE__,
-        {Task.Supervisor, name: M51.IrcServer.TaskSupervisor}
-      )
+    children = [
+      {DynamicSupervisor, name: M51.IrcServer.DynamicSupervisor, strategy: :one_for_one},
+      {Task, fn -> accept(port) end}
+    ]
 
-      DynamicSupervisor.start_child(
-        __MODULE__,
-        {Task, fn -> accept(port) end}
-      )
-    end)
-
-    ret
+    Supervisor.init(children, strategy: :one_for_all)
   end
 
   defp accept(port, retries_left \\ 10) do
@@ -69,7 +61,7 @@ defmodule M51.IrcServer do
 
     {:ok, conn_supervisor} =
       DynamicSupervisor.start_child(
-        __MODULE__,
+        M51.IrcServer.DynamicSupervisor,
         {M51.IrcConn.Supervisor, {sock}}
       )
 
