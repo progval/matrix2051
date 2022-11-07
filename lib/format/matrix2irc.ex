@@ -111,6 +111,7 @@ defmodule M51.Format.Matrix2Irc do
       _ ->
         fg = String.trim_leading(fg || "000000", "#")
         bg = String.trim_leading(bg || "FFFFFF", "#")
+
         restored_colors =
           case state.color do
             # reset

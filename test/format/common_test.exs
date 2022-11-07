@@ -64,6 +64,7 @@ defmodule M51.FormatTest do
   test "Matrix colors to IRC" do
     assert M51.Format.matrix2irc(~s(<font data-mx-color="#FF0000">foo</font>)) ==
              "\x04FF0000,FFFFFFfoo\x0399,99"
+
     assert M51.Format.matrix2irc(~s(<font data-mx-color="FF0000">foo</font>)) ==
              "\x04FF0000,FFFFFFfoo\x0399,99"
 
