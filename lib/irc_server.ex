@@ -36,7 +36,7 @@ defmodule M51.IrcServer do
       {Task, fn -> accept(port) end}
     ]
 
-    Supervisor.init(children, strategy: :one_for_all)
+    Supervisor.init(children, strategy: :one_for_one)
   end
 
   defp accept(port, retries_left \\ 10) do
