@@ -453,13 +453,13 @@ defmodule M51.IrcConn.Handler do
                     send_numeric.("904", [
                       "Invalid format. If you are a developer, see https://datatracker.ietf.org/doc/html/rfc4616#section-2"
                     ])
-
                     nil
                 end
 
-              {:error} ->
+              :error ->
                 # RPL_SASLMECHS
                 send_numeric.("907", ["PLAIN", "is the only available SASL mechanism"])
+                nil
             end
 
           user_id ->
@@ -476,6 +476,7 @@ defmodule M51.IrcConn.Handler do
               "*",
               "You must have a nickname set before registering"
             ])
+            nil
 
           _ ->
             register(sup_pid, command, nick, nick, email, password)
@@ -493,6 +494,7 @@ defmodule M51.IrcConn.Handler do
                 "You must have a nickname set before registering"
               ]
             })
+            nil
 
           ^account_name ->
             register(sup_pid, command, nick, nick, email, password)
@@ -508,6 +510,7 @@ defmodule M51.IrcConn.Handler do
                   nick <> "); cannot register " <> account_name
               ]
             })
+            nil
         end
 
       {"REGISTER", _} ->
@@ -524,6 +527,7 @@ defmodule M51.IrcConn.Handler do
             "Verification is not implemented yet."
           ]
         })
+        nil
 
       {"PING", [cookie]} ->
         send.(%M51.Irc.Command{command: "PONG", params: ["server.", cookie]})
@@ -540,10 +544,12 @@ defmodule M51.IrcConn.Handler do
       {"QUIT", []} ->
         send.(%M51.Irc.Command{command: "ERROR", params: ["Client quit"]})
         close_connection(sup_pid)
+        nil
 
       {"QUIT", [reason | _]} ->
         send.(%M51.Irc.Command{command: "ERROR", params: ["Quit: " <> reason]})
         close_connection(sup_pid)
+        nil
 
       _ ->
         send_numeric.("421", [command.command, "Unknown command (you are not registered)"])
@@ -1277,6 +1283,8 @@ defmodule M51.IrcConn.Handler do
     writer = M51.IrcConn.Supervisor.writer(sup_pid)
     M51.IrcConn.Writer.close(writer)
     DynamicSupervisor.terminate_child(M51.IrcServer, sup_pid)
+
+    nil
   end
 
   defp nick2nuh(nick) do
