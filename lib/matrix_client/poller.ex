@@ -69,11 +69,8 @@ defmodule M51.MatrixClient.Poller do
       "timeout" => "600000"
     }
 
-    query =
-      case since do
-        nil -> query
-        _ -> Map.put(query, "since", since)
-      end
+    query = if since == nil, do: query, else: Map.put(query, "since", since)
+    is_backlog = since == nil
 
     path = "/_matrix/client/r0/sync?" <> URI.encode_query(query)
 
@@ -82,7 +79,7 @@ defmodule M51.MatrixClient.Poller do
 
     case M51.Matrix.RawClient.get(raw_client, path, [], options) do
       {:ok, events} ->
-        handle_events(sup_pid, events, handled_event_ids)
+        handle_events(sup_pid, is_backlog, events, handled_event_ids)
         events["next_batch"]
 
       {:error, code, _} when code >= 500 and code < 600 ->
@@ -94,7 +91,7 @@ defmodule M51.MatrixClient.Poller do
   @doc """
     Internal method that dispatches event; public only so it can be unit-tested.
   """
-  def handle_events(sup_pid, events, handled_event_ids \\ MapSet.new()) do
+  def handle_events(sup_pid, is_backlog, events, handled_event_ids \\ MapSet.new()) do
     irc_state = M51.IrcConn.Supervisor.state(sup_pid)
     capabilities = M51.IrcConn.State.capabilities(irc_state)
     writer = M51.IrcConn.Supervisor.writer(sup_pid)
@@ -111,7 +108,7 @@ defmodule M51.MatrixClient.Poller do
     |> Map.get("join", %{})
     |> Map.to_list()
     |> Enum.map(fn {room_id, event} ->
-      handle_joined_room(sup_pid, handled_event_ids, room_id, write, event)
+      handle_joined_room(sup_pid, is_backlog, handled_event_ids, room_id, write, event)
     end)
 
     events
@@ -119,7 +116,7 @@ defmodule M51.MatrixClient.Poller do
     |> Map.get("leave", %{})
     |> Map.to_list()
     |> Enum.map(fn {room_id, event} ->
-      handle_left_room(sup_pid, handled_event_ids, room_id, write, event)
+      handle_left_room(sup_pid, is_backlog, handled_event_ids, room_id, write, event)
     end)
 
     events
@@ -127,7 +124,7 @@ defmodule M51.MatrixClient.Poller do
     |> Map.get("invite", %{})
     |> Map.to_list()
     |> Enum.map(fn {room_id, event} ->
-      handle_invited_room(sup_pid, handled_event_ids, room_id, write, event)
+      handle_invited_room(sup_pid, is_backlog, handled_event_ids, room_id, write, event)
     end)
   end
 
@@ -157,7 +154,7 @@ defmodule M51.MatrixClient.Poller do
     end
   end
 
-  defp handle_joined_room(sup_pid, handled_event_ids, room_id, write, room_event) do
+  defp handle_joined_room(sup_pid, is_backlog, handled_event_ids, room_id, write, room_event) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     irc_state = M51.IrcConn.Supervisor.state(sup_pid)
 
@@ -177,7 +174,7 @@ defmodule M51.MatrixClient.Poller do
               _ -> nil
             end
 
-          handle_event(sup_pid, room_id, sender, true, write, event)
+          handle_event(sup_pid, room_id, sender, is_backlog, write, event)
           # Don't mark it handled right now, there is still some processing to
           # do below.
           # M51.MatrixClient.State.mark_handled_event(state, event_id)
@@ -218,7 +215,7 @@ defmodule M51.MatrixClient.Poller do
             _ -> nil
           end
 
-        handle_event(sup_pid, room_id, sender, false, write, event)
+        handle_event(sup_pid, room_id, sender, is_backlog, write, event)
 
         M51.MatrixClient.State.mark_handled_event(state, event_id)
       end
@@ -229,7 +226,7 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
-        state_event,
+        is_backlog,
         write,
         %{
           "type" => "m.room.canonical_alias",
@@ -256,7 +253,7 @@ defmodule M51.MatrixClient.Poller do
               new_canonical_alias
             )
 
-          if !state_event do
+          if !is_backlog do
             send_channel_welcome(sup_pid, room_id, sender, old_canonical_alias, write, event)
           end
 
@@ -286,7 +283,7 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
-        state_event,
+        is_backlog,
         write,
         %{
           "type" => "m.room.join_rules",
@@ -298,7 +295,7 @@ defmodule M51.MatrixClient.Poller do
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_pid, event, write)
 
-    if !state_event do
+    if !is_backlog do
       mode =
         case join_rule do
           "public" -> "-i"
@@ -325,7 +322,7 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
-        state_event,
+        is_backlog,
         write,
         %{
           "type" => "m.room.member",
@@ -357,7 +354,7 @@ defmodule M51.MatrixClient.Poller do
             %M51.Matrix.RoomMember{display_name: displayname}
           )
 
-        if !state_event and !was_already_member do
+        if !is_backlog and !was_already_member do
           my_nick = M51.IrcConn.State.nick(irc_state)
 
           if sender == my_nick do
@@ -391,7 +388,7 @@ defmodule M51.MatrixClient.Poller do
 
         was_already_member = M51.MatrixClient.State.room_member_del(state, room_id, target)
 
-        if !state_event and was_already_member do
+        if !is_backlog and was_already_member do
           if sender == target do
             send.(%M51.Irc.Command{
               tags: %{"account" => target},
@@ -410,7 +407,7 @@ defmodule M51.MatrixClient.Poller do
         end
 
       "ban" ->
-        if !state_event do
+        if !is_backlog do
           send.(%M51.Irc.Command{
             tags: %{"account" => sender},
             source: nick2nuh(sender),
@@ -420,14 +417,12 @@ defmodule M51.MatrixClient.Poller do
         end
 
       "invite" ->
-        if !state_event do
-          send.(%M51.Irc.Command{
-            tags: %{"account" => sender},
-            source: nick2nuh(sender),
-            command: "INVITE",
-            params: [target, channel]
-          })
-        end
+        send.(%M51.Irc.Command{
+          tags: %{"account" => sender},
+          source: nick2nuh(sender),
+          command: "INVITE",
+          params: [target, channel]
+        })
 
       _ ->
         send.(%M51.Irc.Command{
@@ -444,7 +439,7 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
-        _state_event,
+        _is_backlog,
         write,
         %{"type" => "m.room.message", "content" => %{}} = event
       ) do
@@ -678,7 +673,7 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
-        _state_event,
+        _is_backlog,
         write,
         %{"type" => "m.reaction", "content" => %{}} = event
       ) do
@@ -735,7 +730,7 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
-        _state_event,
+        _is_backlog,
         write,
         %{"type" => "m.sticker", "content" => %{}} = event
       ) do
@@ -790,7 +785,7 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
-        _state_event,
+        _is_backlog,
         write,
         %{"type" => "m.room.redaction", "content" => %{}} = event
       ) do
@@ -837,7 +832,7 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
-        _state_event,
+        _is_backlog,
         write,
         %{"type" => "m.room.encrypted", "content" => %{}} = event
       ) do
@@ -858,7 +853,7 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
-        state_event,
+        is_backlog,
         write,
         %{"type" => "m.room.name", "content" => %{"name" => new_room_name}, "state_key" => _} =
           event
@@ -870,7 +865,7 @@ defmodule M51.MatrixClient.Poller do
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
     M51.MatrixClient.State.set_room_name(state, room_id, new_room_name)
 
-    if !state_event do
+    if !is_backlog do
       topic =
         case compute_topic(sup_pid, room_id) do
           nil -> ""
@@ -891,7 +886,7 @@ defmodule M51.MatrixClient.Poller do
         sup_pid,
         room_id,
         sender,
-        state_event,
+        is_backlog,
         write,
         %{"type" => "m.room.topic", "content" => %{"topic" => new_topic}, "state_key" => _} =
           event
@@ -913,7 +908,7 @@ defmodule M51.MatrixClient.Poller do
       {new_topic, sender, origin_server_ts}
     )
 
-    if !state_event do
+    if !is_backlog do
       topic =
         case compute_topic(sup_pid, room_id) do
           nil -> ""
@@ -930,7 +925,7 @@ defmodule M51.MatrixClient.Poller do
     nil
   end
 
-  def handle_event(_sup_pid, _room_id, _sender, _state_event, _write, %{"type" => event_type})
+  def handle_event(_sup_pid, _room_id, _sender, _is_backlog, _write, %{"type" => event_type})
       when event_type in [
              "im.vector.modular.widgets",
              "org.matrix.appservice-irc.connection",
@@ -959,7 +954,7 @@ defmodule M51.MatrixClient.Poller do
     # ignore these
   end
 
-  def handle_event(sup_pid, room_id, _sender, _state_event, write, event) do
+  def handle_event(sup_pid, room_id, _sender, _is_backlog, write, event) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_pid, event, write)
@@ -987,13 +982,13 @@ defmodule M51.MatrixClient.Poller do
     end
   end
 
-  defp handle_left_room(sup_pid, _handled_event_ids, _room_id, _write, _event) do
+  defp handle_left_room(sup_pid, _is_backlog, _handled_event_ids, _room_id, _write, _event) do
     _state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     _writer = M51.IrcConn.Supervisor.writer(sup_pid)
     # TODO
   end
 
-  defp handle_invited_room(sup_pid, handled_event_ids, room_id, write, room_event) do
+  defp handle_invited_room(sup_pid, _is_backlog, handled_event_ids, room_id, write, room_event) do
     irc_state = M51.IrcConn.Supervisor.state(sup_pid)
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = M51.IrcConn.State.nick(irc_state)
