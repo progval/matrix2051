@@ -1150,9 +1150,34 @@ defmodule M51.MatrixClient.PollerTest do
         }
       })
 
-      assert_line(
-        ":inviter:example.org!inviter@example.org INVITE invited:example.com :#test:example.org\r\n"
-      )
+      if !unquote(is_backlog) do
+        assert_line(
+          ":inviter:example.org!inviter@example.org INVITE invited:example.com :#test:example.org\r\n"
+        )
+      end
+
+      timeline_events = [
+        %{
+          "content" => %{"body" => "hello world", "msgtype" => "m.text"},
+          "event_id" => "$event3",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        }
+      ]
+
+      M51.MatrixClient.Poller.handle_events(self(), false, %{
+        "rooms" => %{
+          "join" => %{
+            "!testid:example.org" => %{
+              "timeline" => %{"events" => timeline_events}
+            }
+          }
+        }
+      })
+
+      assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :hello world\r\n")
     end
   end
 

@@ -428,12 +428,14 @@ defmodule M51.MatrixClient.Poller do
         end
 
       "invite" ->
-        send.(%M51.Irc.Command{
-          tags: %{"account" => sender},
-          source: nick2nuh(sender),
-          command: "INVITE",
-          params: [target, channel]
-        })
+        if !is_backlog do
+          send.(%M51.Irc.Command{
+            tags: %{"account" => sender},
+            source: nick2nuh(sender),
+            command: "INVITE",
+            params: [target, channel]
+          })
+        end
 
       _ ->
         send.(%M51.Irc.Command{
