@@ -429,6 +429,16 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line("@label=abcd ACK\r\n")
   end
 
+  test "joining multiple rooms", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=abcd JOIN #room1:example.org,#room2:example.org"))
+
+    assert_line(
+      "@label=abcd :server. 476 foo:example.org #room1:example.org,#room2:example.org :commas are not allowed in channel names (ISUPPORT MAXTARGETS/TARGMAX not implemented?)\r\n"
+    )
+  end
+
   test "ignores TAGMSG", %{handler: handler} do
     do_connection_registration(handler)
 
@@ -945,7 +955,6 @@ defmodule M51.IrcConn.HandlerTest do
     )
 
     assert_line("BATCH :-#{batch_id}\r\n")
-
 
     send(handler, cmd("@label=l1 CHATHISTORY LATEST #chan * 2"))
     {batch_id, line} = assert_open_batch()

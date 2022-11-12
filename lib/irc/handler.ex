@@ -799,21 +799,32 @@ defmodule M51.IrcConn.Handler do
         })
 
       {"JOIN", [channel | _]} ->
-        case M51.MatrixClient.Client.join_room(matrix_client, channel) do
-          {:ok, _room_id} ->
-            # Should we send a JOIN?
-            send_ack.()
+        if String.contains?(channel, ",") do
+          # ERR_BADCHANMASK
+          send_numeric.(
+            "476",
+            [
+              channel,
+              "commas are not allowed in channel names (ISUPPORT MAXTARGETS/TARGMAX not implemented?)"
+            ]
+          )
+        else
+          case M51.MatrixClient.Client.join_room(matrix_client, channel) do
+            {:ok, _room_id} ->
+              # Should we send a JOIN?
+              send_ack.()
 
-          {:error, :already_joined, _room_id} ->
-            send_ack.()
+            {:error, :already_joined, _room_id} ->
+              send_ack.()
 
-          {:error, :banned_or_missing_invite, message} ->
-            # ERR_BANNEDFROMCHAN
-            send_numeric.("474", [channel, "Cannot join channel: " <> message])
+            {:error, :banned_or_missing_invite, message} ->
+              # ERR_BANNEDFROMCHAN
+              send_numeric.("474", [channel, "Cannot join channel: " <> message])
 
-          {:error, :unknown, message} ->
-            # ERR_NOSUCHCHANNEL
-            send_numeric.("403", [channel, "Cannot join channel: " <> message])
+            {:error, :unknown, message} ->
+              # ERR_NOSUCHCHANNEL
+              send_numeric.("403", [channel, "Cannot join channel: " <> message])
+          end
         end
 
       {"JOIN", _} ->
