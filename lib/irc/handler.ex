@@ -581,6 +581,7 @@ defmodule M51.IrcConn.Handler do
       "CHANLIMIT=",
       "CHANTYPES=#!",
       "CHATHISTORY=1000",
+      "MAXTARGETS=1",
       "PREFIX=",
       "TARGMAX=JOIN:1,PART:1",
       "UTF8ONLY",
