@@ -40,7 +40,7 @@ defmodule M51.IrcServer do
   end
 
   defp accept(port, retries_left \\ 10) do
-    case :gen_tcp.listen(port, [:binary, packet: :line, active: false, reuseaddr: true]) do
+    case :gen_tcp.listen(port, [:binary, :inet6, packet: :line, active: false, reuseaddr: true]) do
       {:ok, server_sock} ->
         Logger.info("Listening on port #{port}")
         loop_accept(server_sock)

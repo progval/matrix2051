@@ -89,6 +89,22 @@ defmodule M51.MatrixClient.ChatHistory do
     end
   end
 
+  def latest(sup_pid, room_id, limit) do
+    client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
+
+    case M51.MatrixClient.Client.get_latest_events(
+           client,
+           room_id,
+           limit
+         ) do
+      {:ok, events} ->
+        {:ok, process_events(sup_pid, room_id, Enum.reverse(events["chunk"]))}
+
+      {:error, message} ->
+        {:error, Kernel.inspect(message)}
+    end
+  end
+
   defp parse_anchor(anchor) do
     case String.split(anchor, "=", parts: 2) do
       ["msgid", msgid] ->

@@ -225,6 +225,61 @@ defmodule MockMatrixClient do
   end
 
   @impl true
+  def handle_call({:get_latest_events, _channel, limit}, _from, state) do
+    events =
+      [
+        %{
+          "content" => %{"body" => "first message", "msgtype" => "m.text"},
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{"body" => "second message", "msgtype" => "m.text"},
+          "event_id" => "$event2",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{"body" => "third message", "msgtype" => "m.text"},
+          "event_id" => "$event3",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{"body" => "fourth message", "msgtype" => "m.text"},
+          "event_id" => "$event4",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{"body" => "fifth message", "msgtype" => "m.text"},
+          "event_id" => "$event5",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        }
+      ]
+      # Keep the last ones
+      |> Enum.slice(-limit..-1)
+      # "For dir=b events will be in reverse-chronological order"
+      |> Enum.reverse()
+
+    {:reply, {:ok, %{"state" => [], "chunk" => events}}, state}
+  end
+
+  :w
+
+  @impl true
   def handle_call({:is_valid_alias, _room_id, "#invalidalias:example.org"}, _from, state) do
     {:reply, false, state}
   end

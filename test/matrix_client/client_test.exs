@@ -500,6 +500,50 @@ defmodule M51.MatrixClient.ClientTest do
            ) == {:ok, %{"event" => "foo", "events_after" => [], "events_before" => []}}
   end
 
+  test "getting last events", %{sup_pid: sup_pid} do
+    MockHTTPoison
+    |> expect_login
+    |> expect(:get, fn url, headers, _options ->
+      assert headers == [Authorization: "Bearer t0ken"]
+
+      assert url ==
+               "https://matrix.example.org/_matrix/client/v3/rooms/%21roomid%3Aexample.org/messages?dir=b&limit=5"
+
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 200,
+         body: ~s({"state": [], "chunk": []})
+       }}
+    end)
+
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+
+    state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+
+    M51.MatrixClient.State.set_room_canonical_alias(
+      state,
+      "!roomid:example.org",
+      "#chan:example.org"
+    )
+
+    assert M51.MatrixClient.Client.connect(
+             client,
+             "user",
+             "matrix.example.org",
+             "p4ssw0rd"
+           ) == {:ok}
+
+    receive do
+      msg -> assert msg == :connected
+    end
+
+    assert M51.MatrixClient.Client.get_latest_events(
+             client,
+             "#chan:example.org",
+             5
+           ) == {:ok, %{"state" => [], "chunk" => []}}
+  end
+
   test "checking valid alias", %{sup_pid: sup_pid} do
     MockHTTPoison
     |> expect_login

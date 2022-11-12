@@ -933,6 +933,35 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line("BATCH :-#{batch_id}\r\n")
   end
 
+  test "CHATHISTORY LATEST", %{handler: handler} do
+    do_connection_registration(handler, ["message-tags"])
+
+    send(handler, cmd("@label=l2 CHATHISTORY LATEST #chan * 1"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event5 :nick:example.org!nick@example.org PRIVMSG #chan :fifth message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+
+
+    send(handler, cmd("@label=l1 CHATHISTORY LATEST #chan * 2"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event4 :nick:example.org!nick@example.org PRIVMSG #chan :fourth message\r\n"
+    )
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event5 :nick:example.org!nick@example.org PRIVMSG #chan :fifth message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
   test "CHATHISTORY AFTER", %{handler: handler} do
     do_connection_registration(handler, ["message-tags"])
 

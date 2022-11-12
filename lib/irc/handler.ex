@@ -931,14 +931,28 @@ defmodule M51.IrcConn.Handler do
           ]
         })
 
-      {"CHATHISTORY", ["LATEST", _target, _anchor | _]} ->
+      {"CHATHISTORY", ["LATEST", target, "*", limit | _]} ->
+        limit = String.to_integer(limit)
+
+        case M51.MatrixClient.ChatHistory.latest(sup_pid, target, limit) do
+          {:ok, messages} ->
+            send_batch.(messages, "chathistory")
+
+          {:error, message} ->
+            send.(%M51.Irc.Command{
+              command: "FAIL",
+              params: ["CHATHISTORY", "MESSAGE_ERROR", "LATEST", message]
+            })
+        end
+
+      {"CHATHISTORY", ["LATEST", _target, _anchor, _limit | _]} ->
         send.(%M51.Irc.Command{
           command: "FAIL",
           params: [
             "CHATHISTORY",
             "INVALID_PARAMS",
             "LATEST",
-            "CHATHISTORY LATEST is not supported yet."
+            "CHATHISTORY LATEST with anchor is not supported yet."
           ]
         })
 

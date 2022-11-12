@@ -1399,7 +1399,7 @@ defmodule M51.MatrixClient.PollerTest do
         "rooms" => %{
           "join" => %{
             "!testid:example.org" => %{
-              "state" => %{"events" => state_events},
+              "state" => %{"events" => state_events}
             }
           }
         }

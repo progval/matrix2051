@@ -328,6 +328,35 @@ defmodule M51.MatrixClient.Client do
   end
 
   @impl true
+  def handle_call({:get_latest_events, channel, limit}, _from, state) do
+    %M51.MatrixClient.Client{
+      state: :connected,
+      irc_pid: irc_pid,
+      raw_client: raw_client
+    } = state
+
+    matrix_state = M51.IrcConn.Supervisor.matrix_state(irc_pid)
+
+    reply =
+      case M51.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+        nil ->
+          {:error, {:room_not_found, channel}}
+
+        {room_id, _room} ->
+          path =
+            "/_matrix/client/v3/rooms/#{urlquote(room_id)}/messages?" <>
+              URI.encode_query(%{"limit" => limit, "dir" => "b"})
+
+          case M51.Matrix.RawClient.get(raw_client, path) do
+            {:ok, events} -> {:ok, events}
+            {:error, error} -> {:error, error}
+          end
+      end
+
+    {:reply, reply, state}
+  end
+
+  @impl true
   def handle_call({:is_valid_alias, room_id, room_alias}, _from, state) do
     %M51.MatrixClient.Client{
       raw_client: raw_client
@@ -519,6 +548,15 @@ defmodule M51.MatrixClient.Client do
   """
   def get_event_context(pid, channel, event_id, limit) do
     GenServer.call(pid, {:get_event_context, channel, event_id, limit}, @timeout)
+  end
+
+  @doc """
+    Returns latest events of a room
+
+    https://matrix.org/docs/spec/client_server/r0.6.1#id131
+  """
+  def get_latest_events(pid, channel, limit) do
+    GenServer.call(pid, {:get_latest_events, channel, limit}, @timeout)
   end
 
   defp urlquote(s) do
