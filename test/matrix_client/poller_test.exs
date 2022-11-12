@@ -60,17 +60,50 @@ defmodule M51.MatrixClient.PollerTest do
       }
     ]
 
-    Enum.each([true, false], fn is_backlog ->
-      M51.MatrixClient.Poller.handle_events(self(), is_backlog, %{
-        "rooms" => %{
-          "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
-        }
-      })
+    M51.MatrixClient.Poller.handle_events(self(), false, %{
+      "rooms" => %{
+        "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
+      }
+    })
 
-      assert_line(
-        ":server. NOTICE mynick:example.com :Malformed event: %{\"content\" => %{\"alias\" => \"#test:example.org\"}, \"event_id\" => \"$event1\"}\r\n"
-      )
-    end)
+    assert_line(
+      ":server. NOTICE mynick:example.com :Malformed event: %{\"content\" => %{\"alias\" => \"#test:example.org\"}, \"event_id\" => \"$event1\"}\r\n"
+    )
+  end
+
+  test "malformed backlog event" do
+    state_events = [
+      %{
+        "content" => %{"alias" => "#test:example.org"},
+        "event_id" => "$event1"
+      }
+    ]
+
+    M51.MatrixClient.Poller.handle_events(self(), true, %{
+      "rooms" => %{
+        "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
+      }
+    })
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "hello", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "sender" => "@someone:example.org",
+        "type" => "m.room.message"
+      }
+    ]
+
+    # nothing was sent at this point, but we need another message to make sure
+    # without blocking
+
+    M51.MatrixClient.Poller.handle_events(self(), false, %{
+      "rooms" => %{
+        "join" => %{"!testid:example.org" => %{"timeline" => %{"events" => timeline_events}}}
+      }
+    })
+
+    assert_line(":someone:example.org!someone@example.org PRIVMSG !testid:example.org :hello\r\n")
   end
 
   test "encrypted event" do
@@ -90,17 +123,11 @@ defmodule M51.MatrixClient.PollerTest do
       }
     ]
 
-    Enum.each([true, false], fn is_backlog ->
-      M51.MatrixClient.Poller.handle_events(self(), is_backlog, %{
-        "rooms" => %{
-          "join" => %{"!testid:example.org" => %{"timeline" => %{"events" => timeline_events}}}
-        }
-      })
-
-      assert_line(
-        ":server. NOTICE !testid:example.org :someone:example.org sent an encrypted message\r\n"
-      )
-    end)
+    M51.MatrixClient.Poller.handle_events(self(), false, %{
+      "rooms" => %{
+        "join" => %{"!testid:example.org" => %{"timeline" => %{"events" => timeline_events}}}
+      }
+    })
   end
 
   test "new room" do
@@ -1129,313 +1156,369 @@ defmodule M51.MatrixClient.PollerTest do
     end
   end
 
-  test "messages" do
-    MockHTTPoison
-    |> expect(:get!, 5, fn url ->
-      assert url == "https://matrix.org/.well-known/matrix/client"
+  Enum.each([true, false], fn is_backlog ->
+    test "messages (is_backlog=#{is_backlog})" do
+      if unquote(is_backlog) do
+        MockHTTPoison
+        |> expect(:get!, 0, fn url ->
+          assert url == "https://matrix.org/.well-known/matrix/client"
 
-      %HTTPoison.Response{
-        status_code: 200,
-        body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
-      }
-    end)
+          %HTTPoison.Response{
+            status_code: 200,
+            body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
+          }
+        end)
+      else
+        MockHTTPoison
+        |> expect(:get!, 5, fn url ->
+          assert url == "https://matrix.org/.well-known/matrix/client"
 
-    state_events = [
-      %{
-        "content" => %{"alias" => "#test:example.org"},
-        "event_id" => "$event2",
-        "origin_server_ts" => 1_632_644_251_623,
-        "sender" => "@nick:example.org",
-        "state_key" => "",
-        "type" => "m.room.canonical_alias",
-        "unsigned" => %{}
-      }
-    ]
+          %HTTPoison.Response{
+            status_code: 200,
+            body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
+          }
+        end)
+      end
 
-    timeline_events = [
-      %{
-        "content" => %{"body" => "first message", "msgtype" => "m.text"},
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{"body" => "is using emotes", "msgtype" => "m.emote"},
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "\x01DCC SEND STARTKEYLOGGER 0 0 0\x01",
-          "msgtype" => "m.message"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "\x01ACTION is pretending to use emotes\x01",
-          "msgtype" => "m.message"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "\x01ACTION is pretending to use emotes again",
-          "msgtype" => "m.message"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "\x01\x01ACTION is pretending to use emotes again again\x01\x01",
-          "msgtype" => "m.message"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "\x01ACTION is nesting emotes\x01",
-          "msgtype" => "m.emote"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{"body" => "this is a notice", "msgtype" => "m.notice"},
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "cat.jpg",
-          "msgtype" => "m.image",
-          "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "this is my cat",
-          "msgtype" => "m.image",
-          "filename" => "cat.jpg",
-          "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "cat.jpg",
-          "msgtype" => "m.image",
-          "filename" => "cat.jpg",
-          "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "hello",
-          "msgtype" => "m.file",
-          "url" => "mxc://matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe",
-          "filename" => "blah.txt"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "hello",
-          "msgtype" => "m.file",
-          "url" => "mxc://matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "chat.jpg",
-          "msgtype" => "m.image",
-          "url" => "https://example.org/chat.jpg"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "\x01DCC SEND STARTKEYLOGGER 0 0 0\x01",
-          "msgtype" => "m.image",
-          "url" => "https://example.org/chat.jpg"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "image.jpg",
-          "msgtype" => "m.image",
-          "url" => "https://example.org/chat.jpg"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.room.message",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{"body" => "Landing", "url" => "mxc://matrix.org/sHhqkFCvSkFwtmvtETOtKnLP"},
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.sticker",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{
-          "body" => "\x01DCC SEND STARTKEYLOGGER 0 0 0\x01",
-          "url" => "mxc://matrix.org/sHhqkFCvSkFwtmvtETOtKnLP"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_946_233_579,
-        "sender" => "@nick:example.org",
-        "type" => "m.sticker",
-        "unsigned" => %{}
-      }
-    ]
+      state_events = [
+        %{
+          "content" => %{"alias" => "#test:example.org"},
+          "event_id" => "$event2",
+          "origin_server_ts" => 1_632_644_251_623,
+          "sender" => "@nick:example.org",
+          "state_key" => "",
+          "type" => "m.room.canonical_alias",
+          "unsigned" => %{}
+        }
+      ]
 
-    M51.MatrixClient.Poller.handle_events(self(), true, %{
-      "rooms" => %{
-        "join" => %{
-          "!testid:example.org" => %{
-            "state" => %{"events" => state_events},
-            "timeline" => %{"events" => timeline_events}
+      timeline_events = [
+        %{
+          "content" => %{"body" => "first message", "msgtype" => "m.text"},
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{"body" => "is using emotes", "msgtype" => "m.emote"},
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "\x01DCC SEND STARTKEYLOGGER 0 0 0\x01",
+            "msgtype" => "m.message"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "\x01ACTION is pretending to use emotes\x01",
+            "msgtype" => "m.message"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "\x01ACTION is pretending to use emotes again",
+            "msgtype" => "m.message"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "\x01\x01ACTION is pretending to use emotes again again\x01\x01",
+            "msgtype" => "m.message"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "\x01ACTION is nesting emotes\x01",
+            "msgtype" => "m.emote"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{"body" => "this is a notice", "msgtype" => "m.notice"},
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "cat.jpg",
+            "msgtype" => "m.image",
+            "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "this is my cat",
+            "msgtype" => "m.image",
+            "filename" => "cat.jpg",
+            "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "cat.jpg",
+            "msgtype" => "m.image",
+            "filename" => "cat.jpg",
+            "url" => "mxc://matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "hello",
+            "msgtype" => "m.file",
+            "url" => "mxc://matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe",
+            "filename" => "blah.txt"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "hello",
+            "msgtype" => "m.file",
+            "url" => "mxc://matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "chat.jpg",
+            "msgtype" => "m.image",
+            "url" => "https://example.org/chat.jpg"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "\x01DCC SEND STARTKEYLOGGER 0 0 0\x01",
+            "msgtype" => "m.image",
+            "url" => "https://example.org/chat.jpg"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "image.jpg",
+            "msgtype" => "m.image",
+            "url" => "https://example.org/chat.jpg"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.room.message",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "Landing",
+            "url" => "mxc://matrix.org/sHhqkFCvSkFwtmvtETOtKnLP"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.sticker",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{
+            "body" => "\x01DCC SEND STARTKEYLOGGER 0 0 0\x01",
+            "url" => "mxc://matrix.org/sHhqkFCvSkFwtmvtETOtKnLP"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_946_233_579,
+          "sender" => "@nick:example.org",
+          "type" => "m.sticker",
+          "unsigned" => %{}
+        }
+      ]
+
+      M51.MatrixClient.Poller.handle_events(self(), true, %{
+        "rooms" => %{
+          "join" => %{
+            "!testid:example.org" => %{
+              "state" => %{"events" => state_events},
+            }
           }
         }
-      }
-    })
+      })
 
-    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
-    assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
-    assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
-    assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n")
+      M51.MatrixClient.Poller.handle_events(self(), unquote(is_backlog), %{
+        "rooms" => %{
+          "join" => %{
+            "!testid:example.org" => %{
+              "timeline" => %{"events" => timeline_events}
+            }
+          }
+        }
+      })
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :\x01ACTION is using emotes\x01\r\n"
-    )
+      assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+      assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
+      assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
+      assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :DCC SEND STARTKEYLOGGER 0 0 0\r\n"
-    )
+      if !unquote(is_backlog) do
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :ACTION is pretending to use emotes\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :\x01ACTION is using emotes\x01\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :ACTION is pretending to use emotes again\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :DCC SEND STARTKEYLOGGER 0 0 0\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :ACTION is pretending to use emotes again again\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :ACTION is pretending to use emotes\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :\x01ACTION ACTION is nesting emotes\x01\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :ACTION is pretending to use emotes again\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org NOTICE #test:example.org :this is a notice\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :ACTION is pretending to use emotes again again\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :cat.jpg https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :\x01ACTION ACTION is nesting emotes\x01\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :this is my cat https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb/cat.jpg\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org NOTICE #test:example.org :this is a notice\r\n"
+        )
 
-    # body is the same as file name -> it's useless
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb/cat.jpg\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :cat.jpg https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :hello https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe/blah.txt\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :this is my cat https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb/cat.jpg\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :hello https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe\r\n"
-    )
+        # body is the same as file name -> it's useless
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/rBCJlmPiZSqDvYoZGfAnkQrb/cat.jpg\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :chat.jpg https://example.org/chat.jpg\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :hello https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe/blah.txt\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :DCC SEND STARTKEYLOGGER 0 0 0\x01 https://example.org/chat.jpg\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :hello https://matrix-client.matrix.org/_matrix/media/r0/download/matrix.org/FHyPlCeYUSFFxlgbQYZmoEoe\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :https://example.org/chat.jpg\r\n"
-    )
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :chat.jpg https://example.org/chat.jpg\r\n"
+        )
 
-    assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :Landing\r\n")
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :DCC SEND STARTKEYLOGGER 0 0 0\x01 https://example.org/chat.jpg\r\n"
+        )
 
-    assert_line(
-      ":nick:example.org!nick@example.org PRIVMSG #test:example.org :DCC SEND STARTKEYLOGGER 0 0 0\r\n"
-    )
-  end
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :https://example.org/chat.jpg\r\n"
+        )
+
+        assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :Landing\r\n")
+
+        assert_line(
+          ":nick:example.org!nick@example.org PRIVMSG #test:example.org :DCC SEND STARTKEYLOGGER 0 0 0\r\n"
+        )
+      end
+
+      M51.MatrixClient.Poller.handle_events(self(), false, %{
+        "rooms" => %{
+          "join" => %{
+            "!testid:example.org" => %{
+              "timeline" => %{
+                "events" => [
+                  %{
+                    "content" => %{"body" => "final message", "msgtype" => "m.text"},
+                    "event_id" => "$event1",
+                    "origin_server_ts" => 1_632_946_233_579,
+                    "sender" => "@nick:example.org",
+                    "type" => "m.room.message",
+                    "unsigned" => %{}
+                  }
+                ]
+              }
+            }
+          }
+        }
+      })
+
+      assert_line(
+        ":nick:example.org!nick@example.org PRIVMSG #test:example.org :final message\r\n"
+      )
+    end
+  end)
 
   test "message with tags" do
     M51.IrcConn.State.add_capabilities(:process_ircconn_state, [

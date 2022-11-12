@@ -128,7 +128,7 @@ defmodule M51.MatrixClient.Poller do
     end)
   end
 
-  defp well_formed_event?(event, irc_state, write) do
+  defp well_formed_event?(is_backlog, event, irc_state, write) do
     case event do
       %{
         "content" => %{},
@@ -137,6 +137,9 @@ defmodule M51.MatrixClient.Poller do
       }
       when is_binary(sender) and is_binary(type) ->
         true
+
+      _ when is_backlog ->
+        nil
 
       _ ->
         nick = M51.IrcConn.State.nick(irc_state)
@@ -162,7 +165,7 @@ defmodule M51.MatrixClient.Poller do
       room_event
       |> Map.get("state", %{})
       |> Map.get("events", [])
-      |> Enum.filter(fn event -> well_formed_event?(event, irc_state, write) end)
+      |> Enum.filter(fn event -> well_formed_event?(is_backlog, event, irc_state, write) end)
       # oldest first
       |> Enum.map(fn event ->
         event_id = Map.get(event, "event_id")
@@ -203,7 +206,7 @@ defmodule M51.MatrixClient.Poller do
     room_event
     |> Map.get("timeline", %{})
     |> Map.get("events", [])
-    |> Enum.filter(fn event -> well_formed_event?(event, irc_state, write) end)
+    |> Enum.filter(fn event -> well_formed_event?(is_backlog, event, irc_state, write) end)
     # oldest first
     |> Enum.map(fn event ->
       event_id = Map.get(event, "event_id")
@@ -280,10 +283,20 @@ defmodule M51.MatrixClient.Poller do
   end
 
   def handle_event(
+        _sup_pid,
+        _room_id,
+        _sender,
+        true,
+        _write,
+        %{"type" => "m.room.join_rules"}
+      ) do
+  end
+
+  def handle_event(
         sup_pid,
         room_id,
         sender,
-        is_backlog,
+        false,
         write,
         %{
           "type" => "m.room.join_rules",
@@ -295,24 +308,22 @@ defmodule M51.MatrixClient.Poller do
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_pid, event, write)
 
-    if !is_backlog do
-      mode =
-        case join_rule do
-          "public" -> "-i"
-          "knock" -> "+i"
-          "invite" -> "+i"
-          "private" -> "+i"
-          _ -> nil
-        end
-
-      if mode != nil do
-        send.(%M51.Irc.Command{
-          tags: %{"account" => sender},
-          source: nick2nuh(sender),
-          command: "MODE",
-          params: [channel, mode]
-        })
+    mode =
+      case join_rule do
+        "public" -> "-i"
+        "knock" -> "+i"
+        "invite" -> "+i"
+        "private" -> "+i"
+        _ -> nil
       end
+
+    if mode != nil do
+      send.(%M51.Irc.Command{
+        tags: %{"account" => sender},
+        source: nick2nuh(sender),
+        command: "MODE",
+        params: [channel, mode]
+      })
     end
 
     nil
@@ -436,10 +447,22 @@ defmodule M51.MatrixClient.Poller do
   end
 
   def handle_event(
+        _sup_pid,
+        _room_id,
+        _sender,
+        true,
+        _write,
+        %{"type" => "m.room.message"}
+      ) do
+    # do not show messages from the backlog
+    nil
+  end
+
+  def handle_event(
         sup_pid,
         room_id,
         sender,
-        _is_backlog,
+        false,
         write,
         %{"type" => "m.room.message", "content" => %{}} = event
       ) do
@@ -670,10 +693,21 @@ defmodule M51.MatrixClient.Poller do
   end
 
   def handle_event(
+        _sup_pid,
+        _room_id,
+        _sender,
+        true,
+        _write,
+        %{"type" => "m.reaction"}
+      ) do
+    nil
+  end
+
+  def handle_event(
         sup_pid,
         room_id,
         sender,
-        _is_backlog,
+        false,
         write,
         %{"type" => "m.reaction", "content" => %{}} = event
       ) do
@@ -727,10 +761,21 @@ defmodule M51.MatrixClient.Poller do
   end
 
   def handle_event(
+        _sup_pid,
+        _room_id,
+        _sender,
+        true,
+        _write,
+        %{"type" => "m.sticker"}
+      ) do
+    nil
+  end
+
+  def handle_event(
         sup_pid,
         room_id,
         sender,
-        _is_backlog,
+        false,
         write,
         %{"type" => "m.sticker", "content" => %{}} = event
       ) do
@@ -782,10 +827,21 @@ defmodule M51.MatrixClient.Poller do
   end
 
   def handle_event(
+        _sup_pid,
+        _room_id,
+        _sender,
+        true,
+        _write,
+        %{"type" => "m.room.redaction", "content" => %{}}
+      ) do
+    nil
+  end
+
+  def handle_event(
         sup_pid,
         room_id,
         sender,
-        _is_backlog,
+        false,
         write,
         %{"type" => "m.room.redaction", "content" => %{}} = event
       ) do
@@ -829,10 +885,21 @@ defmodule M51.MatrixClient.Poller do
   end
 
   def handle_event(
+        _sup_pid,
+        _room_id,
+        _sender,
+        true,
+        _write,
+        %{"type" => "m.room.encrypted"}
+      ) do
+    nil
+  end
+
+  def handle_event(
         sup_pid,
         room_id,
         sender,
-        _is_backlog,
+        false,
         write,
         %{"type" => "m.room.encrypted", "content" => %{}} = event
       ) do
@@ -954,7 +1021,11 @@ defmodule M51.MatrixClient.Poller do
     # ignore these
   end
 
-  def handle_event(sup_pid, room_id, _sender, _is_backlog, write, event) do
+  def handle_event(_sup_pid, _room_id, _sender, true, _write, _event) do
+    # Unknown or malformed event in the backlog
+  end
+
+  def handle_event(sup_pid, room_id, _sender, false, write, event) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
     send = make_send_function(sup_pid, event, write)
@@ -988,7 +1059,7 @@ defmodule M51.MatrixClient.Poller do
     # TODO
   end
 
-  defp handle_invited_room(sup_pid, _is_backlog, handled_event_ids, room_id, write, room_event) do
+  defp handle_invited_room(sup_pid, is_backlog, handled_event_ids, room_id, write, room_event) do
     irc_state = M51.IrcConn.Supervisor.state(sup_pid)
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = M51.IrcConn.State.nick(irc_state)
@@ -997,7 +1068,7 @@ defmodule M51.MatrixClient.Poller do
     room_event
     |> Map.get("invite_state", %{})
     |> Map.get("events", [])
-    |> Enum.filter(fn event -> well_formed_event?(event, irc_state, write) end)
+    |> Enum.filter(fn event -> well_formed_event?(is_backlog, event, irc_state, write) end)
     # oldest first
     |> Enum.map(fn event ->
       event_id = Map.get(event, "event_id")
