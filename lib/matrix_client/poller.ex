@@ -1075,7 +1075,7 @@ defmodule M51.MatrixClient.Poller do
     |> Enum.map(fn event ->
       event_id = Map.get(event, "event_id")
 
-      if !MapSet.member?(handled_event_ids, event_id) do
+      if !is_backlog && !MapSet.member?(handled_event_ids, event_id) do
         send = make_send_function(sup_pid, event, write)
 
         sender =
