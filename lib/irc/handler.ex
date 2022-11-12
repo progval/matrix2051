@@ -453,6 +453,7 @@ defmodule M51.IrcConn.Handler do
                     send_numeric.("904", [
                       "Invalid format. If you are a developer, see https://datatracker.ietf.org/doc/html/rfc4616#section-2"
                     ])
+
                     nil
                 end
 
@@ -476,6 +477,7 @@ defmodule M51.IrcConn.Handler do
               "*",
               "You must have a nickname set before registering"
             ])
+
             nil
 
           _ ->
@@ -494,6 +496,7 @@ defmodule M51.IrcConn.Handler do
                 "You must have a nickname set before registering"
               ]
             })
+
             nil
 
           ^account_name ->
@@ -510,6 +513,7 @@ defmodule M51.IrcConn.Handler do
                   nick <> "); cannot register " <> account_name
               ]
             })
+
             nil
         end
 
@@ -527,6 +531,7 @@ defmodule M51.IrcConn.Handler do
             "Verification is not implemented yet."
           ]
         })
+
         nil
 
       {"PING", [cookie]} ->
