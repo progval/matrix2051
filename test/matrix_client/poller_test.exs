@@ -46,10 +46,16 @@ defmodule M51.MatrixClient.PollerTest do
     end
   end
 
+  defp assert_last_line() do
+    refute_received {:line, _}
+  end
+
   test "no events" do
     M51.MatrixClient.Poller.handle_events(self(), true, %{})
+    assert_last_line()
 
     M51.MatrixClient.Poller.handle_events(self(), false, %{})
+    assert_last_line()
   end
 
   test "malformed event" do
@@ -69,6 +75,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       ":server. NOTICE mynick:example.com :Malformed event: %{\"content\" => %{\"alias\" => \"#test:example.org\"}, \"event_id\" => \"$event1\"}\r\n"
     )
+
+    assert_last_line()
   end
 
   test "malformed backlog event" do
@@ -85,50 +93,42 @@ defmodule M51.MatrixClient.PollerTest do
       }
     })
 
-    timeline_events = [
-      %{
-        "content" => %{"body" => "hello", "msgtype" => "m.text"},
-        "event_id" => "$event1",
-        "sender" => "@someone:example.org",
-        "type" => "m.room.message"
-      }
-    ]
-
-    # nothing was sent at this point, but we need another message to make sure
-    # without blocking
-
-    M51.MatrixClient.Poller.handle_events(self(), false, %{
-      "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"timeline" => %{"events" => timeline_events}}}
-      }
-    })
-
-    assert_line(":someone:example.org!someone@example.org PRIVMSG !testid:example.org :hello\r\n")
+    assert_last_line()
   end
 
-  test "encrypted event" do
-    timeline_events = [
-      %{
-        "content" => %{
-          "algorithm" => "m.megolm.v1.aes-sha2",
-          "ciphertext" => "blah",
-          "sender_key" => "blih",
-          "session_id" => "bluh"
-        },
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_650_470_634_565,
-        "sender" => "@someone:example.org",
-        "type" => "m.room.encrypted",
-        "unsigned" => %{}
-      }
-    ]
+  Enum.each([true, false], fn is_backlog ->
+    test "encrypted event (is_backlog=#{is_backlog})" do
+      timeline_events = [
+        %{
+          "content" => %{
+            "algorithm" => "m.megolm.v1.aes-sha2",
+            "ciphertext" => "blah",
+            "sender_key" => "blih",
+            "session_id" => "bluh"
+          },
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_650_470_634_565,
+          "sender" => "@someone:example.org",
+          "type" => "m.room.encrypted",
+          "unsigned" => %{}
+        }
+      ]
 
-    M51.MatrixClient.Poller.handle_events(self(), false, %{
-      "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"timeline" => %{"events" => timeline_events}}}
-      }
-    })
-  end
+      M51.MatrixClient.Poller.handle_events(self(), unquote(is_backlog), %{
+        "rooms" => %{
+          "join" => %{"!testid:example.org" => %{"timeline" => %{"events" => timeline_events}}}
+        }
+      })
+
+      if !unquote(is_backlog) do
+        assert_line(
+          ":server. NOTICE !testid:example.org :someone:example.org sent an encrypted message\r\n"
+        )
+      end
+
+      assert_last_line()
+    end
+  end)
 
   test "new room" do
     state_events = [
@@ -153,6 +153,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+
+    assert_last_line()
   end
 
   test "new room with disordered events" do
@@ -187,6 +189,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 332 mynick:example.com #test:example.org :[test]\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
   end
 
   test "renamed room" do
@@ -247,6 +250,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@msgid=$event2 :nick2:example.org!nick2@example.org RENAME #test1:example.org #test2:example.org :Canonical alias changed\r\n"
     )
+
+    assert_last_line()
   end
 
   test "renamed room fallback" do
@@ -276,6 +281,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test1:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test1:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -311,6 +317,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       ":server. NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n"
     )
+
+    assert_last_line()
   end
 
   test "renamed room fallback with name and topic" do
@@ -363,6 +371,7 @@ defmodule M51.MatrixClient.PollerTest do
 
     assert_line(":server. 353 mynick:example.com = #test1:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -403,82 +412,78 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       ":server. NOTICE #test2:example.org :nick2:example.org renamed this room from #test1:example.org\r\n"
     )
+
+    assert_last_line()
   end
 
-  test "existing members" do
-    state_events = [
-      %{
-        "content" => %{"alias" => "#test:example.org"},
-        "event_id" => "$event1",
-        "origin_server_ts" => 1_632_644_251_623,
-        "sender" => "@nick:example.org",
-        "state_key" => "",
-        "type" => "m.room.canonical_alias",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{"avatar_url" => nil, "displayname" => "Name 2", "membership" => "join"},
-        "event_id" => "$event2",
-        "origin_server_ts" => 1_632_648_797_438,
-        "sender" => "nick2:example.org",
-        "state_key" => "nick2:example.org",
-        "type" => "m.room.member",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
-        "event_id" => "$event3",
-        "origin_server_ts" => 1_632_648_797_438,
-        "sender" => "mynick:example.com",
-        "state_key" => "mynick:example.com",
-        "type" => "m.room.member",
-        "unsigned" => %{}
-      },
-      %{
-        "content" => %{"avatar_url" => nil, "displayname" => "Name 2", "membership" => "join"},
-        "event_id" => "$event4",
-        "origin_server_ts" => 1_632_648_797_438,
-        "sender" => "malicious nick:for example.org",
-        "state_key" => "malicious nick:for example.org",
-        "type" => "m.room.member",
-        "unsigned" => %{}
-      }
-    ]
+  Enum.each([false, true], fn userhost_in_names ->
+    test "existing members (userhost_in_names=#{userhost_in_names})" do
+      if unquote(userhost_in_names) do
+        M51.IrcConn.State.add_capabilities(:process_ircconn_state, [:userhost_in_names])
+      end
 
-    M51.MatrixClient.Poller.handle_events(self(), true, %{
-      "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
-      }
-    })
+      state_events = [
+        %{
+          "content" => %{"alias" => "#test:example.org"},
+          "event_id" => "$event1",
+          "origin_server_ts" => 1_632_644_251_623,
+          "sender" => "@nick:example.org",
+          "state_key" => "",
+          "type" => "m.room.canonical_alias",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{"avatar_url" => nil, "displayname" => "Name 2", "membership" => "join"},
+          "event_id" => "$event2",
+          "origin_server_ts" => 1_632_648_797_438,
+          "sender" => "nick2:example.org",
+          "state_key" => "nick2:example.org",
+          "type" => "m.room.member",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{"avatar_url" => nil, "displayname" => "My Name", "membership" => "join"},
+          "event_id" => "$event3",
+          "origin_server_ts" => 1_632_648_797_438,
+          "sender" => "mynick:example.com",
+          "state_key" => "mynick:example.com",
+          "type" => "m.room.member",
+          "unsigned" => %{}
+        },
+        %{
+          "content" => %{"avatar_url" => nil, "displayname" => "Name 2", "membership" => "join"},
+          "event_id" => "$event4",
+          "origin_server_ts" => 1_632_648_797_438,
+          "sender" => "malicious nick:for example.org",
+          "state_key" => "malicious nick:for example.org",
+          "type" => "m.room.member",
+          "unsigned" => %{}
+        }
+      ]
 
-    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
+      M51.MatrixClient.Poller.handle_events(self(), true, %{
+        "rooms" => %{
+          "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
+        }
+      })
 
-    assert_line(
-      ":server. 353 mynick:example.com = #test:example.org :malicious\\snick:for\\sexample.org mynick:example.com nick2:example.org\r\n"
-    )
+      assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+      assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
 
-    assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+      if unquote(userhost_in_names) do
+        assert_line(
+          ":server. 353 mynick:example.com = #test:example.org :malicious\\snick:for\\sexample.org!malicious\\snick@for\\sexample.org mynick:example.com!mynick@example.com nick2:example.org!nick2@example.org\r\n"
+        )
+      else
+        assert_line(
+          ":server. 353 mynick:example.com = #test:example.org :malicious\\snick:for\\sexample.org mynick:example.com nick2:example.org\r\n"
+        )
+      end
 
-    # try again with userhost-in-names:
-
-    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [:userhost_in_names])
-
-    M51.MatrixClient.Poller.handle_events(self(), true, %{
-      "rooms" => %{
-        "join" => %{"!testid:example.org" => %{"state" => %{"events" => state_events}}}
-      }
-    })
-
-    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
-
-    assert_line(
-      ":server. 353 mynick:example.com = #test:example.org :malicious\\snick:for\\sexample.org!malicious\\snick@for\\sexample.org mynick:example.com!mynick@example.com nick2:example.org!nick2@example.org\r\n"
-    )
-
-    assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
-  end
+      assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+      assert_last_line()
+    end
+  end)
 
   test "invalid room renaming" do
     M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
@@ -512,6 +517,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test1:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test1:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -550,6 +556,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #test1:example.org :my message\r\n"
     )
+
+    assert_last_line()
   end
 
   test "re-joined room" do
@@ -602,6 +610,7 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -645,6 +654,7 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
   end
 
   test "room name suppression" do
@@ -679,6 +689,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test1:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test1:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test1:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -713,6 +724,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #test1:example.org :my message\r\n"
     )
+
+    assert_last_line()
   end
 
   test "new members" do
@@ -742,6 +755,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -775,6 +789,8 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":nick2:example.org!nick2@example.org JOIN :#test:example.org\r\n")
+    assert_line(":mynick:example.org!mynick@example.org JOIN :#test:example.org\r\n")
+    assert_last_line()
   end
 
   test "leaving members" do
@@ -808,6 +824,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.com :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.com :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.com :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -938,6 +955,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@msgid=$event5 :mynick:example.com!mynick@example.com PART #test:example.com :bye\r\n"
     )
+
+    assert_last_line()
   end
 
   test "join_rules" do
@@ -967,6 +986,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -1001,6 +1021,7 @@ defmodule M51.MatrixClient.PollerTest do
 
     assert_line(":nick:example.org!nick@example.org MODE #test:example.org :-i\r\n")
     assert_line(":nick:example.org!nick@example.org MODE #test:example.org :+i\r\n")
+    assert_last_line()
   end
 
   for is_backlog <- [true, false] do
@@ -1064,30 +1085,7 @@ defmodule M51.MatrixClient.PollerTest do
         )
       end
 
-      timeline_events = [
-        %{
-          "content" => %{"body" => "hello world", "msgtype" => "m.text"},
-          "event_id" => "$event3",
-          "origin_server_ts" => 1_632_946_233_579,
-          "sender" => "@nick:example.org",
-          "type" => "m.room.message",
-          "unsigned" => %{}
-        }
-      ]
-
-      M51.MatrixClient.Poller.handle_events(self(), false, %{
-        "rooms" => %{
-          "join" => %{
-            "!testid:example.org" => %{
-              "timeline" => %{"events" => timeline_events}
-            }
-          }
-        }
-      })
-
-      assert_line(
-        ":nick:example.org!nick@example.org PRIVMSG !testid:example.org :hello world\r\n"
-      )
+      assert_last_line()
     end
   end
 
@@ -1150,6 +1148,7 @@ defmodule M51.MatrixClient.PollerTest do
       )
 
       assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+      assert_last_line()
 
       timeline_events = [
         %{
@@ -1183,28 +1182,7 @@ defmodule M51.MatrixClient.PollerTest do
         )
       end
 
-      timeline_events = [
-        %{
-          "content" => %{"body" => "hello world", "msgtype" => "m.text"},
-          "event_id" => "$event3",
-          "origin_server_ts" => 1_632_946_233_579,
-          "sender" => "@nick:example.org",
-          "type" => "m.room.message",
-          "unsigned" => %{}
-        }
-      ]
-
-      M51.MatrixClient.Poller.handle_events(self(), false, %{
-        "rooms" => %{
-          "join" => %{
-            "!testid:example.org" => %{
-              "timeline" => %{"events" => timeline_events}
-            }
-          }
-        }
-      })
-
-      assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :hello world\r\n")
+      assert_last_line()
     end
   end
 
@@ -1545,30 +1523,7 @@ defmodule M51.MatrixClient.PollerTest do
         )
       end
 
-      M51.MatrixClient.Poller.handle_events(self(), false, %{
-        "rooms" => %{
-          "join" => %{
-            "!testid:example.org" => %{
-              "timeline" => %{
-                "events" => [
-                  %{
-                    "content" => %{"body" => "final message", "msgtype" => "m.text"},
-                    "event_id" => "$event1",
-                    "origin_server_ts" => 1_632_946_233_579,
-                    "sender" => "@nick:example.org",
-                    "type" => "m.room.message",
-                    "unsigned" => %{}
-                  }
-                ]
-              }
-            }
-          }
-        }
-      })
-
-      assert_line(
-        ":nick:example.org!nick@example.org PRIVMSG #test:example.org :final message\r\n"
-      )
+      assert_last_line()
     end
   end)
 
@@ -1600,6 +1555,12 @@ defmodule M51.MatrixClient.PollerTest do
       }
     })
 
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
+    assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
+    assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
+
     timeline_events = [
       %{
         "content" => %{"body" => "first message", "msgtype" => "m.text"},
@@ -1621,14 +1582,11 @@ defmodule M51.MatrixClient.PollerTest do
       }
     })
 
-    assert_line(":mynick:example.com!mynick@example.com JOIN :#test:example.org\r\n")
-    assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
-    assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
-    assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
-
     assert_line(
       "@msgid=$event1;time=2021-09-29T20:10:33.579Z :nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n"
     )
+
+    assert_last_line()
   end
 
   test "message with display-name" do
@@ -1674,6 +1632,7 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -1699,6 +1658,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@+draft/display-name=cool\\suser;msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n"
     )
+
+    assert_last_line()
   end
 
   test "echo-message" do
@@ -1734,6 +1695,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -1783,6 +1745,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #test:example.org :third message\r\n"
     )
+
+    assert_last_line()
   end
 
   test "drops echos if echo-message not negotiated" do
@@ -1817,6 +1781,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -1858,6 +1823,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #test:example.org :third message\r\n"
     )
+
+    assert_last_line()
   end
 
   test "replies" do
@@ -1892,6 +1859,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -1938,6 +1906,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@+draft/reply=$event1;msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #test:example.org :second message\r\n"
     )
+
+    assert_last_line()
   end
 
   test "rich replies" do
@@ -1972,6 +1942,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2020,6 +1991,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@+draft/reply=$event1;msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #test:example.org :second \x02message\x02\r\n"
     )
+
+    assert_last_line()
   end
 
   test "reactions" do
@@ -2054,6 +2027,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2097,6 +2071,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@+draft/react=👍;+draft/reply=$event1;msgid=$event2 :nick2:example.org!nick2@example.org TAGMSG :#test:example.org\r\n"
     )
+
+    assert_last_line()
   end
 
   test "multiline" do
@@ -2132,6 +2108,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2167,6 +2144,7 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
+    assert_last_line()
   end
 
   test "multiline with invalid event_id" do
@@ -2202,6 +2180,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2247,6 +2226,7 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line("BATCH :-#{batch_id}\r\n")
+    assert_last_line()
   end
 
   test "replies and multiline" do
@@ -2283,6 +2263,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2349,6 +2330,7 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line("BATCH :-ERSXMZLOOQZA\r\n")
+    assert_last_line()
   end
 
   test "multiline-concat" do
@@ -2384,6 +2366,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2421,6 +2404,7 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
+    assert_last_line()
   end
 
   test "multiline and multiline-concat" do
@@ -2456,6 +2440,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2497,6 +2482,7 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line("BATCH :-ERSXMZLOOQYQ\r\n")
+    assert_last_line()
   end
 
   test "downgraded multiline" do
@@ -2530,6 +2516,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2557,6 +2544,7 @@ defmodule M51.MatrixClient.PollerTest do
     )
 
     assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :b\r\n")
+    assert_last_line()
   end
 
   test "replies and downgraded multiline" do
@@ -2591,6 +2579,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2643,6 +2632,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@+draft/reply=$event1 :nick:example.org!nick@example.org PRIVMSG #test:example.org :d\r\n"
     )
+
+    assert_last_line()
   end
 
   test "redacted message" do
@@ -2682,6 +2673,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2731,6 +2723,8 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       ":nick:example.org!nick@example.org PRIVMSG #test:example.org :second message\r\n"
     )
+
+    assert_last_line()
   end
 
   test "message redaction" do
@@ -2765,6 +2759,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(":server. 331 mynick:example.com #test:example.org :No topic is set\r\n")
     assert_line(":server. 353 mynick:example.com = #test:example.org :mynick:example.com\r\n")
     assert_line(":server. 366 mynick:example.com #test:example.org :End of /NAMES list\r\n")
+    assert_last_line()
 
     timeline_events = [
       %{
@@ -2818,5 +2813,7 @@ defmodule M51.MatrixClient.PollerTest do
     assert_line(
       "@+draft/reply=$event1;msgid=$event3 :server. NOTICE #test:example.org :admin:example.org deleted an event: Redacting again!\r\n"
     )
+
+    assert_last_line()
   end
 end
