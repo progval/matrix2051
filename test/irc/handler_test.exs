@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021  Valentin Lorentz
+# Copyright (C) 2021-2022  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -283,8 +283,13 @@ defmodule M51.IrcConn.HandlerTest do
     )
 
     try_userid.(
+      "foo:bar:baz:qux",
+      ":server. 904 foo:bar :Invalid account/user id: must not contain more than two colons.\r\n"
+    )
+
+    try_userid.(
       "foo:bar:baz",
-      ":server. 904 foo:bar :Invalid account/user id: must not contain more than one colon.\r\n"
+      ":server. 904 foo:bar :Invalid account/user id: \"baz\" is not a valid port number\r\n"
     )
 
     try_userid.(

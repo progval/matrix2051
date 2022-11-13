@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021  Valentin Lorentz
+# Copyright (C) 2021-2022  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -18,15 +18,38 @@ defmodule M51.Matrix.Misc do
   def parse_userid(userid) do
     case String.split(userid, ":") do
       [local_name, hostname] ->
-        if Regex.match?(~r|^[0-9a-z.=_/-]+$|, local_name) do
-          if Regex.match?(~r/.*\s.*/u, hostname) do
-            {:error, "\"" <> hostname <> "\" is not a valid hostname"}
-          else
+        cond do
+          !Regex.match?(~r|^[0-9a-z.=_/-]+$|, local_name) ->
+            {:error,
+             "your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/"}
+
+          Regex.match?(~r/.*\s.*/u, hostname) ->
+            {:error, "\"#{hostname}\" is not a valid hostname"}
+
+          true ->
             {:ok, {local_name, hostname}}
+        end
+
+      [local_name, hostname, port_str] ->
+        port =
+          case Integer.parse(port_str) do
+            {i, ""} -> i
+            _ -> nil
           end
-        else
-          {:error,
-           "your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/"}
+
+        cond do
+          !Regex.match?(~r|^[0-9a-z.=_/-]+$|, local_name) ->
+            {:error,
+             "your local name may only contain lowercase latin letters, digits, and the following characters: -.=_/"}
+
+          Regex.match?(~r/.*\s.*/u, hostname) ->
+            {:error, "\"#{hostname}\" is not a valid hostname"}
+
+          port == nil ->
+            {:error, "\"#{port_str}\" is not a valid port number"}
+
+          true ->
+            {:ok, {local_name, "#{hostname}:#{port}"}}
         end
 
       [nick] ->
@@ -35,7 +58,7 @@ defmodule M51.Matrix.Misc do
            nick <> ":matrix.org"}
 
       _ ->
-        {:error, "must not contain more than one colon."}
+        {:error, "must not contain more than two colons."}
     end
   end
 end
