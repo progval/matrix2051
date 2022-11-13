@@ -66,14 +66,14 @@ defmodule M51.MatrixClient.Client do
   end
 
   @impl true
-  def handle_call({:connect, local_name, hostname, password}, _from, state) do
+  def handle_call({:connect, local_name, hostname, password, proxy}, _from, state) do
     case state do
       %M51.MatrixClient.Client{
         state: :initial_state,
         irc_pid: irc_pid
       } ->
         httpoison = M51.Config.httpoison()
-        base_url = get_base_url(hostname)
+        base_url = proxy || get_base_url(hostname)
 
         # Check the server supports password login
         url = base_url <> "/_matrix/client/r0/login"
@@ -491,8 +491,8 @@ defmodule M51.MatrixClient.Client do
     end
   end
 
-  def connect(pid, local_name, hostname, password) do
-    GenServer.call(pid, {:connect, local_name, hostname, password}, @timeout)
+  def connect(pid, local_name, hostname, password, proxy \\ nil) do
+    GenServer.call(pid, {:connect, local_name, hostname, password, proxy}, @timeout)
   end
 
   def raw_client(pid) do

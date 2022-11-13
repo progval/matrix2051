@@ -170,7 +170,6 @@ defmodule M51.IrcConn.Handler do
       state = M51.IrcConn.Supervisor.state(sup_pid)
 
       M51.IrcConn.State.set_nick(state, nick)
-      M51.IrcConn.State.set_gecos(state, gecos)
 
       case user_id do
         # all good
@@ -321,6 +320,8 @@ defmodule M51.IrcConn.Handler do
         nil
 
       {"USER", [_, _, _, gecos | _]} ->
+        state = M51.IrcConn.Supervisor.state(sup_pid)
+        M51.IrcConn.State.set_gecos(state, gecos)
         {:user, gecos}
 
       {"USER", _} ->
@@ -407,6 +408,7 @@ defmodule M51.IrcConn.Handler do
 
         # TODO: support multi-line AUTHENTICATE
 
+        state = M51.IrcConn.Supervisor.state(sup_pid)
         matrix_client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
 
         case M51.MatrixClient.Client.user_id(matrix_client) do
@@ -419,11 +421,21 @@ defmodule M51.IrcConn.Handler do
                       {:ok, {local_name, hostname}} ->
                         user_id = authcid
 
+                        proxy =
+                          case Regex.named_captures(
+                                 ~R(plaintextproxy=(?<url>https?://\S*\)),
+                                 M51.IrcConn.State.gecos(state)  || ""
+                               ) do
+                            nil -> nil
+                            %{"url" => url} -> url
+                          end
+
                         case M51.MatrixClient.Client.connect(
                                matrix_client,
                                local_name,
                                hostname,
-                               passwd
+                               passwd,
+                               proxy
                              ) do
                           {:ok} ->
                             # RPL_LOGGEDIN

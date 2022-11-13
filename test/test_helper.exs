@@ -96,7 +96,7 @@ defmodule MockMatrixClient do
   end
 
   @impl true
-  def handle_call({:connect, local_name, hostname, password}, _from, state) do
+  def handle_call({:connect, local_name, hostname, password, nil}, _from, state) do
     case {hostname, password} do
       {"i-hate-passwords.example.org", _} ->
         {:reply, {:error, :no_password_flow, "No password flow"}, state}

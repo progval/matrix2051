@@ -105,7 +105,7 @@ defmodule M51.MatrixClient.ClientTest do
     client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
     assert {:error, :unknown, message} =
-             GenServer.call(client, {:connect, "user", "example.org", "p4ssw0rd"})
+             GenServer.call(client, {:connect, "user", "example.org", "p4ssw0rd", nil})
 
     assert Regex.match?(~r/Could not reach the Matrix homeserver for example.org.*/, message)
 
@@ -168,7 +168,7 @@ defmodule M51.MatrixClient.ClientTest do
 
     client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
-    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) == {:ok}
+    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd", nil}) == {:ok}
 
     assert GenServer.call(client, {:dump_state}) ==
              %M51.MatrixClient.Client{
@@ -246,7 +246,7 @@ defmodule M51.MatrixClient.ClientTest do
 
     client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
-    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) == {:ok}
+    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd", nil}) == {:ok}
 
     assert GenServer.call(client, {:dump_state}) ==
              %M51.MatrixClient.Client{
@@ -299,7 +299,7 @@ defmodule M51.MatrixClient.ClientTest do
 
     client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
-    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) ==
+    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd", nil}) ==
              {:error, :no_password_flow, "No password flow"}
 
     assert GenServer.call(client, {:dump_state}) ==
@@ -359,7 +359,7 @@ defmodule M51.MatrixClient.ClientTest do
 
     client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
-    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd"}) ==
+    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd", nil}) ==
              {:error, :denied, "Invalid password"}
 
     assert GenServer.call(client, {:dump_state}) ==
