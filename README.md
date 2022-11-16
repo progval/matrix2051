@@ -87,7 +87,7 @@ See `INSTALL.md` for a more production-oriented guide.
 
 Matrix2051 does not support Matrix's end-to-end encryption (E2EE), but can optionally be used with [Pantalaimon](https://github.com/matrix-org/pantalaimon).
 
-To do so, setup Pantalaimon locally, and configure `plaintextproxy=http://localhost:8009/` as your IRC client's GECOS/"real name".
+To do so, setup Pantalaimon locally, and configure `plaintextproxy=http://localhost:8009` as your IRC client's GECOS/"real name".
 
 ## Architecture
 
