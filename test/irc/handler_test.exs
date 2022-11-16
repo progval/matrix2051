@@ -826,6 +826,62 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line("BATCH :-#{batch_id}\r\n")
   end
 
+  test "MODE on user", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=l1 MODE unknown_user:example.com"))
+
+    assert_line(
+      "@label=l1 :server. 502 foo:example.org :Can't view mode of other users\r\n"
+    )
+
+    send(handler, cmd("@label=l2 MODE foo:example.org"))
+
+    assert_line(
+      "@label=l2 :server. 221 foo:example.org :+i\r\n"
+    )
+
+    send(handler, cmd("@label=l3 MODE unknown_user:example.com +i"))
+
+    assert_line(
+      "@label=l3 :server. 502 foo:example.org :Can't set mode of other users\r\n"
+    )
+
+    send(handler, cmd("@label=l4 MODE foo:example.org +i"))
+
+    assert_line(
+      "@label=l4 :server. 501 foo:example.org :Setting user modes are not supported\r\n"
+    )
+  end
+
+  test "MODE on channel", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=l1 MODE #unknown_channel:example.com"))
+
+    assert_line(
+      "@label=l1 :server. 324 foo:example.org #unknown_channel:example.com :+nt\r\n"
+    )
+
+    send(handler, cmd("@label=l2 MODE !unknown_channel:example.com"))
+
+    assert_line(
+      "@label=l2 :server. 324 foo:example.org !unknown_channel:example.com :+nt\r\n"
+    )
+
+    send(handler, cmd("@label=l3 MODE #unknown_channel:example.com +i"))
+
+    assert_line(
+      "@label=l3 :server. 482 foo:example.org #unknown_channel:example.com :You're not a channel operator\r\n"
+    )
+
+    send(handler, cmd("@label=l4 MODE !unknown_channel:example.com +i"))
+
+    assert_line(
+      "@label=l4 :server. 482 foo:example.org !unknown_channel:example.com :You're not a channel operator\r\n"
+    )
+  end
+
   test "CHATHISTORY AROUND", %{handler: handler} do
     do_connection_registration(handler, ["message-tags"])
 
