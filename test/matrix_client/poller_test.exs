@@ -35,6 +35,8 @@ defmodule M51.MatrixClient.PollerTest do
     start_supervised!({MockIrcConnWriter, {self()}})
     |> Process.register(MockIrcConnWriter)
 
+    start_supervised!({M51.MatrixClient.RoomSupervisor, {self()}})
+
     M51.IrcConn.State.set_nick(:process_ircconn_state, "mynick:example.com")
 
     :ok

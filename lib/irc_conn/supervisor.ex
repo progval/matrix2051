@@ -38,6 +38,7 @@ defmodule M51.IrcConn.Supervisor do
       {M51.MatrixClient.Client, {self(), []}},
       {M51.MatrixClient.Sender, {self()}},
       {M51.MatrixClient.Poller, {self()}},
+      {M51.MatrixClient.RoomSupervisor, {self()}},
       {M51.IrcConn.Handler, {self()}},
       {M51.IrcConn.Reader, {self(), sock}}
     ]
@@ -73,6 +74,11 @@ defmodule M51.IrcConn.Supervisor do
   @doc "Returns the pid of the M51.MatrixClient.Poller child."
   def matrix_poller(sup) do
     {:via, Registry, {M51.Registry, {sup, :matrix_poller}}}
+  end
+
+  @doc "Returns the pid of the M51.IrcConn.Handler child."
+  def matrix_room_supervisor(sup) do
+    {:via, Registry, {M51.Registry, {sup, :matrix_room_supervisor}}}
   end
 
   @doc "Returns the pid of the M51.IrcConn.Handler child."

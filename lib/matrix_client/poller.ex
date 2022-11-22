@@ -108,7 +108,15 @@ defmodule M51.MatrixClient.Poller do
     |> Map.get("join", %{})
     |> Map.to_list()
     |> Enum.map(fn {room_id, event} ->
-      handle_joined_room(sup_pid, is_backlog, handled_event_ids, room_id, write, event)
+      M51.MatrixClient.RoomSupervisor.handle_events(
+        sup_pid,
+        room_id,
+        :join,
+        is_backlog,
+        handled_event_ids,
+        write,
+        event
+      )
     end)
 
     events
@@ -116,7 +124,15 @@ defmodule M51.MatrixClient.Poller do
     |> Map.get("leave", %{})
     |> Map.to_list()
     |> Enum.map(fn {room_id, event} ->
-      handle_left_room(sup_pid, is_backlog, handled_event_ids, room_id, write, event)
+      M51.MatrixClient.RoomSupervisor.handle_events(
+        sup_pid,
+        room_id,
+        :leave,
+        is_backlog,
+        handled_event_ids,
+        write,
+        event
+      )
     end)
 
     events
@@ -124,7 +140,15 @@ defmodule M51.MatrixClient.Poller do
     |> Map.get("invite", %{})
     |> Map.to_list()
     |> Enum.map(fn {room_id, event} ->
-      handle_invited_room(sup_pid, is_backlog, handled_event_ids, room_id, write, event)
+      M51.MatrixClient.RoomSupervisor.handle_events(
+        sup_pid,
+        room_id,
+        :invite,
+        is_backlog,
+        handled_event_ids,
+        write,
+        event
+      )
     end)
   end
 
@@ -157,7 +181,7 @@ defmodule M51.MatrixClient.Poller do
     end
   end
 
-  defp handle_joined_room(sup_pid, is_backlog, handled_event_ids, room_id, write, room_event) do
+  def handle_joined_room(sup_pid, is_backlog, handled_event_ids, room_id, write, room_event) do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     irc_state = M51.IrcConn.Supervisor.state(sup_pid)
 
@@ -1055,13 +1079,13 @@ defmodule M51.MatrixClient.Poller do
     end
   end
 
-  defp handle_left_room(sup_pid, _is_backlog, _handled_event_ids, _room_id, _write, _event) do
+  def handle_left_room(sup_pid, _is_backlog, _handled_event_ids, _room_id, _write, _event) do
     _state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     _writer = M51.IrcConn.Supervisor.writer(sup_pid)
     # TODO
   end
 
-  defp handle_invited_room(sup_pid, is_backlog, handled_event_ids, room_id, write, room_event) do
+  def handle_invited_room(sup_pid, is_backlog, handled_event_ids, room_id, write, room_event) do
     irc_state = M51.IrcConn.Supervisor.state(sup_pid)
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = M51.IrcConn.State.nick(irc_state)
