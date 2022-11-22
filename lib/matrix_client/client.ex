@@ -484,7 +484,7 @@ defmodule M51.MatrixClient.Client do
   end
 
   def raw_client(pid) do
-    case GenServer.call(pid, {:dump_state}) do
+    case GenServer.call(pid, {:dump_state}, @timeout) do
       %M51.MatrixClient.Client{
         state: :connected,
         raw_client: raw_client
@@ -497,7 +497,7 @@ defmodule M51.MatrixClient.Client do
   end
 
   def user_id(pid) do
-    case GenServer.call(pid, {:dump_state}) do
+    case GenServer.call(pid, {:dump_state}, @timeout) do
       %M51.MatrixClient.Client{
         state: :connected,
         local_name: local_name,
@@ -511,7 +511,7 @@ defmodule M51.MatrixClient.Client do
   end
 
   def hostname(pid) do
-    case GenServer.call(pid, {:dump_state}) do
+    case GenServer.call(pid, {:dump_state}, @timeout) do
       %M51.MatrixClient.Client{
         state: :connected,
         hostname: hostname
@@ -564,6 +564,6 @@ defmodule M51.MatrixClient.Client do
   end
 
   def valid_alias?(pid, room_id, room_alias) do
-    GenServer.call(pid, {:is_valid_alias, room_id, room_alias})
+    GenServer.call(pid, {:is_valid_alias, room_id, room_alias}, @timeout)
   end
 end
