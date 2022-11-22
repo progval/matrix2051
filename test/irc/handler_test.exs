@@ -831,21 +831,15 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l1 MODE unknown_user:example.com"))
 
-    assert_line(
-      "@label=l1 :server. 502 foo:example.org :Can't view mode of other users\r\n"
-    )
+    assert_line("@label=l1 :server. 502 foo:example.org :Can't view mode of other users\r\n")
 
     send(handler, cmd("@label=l2 MODE foo:example.org"))
 
-    assert_line(
-      "@label=l2 :server. 221 foo:example.org :+i\r\n"
-    )
+    assert_line("@label=l2 :server. 221 foo:example.org :+i\r\n")
 
     send(handler, cmd("@label=l3 MODE unknown_user:example.com +i"))
 
-    assert_line(
-      "@label=l3 :server. 502 foo:example.org :Can't set mode of other users\r\n"
-    )
+    assert_line("@label=l3 :server. 502 foo:example.org :Can't set mode of other users\r\n")
 
     send(handler, cmd("@label=l4 MODE foo:example.org +i"))
 
@@ -859,15 +853,11 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l1 MODE #unknown_channel:example.com"))
 
-    assert_line(
-      "@label=l1 :server. 324 foo:example.org #unknown_channel:example.com :+nt\r\n"
-    )
+    assert_line("@label=l1 :server. 324 foo:example.org #unknown_channel:example.com :+nt\r\n")
 
     send(handler, cmd("@label=l2 MODE !unknown_channel:example.com"))
 
-    assert_line(
-      "@label=l2 :server. 324 foo:example.org !unknown_channel:example.com :+nt\r\n"
-    )
+    assert_line("@label=l2 :server. 324 foo:example.org !unknown_channel:example.com :+nt\r\n")
 
     send(handler, cmd("@label=l3 MODE #unknown_channel:example.com +i"))
 

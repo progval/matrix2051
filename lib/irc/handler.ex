@@ -1131,15 +1131,18 @@ defmodule M51.IrcConn.Handler do
       {"MODE", [target]} ->
         # TODO: check channel exists, and return the appropriate error if it does not
         case target do
-          << ?#, _::binary >> ->
+          <<?#, _::binary>> ->
             # RPL_CHANNELMODEIS
             send_numeric.("324", [target, "+nt"])
-          << ?!, _::binary >> ->
+
+          <<?!, _::binary>> ->
             # RPL_CHANNELMODEIS
             send_numeric.("324", [target, "+nt"])
+
           ^nick ->
             # RPL_UMODEIS
             send_numeric.("221", ["+i"])
+
           _ ->
             # ERR_USERSDONTMATCH
             send_numeric.("502", ["Can't view mode of other users"])
@@ -1147,16 +1150,19 @@ defmodule M51.IrcConn.Handler do
 
       {"MODE", [target, _modestring | _]} ->
         case target do
-          << ?#, _::binary >> ->
+          <<?#, _::binary>> ->
             # ERR_CHANOPRIVSNEEDED
             send_numeric.("482", [target, "You're not a channel operator"])
-          << ?!, _ ::binary>> ->
+
+          <<?!, _::binary>> ->
             # ERR_CHANOPRIVSNEEDED
             send_numeric.("482", [target, "You're not a channel operator"])
+
           ^nick ->
             # ERR_UMODEUNKNOWNFLAG (kind of abusing the meaning, but it's the best I
             # could find)
             send_numeric.("501", ["Setting user modes are not supported"])
+
           _ ->
             # ERR_USERSDONTMATCH
             send_numeric.("502", ["Can't set mode of other users"])
