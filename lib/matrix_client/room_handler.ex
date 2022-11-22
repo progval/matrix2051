@@ -37,49 +37,52 @@ defmodule M51.MatrixClient.RoomHandler do
   end
 
   @impl true
-  def handle_cast({:events, :join, is_backlog, handled_event_ids, write, events}, state) do
+  def handle_cast({:events, room_type, is_backlog, events}, state) do
     {sup_pid, room_id} = state
+    state_pid = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+    irc_state = M51.IrcConn.Supervisor.state(sup_pid)
+    capabilities = M51.IrcConn.State.capabilities(irc_state)
+    writer = M51.IrcConn.Supervisor.writer(sup_pid)
+    handled_event_ids = M51.MatrixClient.State.handled_events(state_pid, room_id)
 
-    M51.MatrixClient.Poller.handle_joined_room(
-      sup_pid,
-      is_backlog,
-      handled_event_ids,
-      room_id,
-      write,
-      events
-    )
+    write = fn cmd ->
+      M51.IrcConn.Writer.write_command(
+        writer,
+        M51.Irc.Command.downgrade(cmd, capabilities)
+      )
+    end
 
-    {:noreply, state}
-  end
+    case room_type do
+      :join ->
+        M51.MatrixClient.Poller.handle_joined_room(
+          sup_pid,
+          is_backlog,
+          handled_event_ids,
+          room_id,
+          write,
+          events
+        )
 
-  @impl true
-  def handle_cast({:events, :leave, is_backlog, handled_event_ids, write, events}, state) do
-    {sup_pid, room_id} = state
+      :leave ->
+        M51.MatrixClient.Poller.handle_left_room(
+          sup_pid,
+          is_backlog,
+          handled_event_ids,
+          room_id,
+          write,
+          events
+        )
 
-    M51.MatrixClient.Poller.handle_left_room(
-      sup_pid,
-      is_backlog,
-      handled_event_ids,
-      room_id,
-      write,
-      events
-    )
-
-    {:noreply, state}
-  end
-
-  @impl true
-  def handle_cast({:events, :invite, is_backlog, handled_event_ids, write, events}, state) do
-    {sup_pid, room_id} = state
-
-    M51.MatrixClient.Poller.handle_invited_room(
-      sup_pid,
-      is_backlog,
-      handled_event_ids,
-      room_id,
-      write,
-      events
-    )
+      :invite ->
+        M51.MatrixClient.Poller.handle_invited_room(
+          sup_pid,
+          is_backlog,
+          handled_event_ids,
+          room_id,
+          write,
+          events
+        )
+    end
 
     {:noreply, state}
   end

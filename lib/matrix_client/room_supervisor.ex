@@ -56,15 +56,9 @@ defmodule M51.MatrixClient.RoomSupervisor do
     end
   end
 
-  def handle_events(sup_pid, room_id, type, is_backlog, handled_event_ids, write, events) do
-    # TODO: fetch handled_event_ids in the server instead of message-passing it
-    # TODO: define write/1 in the server instead of message-passing it
-
+  def handle_events(sup_pid, room_id, type, is_backlog, events) do
     room_handler_pid = M51.MatrixClient.RoomSupervisor.start_or_get_room_handler(sup_pid, room_id)
 
-    GenServer.cast(
-      room_handler_pid,
-      {:events, type, is_backlog, handled_event_ids, write, events}
-    )
+    GenServer.cast(room_handler_pid, {:events, type, is_backlog, events})
   end
 end

@@ -33,18 +33,17 @@ defmodule M51.MatrixClient.Poller do
 
     # If we are being restarted, pick up from where the last process stopped.
     since = M51.MatrixClient.State.poll_since_marker(state)
-    handled_event_ids = M51.MatrixClient.State.handled_events(state)
 
     if M51.IrcConn.State.registered(irc_state) do
-      loop_poll(sup_pid, since, handled_event_ids)
+      loop_poll(sup_pid, since)
     else
       receive do
-        :start_polling -> loop_poll(sup_pid, since, handled_event_ids)
+        :start_polling -> loop_poll(sup_pid, since)
       end
     end
   end
 
-  def loop_poll(sup_pid, since, handled_event_ids \\ MapSet.new()) do
+  def loop_poll(sup_pid, since) do
     client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
 
@@ -56,14 +55,13 @@ defmodule M51.MatrixClient.Poller do
         end
 
       raw_client ->
-        since = poll_one(sup_pid, since, handled_event_ids, raw_client)
+        since = poll_one(sup_pid, since, raw_client)
         M51.MatrixClient.State.update_poll_since_marker(state, since)
-        # do not pass handled_event_ids, no longer needed
         loop_poll(sup_pid, since)
     end
   end
 
-  defp poll_one(sup_pid, since, handled_event_ids, raw_client) do
+  defp poll_one(sup_pid, since, raw_client) do
     query = %{
       # Completely arbitrary value. Just make sure it's lower than recv_timeout below
       "timeout" => "600000"
@@ -79,30 +77,19 @@ defmodule M51.MatrixClient.Poller do
 
     case M51.Matrix.RawClient.get(raw_client, path, [], options) do
       {:ok, events} ->
-        handle_events(sup_pid, is_backlog, events, handled_event_ids)
+        handle_events(sup_pid, is_backlog, events)
         events["next_batch"]
 
       {:error, code, _} when code >= 500 and code < 600 ->
         # server error, try again
-        poll_one(sup_pid, since, handled_event_ids, raw_client)
+        poll_one(sup_pid, since, raw_client)
     end
   end
 
   @doc """
     Internal method that dispatches event; public only so it can be unit-tested.
   """
-  def handle_events(sup_pid, is_backlog, events, handled_event_ids \\ MapSet.new()) do
-    irc_state = M51.IrcConn.Supervisor.state(sup_pid)
-    capabilities = M51.IrcConn.State.capabilities(irc_state)
-    writer = M51.IrcConn.Supervisor.writer(sup_pid)
-
-    write = fn cmd ->
-      M51.IrcConn.Writer.write_command(
-        writer,
-        M51.Irc.Command.downgrade(cmd, capabilities)
-      )
-    end
-
+  def handle_events(sup_pid, is_backlog, events) do
     events
     |> Map.get("rooms", %{})
     |> Map.get("join", %{})
@@ -113,8 +100,6 @@ defmodule M51.MatrixClient.Poller do
         room_id,
         :join,
         is_backlog,
-        handled_event_ids,
-        write,
         event
       )
     end)
@@ -129,8 +114,6 @@ defmodule M51.MatrixClient.Poller do
         room_id,
         :leave,
         is_backlog,
-        handled_event_ids,
-        write,
         event
       )
     end)
@@ -145,8 +128,6 @@ defmodule M51.MatrixClient.Poller do
         room_id,
         :invite,
         is_backlog,
-        handled_event_ids,
-        write,
         event
       )
     end)
@@ -204,7 +185,7 @@ defmodule M51.MatrixClient.Poller do
           handle_event(sup_pid, room_id, sender, is_backlog, write, event)
           # Don't mark it handled right now, there is still some processing to
           # do below.
-          # M51.MatrixClient.State.mark_handled_event(state, event_id)
+          # M51.MatrixClient.State.mark_handled_event(state, room_id, event_id)
         end
       end)
 
@@ -244,7 +225,7 @@ defmodule M51.MatrixClient.Poller do
 
         handle_event(sup_pid, room_id, sender, is_backlog, write, event)
 
-        M51.MatrixClient.State.mark_handled_event(state, event_id)
+        M51.MatrixClient.State.mark_handled_event(state, room_id, event_id)
       end
     end)
   end
@@ -1121,7 +1102,7 @@ defmodule M51.MatrixClient.Poller do
             nil
         end
 
-        M51.MatrixClient.State.mark_handled_event(state, event_id)
+        M51.MatrixClient.State.mark_handled_event(state, room_id, event_id)
       end
     end)
   end

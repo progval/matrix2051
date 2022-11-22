@@ -26,7 +26,8 @@ defmodule M51.MatrixClient.State do
     # events handled since the last update to :poll_since (the poller updates
     # this set as it handles events in a batch; then updates :poll_since
     # an resets this set when it is done with a batch).
-    handled_events: MapSet.new(),
+    # Stored as a Map from room ids to the set of event ids.
+    handled_events: Map.new(),
     # %{channel name => list of callbacks to run when a room
     #                   with that channel name is completely synced }
     channel_sync_callbacks: Map.new()
@@ -263,8 +264,8 @@ defmodule M51.MatrixClient.State do
     Agent.get(pid, fn state -> state.poll_since end)
   end
 
-  def handled_events(pid) do
-    Agent.get(pid, fn state -> state.handled_events end)
+  def handled_events(pid, room_id) do
+    Agent.get(pid, fn state -> Map.get(state.handled_events, room_id) || MapSet.new() end)
   end
 
   @doc """
@@ -272,14 +273,19 @@ defmodule M51.MatrixClient.State do
   """
   def update_poll_since_marker(pid, new_since_marker) do
     Agent.update(pid, fn state ->
-      %{state | poll_since: new_since_marker, handled_events: MapSet.new()}
+      %{state | poll_since: new_since_marker, handled_events: Map.new()}
     end)
   end
 
-  def mark_handled_event(pid, event_id) do
+  def mark_handled_event(pid, room_id, event_id) do
     if event_id != nil do
       Agent.update(pid, fn state ->
-        %{state | handled_events: MapSet.put(state.handled_events, event_id)}
+        handled_events =
+          Map.update(state.handled_events, room_id, nil, fn event_ids ->
+            MapSet.put(event_ids || MapSet.new(), event_id)
+          end)
+
+        %{state | handled_events: handled_events}
       end)
     end
   end
