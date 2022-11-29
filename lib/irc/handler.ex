@@ -582,6 +582,8 @@ defmodule M51.IrcConn.Handler do
       "CHANTYPES=#!",
       "CHATHISTORY=1000",
       "MAXTARGETS=1",
+      # https://github.com/ircv3/ircv3-specifications/pull/510
+      "MSGREFTYPES=msgid",
       "PREFIX=",
       "TARGMAX=JOIN:1,PART:1",
       "UTF8ONLY",
