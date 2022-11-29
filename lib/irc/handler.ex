@@ -85,6 +85,13 @@ defmodule M51.IrcConn.Handler do
     "userhost-in-names" => {:userhost_in_names, nil}
   }
 
+  @informative_capabilities %{
+    # https://git.sr.ht/~emersion/soju/tree/master/item/doc/ext/account-required.md
+    "soju.im/account-required" => {nil, nil}
+  }
+
+  @capabilities_ls Map.merge(@capabilities, @informative_capabilities)
+
   @valid_batch_types ["draft/multiline"]
 
   @doc """
@@ -322,7 +329,7 @@ defmodule M51.IrcConn.Handler do
 
       {"CAP", ["LS", "302"]} ->
         caps =
-          @capabilities
+          @capabilities_ls
           |> Map.to_list()
           |> Enum.sort_by(fn {k, _v} -> k end)
           |> Enum.map(fn {k, {_, v}} ->
@@ -338,7 +345,7 @@ defmodule M51.IrcConn.Handler do
 
       {"CAP", ["LS" | _]} ->
         caps =
-          @capabilities
+          @capabilities_ls
           |> Map.to_list()
           |> Enum.sort_by(fn {k, {_, _v}} -> k end)
           |> Enum.map(fn {k, _v} -> k end)
