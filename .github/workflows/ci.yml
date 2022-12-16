@@ -2,7 +2,7 @@
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{matrix.os}}
     name: OTP ${{matrix.otp}} / Elixir ${{matrix.elixir}}
     strategy:
       fail-fast: false
@@ -10,20 +10,28 @@ jobs:
         include:
           - otp: '20'  # for some reason, erlef/setup-beam@v1 fails on 19
             elixir: '1.7.4'
+            os: 'ubuntu-20.04'
           - otp: '22'
             elixir: '1.7.4'
+            os: 'ubuntu-20.04'
           - otp: '20'
             elixir: '1.9'
+            os: 'ubuntu-20.04'
           - otp: '22'
             elixir: '1.9'
+            os: 'ubuntu-20.04'
           - otp: '21'
             elixir: '1.11'
+            os: 'ubuntu-20.04'
           - otp: '24'
             elixir: '1.11'
+            os: 'ubuntu-22.04'
           - otp: '22'
             elixir: '1.13'
+            os: 'ubuntu-20.04'
           - otp: '24'
             elixir: '1.13'
+            os: 'ubuntu-22.04'
     steps:
       - uses: actions/checkout@v2
       - uses: erlef/setup-beam@v1
