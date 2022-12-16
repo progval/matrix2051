@@ -58,7 +58,7 @@ defmodule M51.Format.Irc2Matrix do
     # 11, light cyan
     "#00FFFF",
     # 12, light blue
-    "#0000FC",
+    "#0080FF",
     # 13, pink
     "#FF00FF",
     # 14, grey
