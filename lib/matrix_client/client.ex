@@ -449,14 +449,14 @@ defmodule M51.MatrixClient.Client do
 
     wellknown_url = "https://" <> hostname <> "/.well-known/matrix/client"
 
-    case httpoison.get!(wellknown_url) do
-      %HTTPoison.Response{status_code: 200, body: body} ->
+    case httpoison.get(wellknown_url) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
         data = Jason.decode!(body)
         base_url = data["m.homeserver"]["base_url"]
         Logger.debug("Well-known request for #{wellknown_url} yielded #{base_url}")
         base_url
 
-      %HTTPoison.Response{status_code: 404} ->
+      {:ok, %HTTPoison.Response{status_code: 404}} ->
         base_url = "https://" <> hostname
 
         Logger.debug(
@@ -466,7 +466,7 @@ defmodule M51.MatrixClient.Client do
 
         base_url
 
-      res ->
+      {:ok, res} ->
         # The next call will probably fail, but this spares error handling in this one.
         base_url = "https://" <> hostname
 
@@ -476,6 +476,18 @@ defmodule M51.MatrixClient.Client do
         )
 
         base_url
+
+      {:error, %HTTPoison.Error{reason: err}} ->
+        # Treat this in the same way as HTTP error codes above - perm error and fallback
+        base_url = "https://" <> hostname
+
+        Logger.warn(
+          "Well-known request for #{wellknown_url} failed" <>
+            " with connection error [#{err}]. Falling back to #{base_url}"
+        )
+
+        base_url
+
     end
   end
 
