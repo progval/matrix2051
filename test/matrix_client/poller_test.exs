@@ -1146,23 +1146,23 @@ defmodule M51.MatrixClient.PollerTest do
     test "messages (is_backlog=#{is_backlog})" do
       if unquote(is_backlog) do
         MockHTTPoison
-        |> expect(:get!, 0, fn url ->
+        |> expect(:get, 0, fn url ->
           assert url == "https://matrix.org/.well-known/matrix/client"
 
-          %HTTPoison.Response{
+          {:ok, %HTTPoison.Response{
             status_code: 200,
             body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
-          }
+          }}
         end)
       else
         MockHTTPoison
-        |> expect(:get!, 5, fn url ->
+        |> expect(:get, 5, fn url ->
           assert url == "https://matrix.org/.well-known/matrix/client"
 
-          %HTTPoison.Response{
+          {:ok, %HTTPoison.Response{
             status_code: 200,
             body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
-          }
+          }}
         end)
       end
 

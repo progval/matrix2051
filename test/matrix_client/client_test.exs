@@ -32,9 +32,9 @@ defmodule M51.MatrixClient.ClientTest do
 
   def expect_login(mock_httpoison) do
     mock_httpoison
-    |> expect(:get!, fn url ->
+    |> expect(:get, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
-      %HTTPoison.Response{status_code: 404, body: "Error 404"}
+      {:ok, %HTTPoison.Response{status_code: 404, body: "Error 404"}}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
@@ -81,15 +81,15 @@ defmodule M51.MatrixClient.ClientTest do
 
   test "connection to non-homeserver", %{sup_pid: sup_pid} do
     MockHTTPoison
-    |> expect(:get!, fn url ->
+    |> expect(:get, fn url ->
       assert url == "https://example.org/.well-known/matrix/client"
 
-      %HTTPoison.Response{
+      {:ok, %HTTPoison.Response{
         status_code: 404,
         body: """
           Error 404
         """
-      }
+      }}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://example.org/_matrix/client/r0/login"
@@ -119,15 +119,15 @@ defmodule M51.MatrixClient.ClientTest do
 
   test "connection without well-known", %{sup_pid: sup_pid} do
     MockHTTPoison
-    |> expect(:get!, fn url ->
+    |> expect(:get, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
 
-      %HTTPoison.Response{
+      {:ok, %HTTPoison.Response{
         status_code: 404,
         body: """
           Error 404
         """
-      }
+      }}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
@@ -192,8 +192,8 @@ defmodule M51.MatrixClient.ClientTest do
 
   test "connection with well-known", %{sup_pid: sup_pid} do
     MockHTTPoison
-    |> expect(:get!, fn _url ->
-      %HTTPoison.Response{
+    |> expect(:get, fn _url ->
+      {:ok, %HTTPoison.Response{
         status_code: 200,
         body: """
           {
@@ -202,7 +202,7 @@ defmodule M51.MatrixClient.ClientTest do
             }
           }
         """
-      }
+      }}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.com/_matrix/client/r0/login"
@@ -270,15 +270,15 @@ defmodule M51.MatrixClient.ClientTest do
 
   test "connection without password flow", %{sup_pid: sup_pid} do
     MockHTTPoison
-    |> expect(:get!, fn url ->
+    |> expect(:get, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
 
-      %HTTPoison.Response{
+      {:ok, %HTTPoison.Response{
         status_code: 404,
         body: """
           Error 404
         """
-      }
+      }}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
@@ -314,15 +314,15 @@ defmodule M51.MatrixClient.ClientTest do
 
   test "connection with invalid password", %{sup_pid: sup_pid} do
     MockHTTPoison
-    |> expect(:get!, fn url ->
+    |> expect(:get, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
 
-      %HTTPoison.Response{
+      {:ok, %HTTPoison.Response{
         status_code: 404,
         body: """
           Error 404
         """
-      }
+      }}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
@@ -374,9 +374,9 @@ defmodule M51.MatrixClient.ClientTest do
 
   test "registration", %{sup_pid: sup_pid} do
     MockHTTPoison
-    |> expect(:get!, fn url ->
+    |> expect(:get, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
-      %HTTPoison.Response{status_code: 404, body: "Error 404"}
+      {:ok, %HTTPoison.Response{status_code: 404, body: "Error 404"}}
     end)
     |> expect(:post!, fn url, body ->
       assert url == "https://matrix.example.org/_matrix/client/r0/register"

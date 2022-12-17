@@ -117,21 +117,21 @@ defmodule M51.FormatTest do
 
   test "Matrix link to IRC" do
     MockHTTPoison
-    |> expect(:get!, 4, fn url ->
+    |> expect(:get, 4, fn url ->
       assert url == "https://example.org/.well-known/matrix/client"
 
-      %HTTPoison.Response{
+      {:ok, %HTTPoison.Response{
         status_code: 200,
         body: ~s({"m.homeserver": {"base_url": "https://api.example.org"}})
-      }
+      }}
     end)
-    |> expect(:get!, 1, fn url ->
+    |> expect(:get, 1, fn url ->
       assert url == "https://homeserver.org/.well-known/matrix/client"
 
-      %HTTPoison.Response{
+      {:ok, %HTTPoison.Response{
         status_code: 200,
         body: ~s({"m.homeserver": {"base_url": "https://api.homeserver.org"}})
-      }
+      }}
     end)
 
     assert M51.Format.matrix2irc(~s(<a href="https://example.org">foo</a>)) ==
@@ -178,13 +178,13 @@ defmodule M51.FormatTest do
 
   test "Matrix link to IRC (404 on well-known)" do
     MockHTTPoison
-    |> expect(:get!, 1, fn url ->
+    |> expect(:get, 1, fn url ->
       assert url == "https://example.org/.well-known/matrix/client"
 
-      %HTTPoison.Response{
+      {:ok, %HTTPoison.Response{
         status_code: 404,
         body: ~s(this is not JSON)
-      }
+      }}
     end)
 
     assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" />)) ==
