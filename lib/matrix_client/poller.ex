@@ -83,6 +83,10 @@ defmodule M51.MatrixClient.Poller do
       {:error, code, _} when code >= 500 and code < 600 ->
         # server error, try again
         poll_one(sup_pid, since, raw_client)
+
+      {:error, nil, :closed} ->
+        # server closed connection, likely due to timeout, retry
+        poll_one(sup_pid, since, raw_client)
     end
   end
 
