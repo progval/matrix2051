@@ -191,6 +191,20 @@ defmodule M51.FormatTest do
              "https://example.org/_matrix/media/r0/download/example.org/foo"
   end
 
+  test "Matrix link to IRC (connection error on well-known)" do
+    MockHTTPoison
+    |> expect(:get, 1, fn url ->
+      assert url == "https://example.org/.well-known/matrix/client"
+      {:error, %HTTPoison.Error{reason: :connrefused}}
+    end)
+
+    # can log "failed with connection error [connrefused]" warning
+    Logger.remove_backend(:console)
+    assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" />)) ==
+             "https://example.org/_matrix/media/r0/download/example.org/foo"
+    Logger.add_backend(:console)
+  end
+
   test "IRC link to Matrix" do
     assert M51.Format.irc2matrix("foo https://example.org") ==
              {"foo https://example.org",
