@@ -20,6 +20,17 @@ defmodule M51.MatrixClient.Poller do
   """
   use Task, restart: :permanent
 
+  require Logger
+
+  # Poller reconnection logic:
+  #  - Initial (re-)connection is always made immediately.
+  #  - After that, min delay is added, multiplied by factor on every fail, up to max.
+  #  - When connection succeeds, delay is reset.
+  # min/max delays are set in seconds here.
+  @connect_delay_min 1
+  @connect_delay_max 60
+  @connect_delay_factor 1.6
+
   def start_link(args) do
     Task.start_link(__MODULE__, :poll, [args])
   end
@@ -61,7 +72,7 @@ defmodule M51.MatrixClient.Poller do
     end
   end
 
-  defp poll_one(sup_pid, since, raw_client) do
+  defp poll_one(sup_pid, since, raw_client, delay \\ nil) do
     query = %{
       # Completely arbitrary value. Just make sure it's lower than recv_timeout below
       "timeout" => "600000"
@@ -75,18 +86,27 @@ defmodule M51.MatrixClient.Poller do
     # Need to be larger than the timeout above (both in milliseconds)
     options = [recv_timeout: 1_000_000]
 
+    delay =
+      if delay do
+        Logger.warn("Server connection error, retrying after #{delay}s")
+        Process.sleep(delay * 1000)
+        Kernel.min(delay * @connect_delay_factor, @connect_delay_max)
+      else
+        @connect_delay_min
+      end
+
     case M51.Matrix.RawClient.get(raw_client, path, [], options) do
       {:ok, events} ->
         handle_events(sup_pid, is_backlog, events)
         events["next_batch"]
 
       {:error, code, _} when code >= 500 and code < 600 ->
-        # server error, try again
-        poll_one(sup_pid, since, raw_client)
+        # server request processing error, try again
+        poll_one(sup_pid, since, raw_client, delay)
 
-      {:error, nil, :closed} ->
-        # server closed connection, likely due to timeout, retry
-        poll_one(sup_pid, since, raw_client)
+      {:error, nil, _} ->
+        # network connection failure, try again
+        poll_one(sup_pid, since, raw_client, delay)
     end
   end
 
