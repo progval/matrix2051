@@ -72,7 +72,7 @@ defmodule M51.MatrixClient.Poller do
     end
   end
 
-  defp poll_one(sup_pid, since, raw_client, delay \\ nil) do
+  defp poll_one(sup_pid, since, raw_client, delay \\ nil, reconnect_reason \\ nil) do
     query = %{
       # Completely arbitrary value. Just make sure it's lower than recv_timeout below
       "timeout" => "600000"
@@ -88,7 +88,9 @@ defmodule M51.MatrixClient.Poller do
 
     delay =
       if delay do
-        Logger.warn("Server connection error, retrying after #{delay}s")
+        Logger.warn(
+          "Server connection error [#{reconnect_reason}], retrying after #{delay}s"
+        )
         Process.sleep(delay * 1000)
         Kernel.min(delay * @connect_delay_factor, @connect_delay_max)
       else
@@ -102,11 +104,11 @@ defmodule M51.MatrixClient.Poller do
 
       {:error, code, _} when code >= 500 and code < 600 ->
         # server request processing error, try again
-        poll_one(sup_pid, since, raw_client, delay)
+        poll_one(sup_pid, since, raw_client, delay, "http-server-error")
 
-      {:error, nil, _} ->
+      {:error, nil, reason} ->
         # network connection failure, try again
-        poll_one(sup_pid, since, raw_client, delay)
+        poll_one(sup_pid, since, raw_client, delay, reason)
     end
   end
 
