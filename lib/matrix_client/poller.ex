@@ -26,9 +26,9 @@ defmodule M51.MatrixClient.Poller do
   #  - Initial (re-)connection is always made immediately.
   #  - After that, min delay is added, multiplied by factor on every fail, up to max.
   #  - When connection succeeds, delay is reset.
-  # min/max delays are set in seconds here.
-  @connect_delay_min 1
-  @connect_delay_max 60
+  # min/max delays are set in milliseconds here.
+  @connect_delay_min 1_000
+  @connect_delay_max 60_000
   @connect_delay_factor 1.6
 
   def start_link(args) do
@@ -89,10 +89,10 @@ defmodule M51.MatrixClient.Poller do
     delay =
       if delay do
         Logger.warn(
-          "Server connection error [#{reconnect_reason}], retrying after #{delay}s"
+          "Server connection error [#{reconnect_reason}], retrying after #{round(delay/1000)}s"
         )
-        Process.sleep(delay * 1000)
-        Kernel.min(delay * @connect_delay_factor, @connect_delay_max)
+        Process.sleep(delay)
+        round(min(delay * @connect_delay_factor, @connect_delay_max))
       else
         @connect_delay_min
       end
