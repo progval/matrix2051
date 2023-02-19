@@ -78,6 +78,9 @@ defmodule M51.IrcConn.Handler do
     # https://ircv3.net/specs/extensions/server-time
     "server-time" => {:server_time, nil},
 
+    # https://ircv3.net/specs/extensions/standard-replies
+    "standard-replies" => {:standard_replies, nil},
+
     # https://ircv3.net/specs/extensions/userhost-in-names
     # not really useful; but kiwiirc/irc-framework interprets "foo:example.org"
     # as {nick: '', user: '', hostname: 'foo:example.org'} without this,
