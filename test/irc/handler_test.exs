@@ -18,8 +18,8 @@ defmodule M51.IrcConn.HandlerTest do
   use ExUnit.Case, async: false
   doctest M51.IrcConn.Handler
 
-  @cap_ls_302 ":server. CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/multiline=max-bytes=8192 echo-message extended-join labeled-response message-tags sasl=PLAIN server-time soju.im/account-required standard-replies userhost-in-names\r\n"
-  @cap_ls ":server. CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/multiline echo-message extended-join labeled-response message-tags sasl server-time soju.im/account-required standard-replies userhost-in-names\r\n"
+  @cap_ls_302 ":server. CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/multiline=max-bytes=8192 draft/sasl-ir echo-message extended-join labeled-response message-tags sasl=PLAIN server-time soju.im/account-required standard-replies userhost-in-names\r\n"
+  @cap_ls ":server. CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/multiline draft/sasl-ir echo-message extended-join labeled-response message-tags sasl server-time soju.im/account-required standard-replies userhost-in-names\r\n"
   @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANTYPES=#! CHATHISTORY=1000 MAXTARGETS=1 MSGREFTYPES=msgid PREFIX= TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
@@ -174,6 +174,33 @@ defmodule M51.IrcConn.HandlerTest do
     send(
       handler,
       cmd("AUTHENTICATE Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk")
+    )
+
+    assert_line(
+      ":server. 900 foo:example.org foo:example.org!foo@example.org foo:example.org :You are now logged in as foo:example.org\r\n"
+    )
+
+    assert_line(":server. 903 foo:example.org :Authentication successful\r\n")
+
+    send(handler, cmd("CAP END"))
+    assert_welcome("foo:example.org")
+
+    assert M51.IrcConn.State.nick(state) == "foo:example.org"
+    assert M51.IrcConn.State.gecos(state) == "My GECOS"
+  end
+
+  test "Connection registration with SASL-IR", %{state: state, handler: handler} do
+    send(handler, cmd("CAP LS 302"))
+    assert_line(@cap_ls_302)
+
+    send(handler, cmd("CAP REQ sasl"))
+    assert_line(":server. CAP * ACK :sasl\r\n")
+
+    send(handler, cmd("NICK foo:example.org"))
+    send(handler, cmd("USER ident * * :My GECOS"))
+
+    # foo:example.org\x00foo:example.org\x00correct password
+    send(handler, cmd("AUTHENTICATE PLAIN Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk")
     )
 
     assert_line(

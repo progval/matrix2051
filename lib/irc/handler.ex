@@ -75,6 +75,9 @@ defmodule M51.IrcConn.Handler do
     # https://ircv3.net/specs/extensions/sasl-3.1
     "sasl" => {:sasl, "PLAIN"},
 
+    # https://github.com/ircv3/ircv3-specifications/pull/520
+    "draft/sasl-ir" => {:sasl_ir, nil},
+
     # https://ircv3.net/specs/extensions/server-time
     "server-time" => {:server_time, nil},
 
@@ -400,9 +403,15 @@ defmodule M51.IrcConn.Handler do
 
         nil
 
-      {"AUTHENTICATE", ["PLAIN" | _]} ->
+      {"AUTHENTICATE", ["PLAIN"]} ->
         send.(%M51.Irc.Command{command: "AUTHENTICATE", params: ["+"]})
         nil
+
+      {"AUTHENTICATE", ["PLAIN" | params]} ->
+        # SASL-IR: https://github.com/ircv3/ircv3-specifications/pull/520
+        # Call this function recursively without the mechanism, to be handled
+        # by the next case below
+        handle_connreg(sup_pid, %{command | params: params}, nick)
 
       {"AUTHENTICATE", [param | _]} ->
         # this catches both invalid mechs and actual PLAIN message.
