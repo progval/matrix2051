@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021-2022  Valentin Lorentz
+# Copyright (C) 2021-2023  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -2288,7 +2288,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n")
-    # m.room.redaction not implemented yet, so it's just ignored
+    # We'll probably see the m.room.redaction message later, so we can simply ignore this one.
     assert_line(
       ":nick:example.org!nick@example.org PRIVMSG #test:example.org :second message\r\n"
     )
@@ -2297,6 +2297,71 @@ defmodule M51.MatrixClient.PollerTest do
   end
 
   test "message redaction" do
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :multiline,
+      :message_tags,
+      :message_redaction
+    ])
+
+    joined_room()
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "first message", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{},
+        "event_id" => "$event2",
+        "redacts" => "$event1",
+        "origin_server_ts" => 1_633_808_172_505,
+        "sender" => "@admin:example.org",
+        "type" => "m.room.redaction",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "reason" => "Redacting again!"
+        },
+        "event_id" => "$event3",
+        "redacts" => "$event1",
+        "origin_server_ts" => 1_633_808_172_505,
+        "sender" => "@admin:example.org",
+        "type" => "m.room.redaction",
+        "unsigned" => %{}
+      }
+    ]
+
+    M51.MatrixClient.Poller.handle_events(self(), false, %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(
+      "@msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n"
+    )
+
+    assert_line(
+      "@msgid=$event2 :admin:example.org!admin@example.org REDACT #test:example.org :$event1\r\n"
+    )
+
+    assert_line(
+      "@msgid=$event3 :admin:example.org!admin@example.org REDACT #test:example.org $event1 :Redacting again!\r\n"
+    )
+
+    assert_last_line()
+  end
+
+  test "message redaction fallback" do
     M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :multiline,
       :message_tags

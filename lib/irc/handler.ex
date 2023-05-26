@@ -72,6 +72,9 @@ defmodule M51.IrcConn.Handler do
     # https://ircv3.net/specs/extensions/multiline
     "draft/multiline" => {:multiline, "max-bytes=#{@multiline_max_bytes}"},
 
+    # https://github.com/progval/ircv3-specifications/blob/redaction/extensions/message-redaction.md
+    "draft/message-redaction" => {:message_redaction, nil},
+
     # https://ircv3.net/specs/extensions/sasl-3.1
     "sasl" => {:sasl, "PLAIN"},
 
