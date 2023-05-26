@@ -335,27 +335,28 @@ defmodule M51.Irc.Command do
 
             tags = Map.drop(command.tags, ["+draft/display-name", "account"])
 
-            command = case command do
-              %{params: [channel, msgid, reason]} ->
-                %M51.Irc.Command{
-                  tags: Map.put(tags, "+draft/reply", msgid),
-                  source: "server.",
-                  command: "NOTICE",
-                  params: [channel, "#{sender}#{display_name} deleted an event: #{reason}"]
-                }
+            command =
+              case command do
+                %{params: [channel, msgid, reason]} ->
+                  %M51.Irc.Command{
+                    tags: Map.put(tags, "+draft/reply", msgid),
+                    source: "server.",
+                    command: "NOTICE",
+                    params: [channel, "#{sender}#{display_name} deleted an event: #{reason}"]
+                  }
 
-              %{params: [channel, msgid]} ->
-                %M51.Irc.Command{
-                  tags: Map.put(tags, "+draft/reply", msgid),
-                  source: "server.",
-                  command: "NOTICE",
-                  params: [channel, "#{sender}#{display_name} deleted an event"]
-                }
+                %{params: [channel, msgid]} ->
+                  %M51.Irc.Command{
+                    tags: Map.put(tags, "+draft/reply", msgid),
+                    source: "server.",
+                    command: "NOTICE",
+                    params: [channel, "#{sender}#{display_name} deleted an event"]
+                  }
 
-              _ ->
-                # shouldn't happen
-                nil
-            end
+                _ ->
+                  # shouldn't happen
+                  nil
+              end
 
             # run downgrade() recursively in order to drop the new tags if necessary
             downgrade(command, capabilities)

@@ -915,7 +915,9 @@ defmodule M51.MatrixClient.Poller do
               params: [channel, redacts_id]
             })
         end
-      _ -> nil
+
+      _ ->
+        nil
     end
   end
 
