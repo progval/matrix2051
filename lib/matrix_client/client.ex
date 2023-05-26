@@ -315,7 +315,7 @@ defmodule M51.MatrixClient.Client do
 
         {room_id, _room} ->
           path =
-            "/_matrix/client/r0/rooms/#{urlquote(room_id)}/redact/#{urlquote(event_id)}/#{urlquote(label)}"
+            "/_matrix/client/r0/rooms/#{urlquote(room_id)}/redact/#{urlquote(event_id)}/#{transaction_id}"
 
           body =
             case reason do
@@ -328,6 +328,8 @@ defmodule M51.MatrixClient.Client do
             {:error, error} -> {:error, error}
           end
       end
+
+    {:reply, reply, state}
   end
 
   @impl true
