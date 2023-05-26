@@ -200,7 +200,9 @@ defmodule M51.IrcConn.HandlerTest do
     send(handler, cmd("USER ident * * :My GECOS"))
 
     # foo:example.org\x00foo:example.org\x00correct password
-    send(handler, cmd("AUTHENTICATE PLAIN Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk")
+    send(
+      handler,
+      cmd("AUTHENTICATE PLAIN Zm9vOmV4YW1wbGUub3JnAGZvbzpleGFtcGxlLm9yZwBjb3JyZWN0IHBhc3N3b3Jk")
     )
 
     assert_line(

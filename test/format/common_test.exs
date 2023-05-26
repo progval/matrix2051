@@ -120,18 +120,20 @@ defmodule M51.FormatTest do
     |> expect(:get, 4, fn url ->
       assert url == "https://example.org/.well-known/matrix/client"
 
-      {:ok, %HTTPoison.Response{
-        status_code: 200,
-        body: ~s({"m.homeserver": {"base_url": "https://api.example.org"}})
-      }}
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 200,
+         body: ~s({"m.homeserver": {"base_url": "https://api.example.org"}})
+       }}
     end)
     |> expect(:get, 1, fn url ->
       assert url == "https://homeserver.org/.well-known/matrix/client"
 
-      {:ok, %HTTPoison.Response{
-        status_code: 200,
-        body: ~s({"m.homeserver": {"base_url": "https://api.homeserver.org"}})
-      }}
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 200,
+         body: ~s({"m.homeserver": {"base_url": "https://api.homeserver.org"}})
+       }}
     end)
 
     assert M51.Format.matrix2irc(~s(<a href="https://example.org">foo</a>)) ==
@@ -181,10 +183,11 @@ defmodule M51.FormatTest do
     |> expect(:get, 1, fn url ->
       assert url == "https://example.org/.well-known/matrix/client"
 
-      {:ok, %HTTPoison.Response{
-        status_code: 404,
-        body: ~s(this is not JSON)
-      }}
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 404,
+         body: ~s(this is not JSON)
+       }}
     end)
 
     assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" />)) ==
@@ -200,8 +203,10 @@ defmodule M51.FormatTest do
 
     # can log "failed with connection error [connrefused]" warning
     Logger.remove_backend(:console)
+
     assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" />)) ==
              "https://example.org/_matrix/media/r0/download/example.org/foo"
+
     Logger.add_backend(:console)
   end
 

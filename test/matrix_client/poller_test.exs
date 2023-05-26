@@ -1149,20 +1149,22 @@ defmodule M51.MatrixClient.PollerTest do
         |> expect(:get, 0, fn url ->
           assert url == "https://matrix.org/.well-known/matrix/client"
 
-          {:ok, %HTTPoison.Response{
-            status_code: 200,
-            body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
-          }}
+          {:ok,
+           %HTTPoison.Response{
+             status_code: 200,
+             body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
+           }}
         end)
       else
         MockHTTPoison
         |> expect(:get, 5, fn url ->
           assert url == "https://matrix.org/.well-known/matrix/client"
 
-          {:ok, %HTTPoison.Response{
-            status_code: 200,
-            body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
-          }}
+          {:ok,
+           %HTTPoison.Response{
+             status_code: 200,
+             body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
+           }}
         end)
       end
 

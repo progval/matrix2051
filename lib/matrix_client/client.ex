@@ -147,9 +147,7 @@ defmodule M51.MatrixClient.Client do
 
           %HTTPoison.Response{status_code: status_code} ->
             message =
-              "Could not reach the Matrix homeserver for #{hostname}, #{url} returned HTTP #{
-                status_code
-              }. Make sure this is a Matrix homeserver and https://#{hostname}/.well-known/matrix/client is properly configured."
+              "Could not reach the Matrix homeserver for #{hostname}, #{url} returned HTTP #{status_code}. Make sure this is a Matrix homeserver and https://#{hostname}/.well-known/matrix/client is properly configured."
 
             {:reply, {:error, :unknown, message}, state}
         end
@@ -487,7 +485,6 @@ defmodule M51.MatrixClient.Client do
         )
 
         base_url
-
     end
   end
 

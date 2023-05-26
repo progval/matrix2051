@@ -58,9 +58,7 @@ defmodule M51.MatrixClient.Sender do
 
       raw_client ->
         path =
-          "/_matrix/client/r0/rooms/#{urlquote(room_id)}/send/#{urlquote(event_type)}/#{
-            urlquote(transaction_id)
-          }"
+          "/_matrix/client/r0/rooms/#{urlquote(room_id)}/send/#{urlquote(event_type)}/#{urlquote(transaction_id)}"
 
         body = Jason.encode!(event)
 

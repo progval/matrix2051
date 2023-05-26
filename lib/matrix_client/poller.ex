@@ -89,8 +89,9 @@ defmodule M51.MatrixClient.Poller do
     delay =
       if delay do
         Logger.warn(
-          "Server connection error [#{reconnect_reason}], retrying after #{round(delay/1000)}s"
+          "Server connection error [#{reconnect_reason}], retrying after #{round(delay / 1000)}s"
         )
+
         Process.sleep(delay)
         round(min(delay * @connect_delay_factor, @connect_delay_max))
       else
