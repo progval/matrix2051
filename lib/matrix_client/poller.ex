@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021-2022  Valentin Lorentz
+# Copyright (C) 2021-2023  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -885,38 +885,39 @@ defmodule M51.MatrixClient.Poller do
     member = M51.MatrixClient.State.room_member(state, room_id, sender)
     send = make_send_function(sup_pid, event, write)
 
-    reason =
-      case event["content"] do
-        %{"reason" => reason} when is_binary(reason) -> ": #{reason}"
-        _ -> ""
-      end
+    tags = %{"account" => sender}
 
     # TODO: dedup this with m.reaction handler
-    display_name =
+    tags =
       case member do
         %M51.Matrix.RoomMember{display_name: display_name} when display_name != nil ->
-          " (#{display_name})"
+          Map.put(tags, "+draft/display-name", display_name)
 
         _ ->
-          ""
+          tags
       end
 
-    tags =
-      case event do
-        %{"redacts" => redacts_id}
-        when is_binary(redacts_id) ->
-          %{"+draft/reply" => redacts_id}
+    case event do
+      %{"redacts" => redacts_id} when is_binary(redacts_id) ->
+        case event["content"] do
+          %{"reason" => reason} when is_binary(reason) ->
+            send.(%M51.Irc.Command{
+              tags: tags,
+              source: nick2nuh(sender),
+              command: "REDACT",
+              params: [channel, redacts_id, reason]
+            })
 
-        _ ->
-          %{}
-      end
-
-    send.(%M51.Irc.Command{
-      tags: tags,
-      source: "server.",
-      command: "NOTICE",
-      params: [channel, "#{sender}#{display_name} deleted an event#{reason}"]
-    })
+          _ ->
+            send.(%M51.Irc.Command{
+              tags: tags,
+              source: nick2nuh(sender),
+              command: "REDACT",
+              params: [channel, redacts_id]
+            })
+        end
+      _ -> nil
+    end
   end
 
   def handle_event(
