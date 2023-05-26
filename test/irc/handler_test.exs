@@ -1078,4 +1078,20 @@ defmodule M51.IrcConn.HandlerTest do
 
     assert_line("BATCH :-#{batch_id}\r\n")
   end
+
+  test "redact a message for no reason", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("REDACT #existing_room:example.org $event1"))
+
+    assert_message({:send_redact, "#existing_room:example.org", nil, "$event1", nil})
+  end
+
+  test "redact a message for a reason", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("REDACT #existing_room:example.org $event1 :spam"))
+
+    assert_message({:send_redact, "#existing_room:example.org", nil, "$event1", "spam"})
+  end
 end
