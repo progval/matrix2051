@@ -599,7 +599,7 @@ defmodule M51.IrcConn.Handler do
       "CLIENTTAGDENY=*,-draft/react,-draft/reply",
       "CHANLIMIT=",
       "CHANTYPES=#!",
-      "CHATHISTORY=1000",
+      "CHATHISTORY=100",
       "MAXTARGETS=1",
       # https://github.com/ircv3/ircv3-specifications/pull/510
       "MSGREFTYPES=msgid",
