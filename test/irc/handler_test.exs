@@ -901,7 +901,7 @@ defmodule M51.IrcConn.HandlerTest do
     )
   end
 
-  test "CHATHISTORY AROUND", %{handler: handler} do
+  test "CHATHISTORY AROUND msgid", %{handler: handler} do
     do_connection_registration(handler, ["message-tags"])
 
     send(handler, cmd("@label=l1 CHATHISTORY AROUND #chan msgid=$event3 5"))
@@ -934,6 +934,8 @@ defmodule M51.IrcConn.HandlerTest do
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
 
+    assert_line("@batch=#{batch_id} CHATHISTORY CURSORS #chan * :start3\r\n")
+
     assert_line(
       "@batch=#{batch_id};msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #chan :first message\r\n"
     )
@@ -956,6 +958,8 @@ defmodule M51.IrcConn.HandlerTest do
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l3 BATCH +#{batch_id} :chathistory\r\n"
 
+    assert_line("@batch=#{batch_id} CHATHISTORY CURSORS #chan end2 :start2\r\n")
+
     assert_line(
       "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
     )
@@ -974,6 +978,8 @@ defmodule M51.IrcConn.HandlerTest do
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l4 BATCH +#{batch_id} :chathistory\r\n"
 
+    assert_line("@batch=#{batch_id} CHATHISTORY CURSORS #chan end1 :start1\r\n")
+
     assert_line(
       "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
     )
@@ -988,6 +994,8 @@ defmodule M51.IrcConn.HandlerTest do
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l5 BATCH +#{batch_id} :chathistory\r\n"
 
+    assert_line("@batch=#{batch_id} CHATHISTORY CURSORS #chan end0 :start0\r\n")
+
     assert_line(
       "@batch=#{batch_id};msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #chan :third message\r\n"
     )
@@ -995,7 +1003,27 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line("BATCH :-#{batch_id}\r\n")
   end
 
-  test "CHATHISTORY BEFORE", %{handler: handler} do
+  test "CHATHISTORY AROUND timestamp", %{handler: handler} do
+    do_connection_registration(handler, ["message-tags"])
+
+    send(handler, cmd("@label=l1 CHATHISTORY AROUND #chan timestamp=2019-01-04T14:34:16.123Z 5"))
+
+    assert_line(
+      "@label=l1 FAIL CHATHISTORY MESSAGE_ERROR AROUND :CHATHISTORY with timestamps is not supported. See https://github.com/progval/matrix2051/issues/1\r\n"
+    )
+  end
+
+  test "CHATHISTORY AROUND cursor", %{handler: handler} do
+    do_connection_registration(handler, ["message-tags"])
+
+    send(handler, cmd("@label=l1 CHATHISTORY AROUND #chan cursor=blah 5"))
+
+    assert_line(
+      "@label=l1 FAIL CHATHISTORY MESSAGE_ERROR AROUND :Invalid anchor: 'cursor=blah', it should start with 'msgid='.\r\n"
+    )
+  end
+
+  test "CHATHISTORY BEFORE msgid", %{handler: handler} do
     do_connection_registration(handler, ["message-tags"])
 
     send(handler, cmd("@label=l1 CHATHISTORY BEFORE #chan msgid=$event3 2"))
@@ -1016,8 +1044,36 @@ defmodule M51.IrcConn.HandlerTest do
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
 
+    assert_line("@batch=#{batch_id} CHATHISTORY CURSORS #chan :start2\r\n")
+
     assert_line(
       "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
+    )
+
+    assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
+  test "CHATHISTORY BEFORE timestamp", %{handler: handler} do
+    do_connection_registration(handler, ["message-tags"])
+
+    send(handler, cmd("@label=l1 CHATHISTORY BEFORE #chan timestamp=2019-01-04T14:34:16.123Z 5"))
+
+    assert_line(
+      "@label=l1 FAIL CHATHISTORY MESSAGE_ERROR BEFORE :CHATHISTORY with timestamps is not supported. See https://github.com/progval/matrix2051/issues/1\r\n"
+    )
+  end
+
+  test "CHATHISTORY BEFORE cursor", %{handler: handler} do
+    do_connection_registration(handler, ["message-tags"])
+
+    send(handler, cmd("@label=l1 CHATHISTORY BEFORE #chan cursor=blah 1"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line("@batch=#{batch_id} CHATHISTORY CURSORS #chan :endcursor\r\n")
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event :nick:example.org!nick@example.org PRIVMSG #chan :event in direction b from blah\r\n"
     )
 
     assert_line("BATCH :-#{batch_id}\r\n")
@@ -1051,7 +1107,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line("BATCH :-#{batch_id}\r\n")
   end
 
-  test "CHATHISTORY AFTER", %{handler: handler} do
+  test "CHATHISTORY AFTER msgid", %{handler: handler} do
     do_connection_registration(handler, ["message-tags"])
 
     send(handler, cmd("@label=l1 CHATHISTORY AFTER #chan msgid=$event3 2"))
@@ -1072,10 +1128,37 @@ defmodule M51.IrcConn.HandlerTest do
     {batch_id, line} = assert_open_batch()
     assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
 
+    assert_line("@batch=#{batch_id} CHATHISTORY CURSORS #chan :end2\r\n")
+
     assert_line(
       "@batch=#{batch_id};msgid=$event4 :nick:example.org!nick@example.org PRIVMSG #chan :fourth message\r\n"
     )
 
+    assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
+  test "CHATHISTORY AFTER timestamp", %{handler: handler} do
+    do_connection_registration(handler, ["message-tags"])
+
+    send(handler, cmd("@label=l1 CHATHISTORY AFTER #chan timestamp=2019-01-04T14:34:16.123Z 5"))
+
+    assert_line(
+      "@label=l1 FAIL CHATHISTORY MESSAGE_ERROR AFTER :CHATHISTORY with timestamps is not supported. See https://github.com/progval/matrix2051/issues/1\r\n"
+    )
+  end
+
+  test "CHATHISTORY AFTER cursor", %{handler: handler} do
+    do_connection_registration(handler, ["message-tags"])
+
+    send(handler, cmd("@label=l1 CHATHISTORY AFTER #chan cursor=blah 5"))
+    {batch_id, line} = assert_open_batch()
+    assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
+
+    assert_line("@batch=#{batch_id} CHATHISTORY CURSORS #chan :endcursor\r\n")
+
+    assert_line(
+      "@batch=#{batch_id};msgid=$event :nick:example.org!nick@example.org PRIVMSG #chan :event in direction f from blah\r\n"
+    )
     assert_line("BATCH :-#{batch_id}\r\n")
   end
 end
