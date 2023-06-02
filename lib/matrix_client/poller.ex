@@ -472,6 +472,7 @@ defmodule M51.MatrixClient.Poller do
       _ ->
         send.(%M51.Irc.Command{
           tags: %{"account" => sender},
+          source: "server.",
           command: "NOTICE",
           params: [channel, "Unexpected m.room.member event: " <> Kernel.inspect(event)]
         })
