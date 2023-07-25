@@ -1160,6 +1160,7 @@ defmodule M51.IrcConn.HandlerTest do
       "@batch=#{batch_id};msgid=$event :nick:example.org!nick@example.org PRIVMSG #chan :event in direction f from blah\r\n"
     )
     assert_line("BATCH :-#{batch_id}\r\n")
+  end
 
   test "redact a message for no reason", %{handler: handler} do
     do_connection_registration(handler)
