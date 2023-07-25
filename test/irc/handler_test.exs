@@ -18,8 +18,8 @@ defmodule M51.IrcConn.HandlerTest do
   use ExUnit.Case, async: false
   doctest M51.IrcConn.Handler
 
-  @cap_ls_302 ":server. CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/multiline=max-bytes=8192 draft/sasl-ir echo-message extended-join labeled-response message-tags sasl=PLAIN server-time soju.im/account-required standard-replies userhost-in-names\r\n"
-  @cap_ls ":server. CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/multiline draft/sasl-ir echo-message extended-join labeled-response message-tags sasl server-time soju.im/account-required standard-replies userhost-in-names\r\n"
+  @cap_ls_302 ":server. CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/message-redaction draft/multiline=max-bytes=8192 draft/sasl-ir echo-message extended-join labeled-response message-tags sasl=PLAIN server-time soju.im/account-required standard-replies userhost-in-names\r\n"
+  @cap_ls ":server. CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/message-redaction draft/multiline draft/sasl-ir echo-message extended-join labeled-response message-tags sasl server-time soju.im/account-required standard-replies userhost-in-names\r\n"
   @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANTYPES=#! CHATHISTORY=100 MAXTARGETS=1 MSGREFTYPES=msgid PREFIX= TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
@@ -1160,5 +1160,20 @@ defmodule M51.IrcConn.HandlerTest do
       "@batch=#{batch_id};msgid=$event :nick:example.org!nick@example.org PRIVMSG #chan :event in direction f from blah\r\n"
     )
     assert_line("BATCH :-#{batch_id}\r\n")
+
+  test "redact a message for no reason", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("REDACT #existing_room:example.org $event1"))
+
+    assert_message({:send_redact, "#existing_room:example.org", nil, "$event1", nil})
+  end
+
+  test "redact a message for a reason", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("REDACT #existing_room:example.org $event1 :spam"))
+
+    assert_message({:send_redact, "#existing_room:example.org", nil, "$event1", "spam"})
   end
 end

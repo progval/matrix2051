@@ -297,6 +297,42 @@ defmodule M51.MatrixClient.Client do
   end
 
   @impl true
+  def handle_call({:send_redact, channel, label, event_id, reason}, _from, state) do
+    %M51.MatrixClient.Client{
+      state: :connected,
+      irc_pid: irc_pid,
+      raw_client: raw_client
+    } = state
+
+    matrix_state = M51.IrcConn.Supervisor.matrix_state(irc_pid)
+
+    transaction_id = label_to_transaction_id(label)
+
+    reply =
+      case M51.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+        nil ->
+          {:reply, {:error, {:room_not_found, channel}}, state}
+
+        {room_id, _room} ->
+          path =
+            "/_matrix/client/r0/rooms/#{urlquote(room_id)}/redact/#{urlquote(event_id)}/#{transaction_id}"
+
+          body =
+            case reason do
+              reason when is_binary(reason) -> Jason.encode!(%{"reason" => reason})
+              _ -> Jason.encode!({})
+            end
+
+          case M51.Matrix.RawClient.put(raw_client, path, body) do
+            {:ok, %{"event_id" => event_id}} -> {:ok, event_id}
+            {:error, error} -> {:error, error}
+          end
+      end
+
+    {:reply, reply, state}
+  end
+
+  @impl true
   def handle_call({:get_event_context, channel, event_id, limit}, _from, state) do
     %M51.MatrixClient.Client{
       state: :connected,
@@ -573,11 +609,21 @@ defmodule M51.MatrixClient.Client do
   @doc """
     Sends the given event object.
 
-    If 'label' is not nil, it will be passed as a 'label' message tagt when
+    If 'label' is not nil, it will be passed as a 'label' message tag when
     the event is seen in the event stream.
   """
   def send_event(pid, channel, label, event_type, event) do
     GenServer.call(pid, {:send_event, channel, event_type, label, event}, @timeout)
+  end
+
+  @doc """
+    Asks the server to redact the event with the given id
+
+    If 'label' is not nil, it will be passed as a 'label' message tag when
+    the event is seen in the event stream.
+  """
+  def send_redact(pid, channel, label, event_id, reason) do
+    GenServer.call(pid, {:send_redact, channel, label, event_id, reason}, @timeout)
   end
 
   @doc """
