@@ -1220,6 +1220,7 @@ defmodule M51.MatrixClient.Poller do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = M51.IrcConn.State.nick(irc_state)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
+    capabilities = M51.IrcConn.State.capabilities(irc_state)
     send_join = make_send_function(sup_pid, event, write)
     send_nonjoin = make_send_function(sup_pid, nil, write)
 
@@ -1265,31 +1266,34 @@ defmodule M51.MatrixClient.Poller do
         end
     end
 
-    # send RPL_NAMREPLY
-    overhead = make_numeric.("353", ["=", channel, ""]) |> M51.Irc.Command.format() |> byte_size()
+    if !Enum.member?(capabilities, :no_implicit_names) do
+      # send RPL_NAMREPLY
+      overhead =
+        make_numeric.("353", ["=", channel, ""]) |> M51.Irc.Command.format() |> byte_size()
 
-    # note for later: if we ever implement prefixes, make sure to add them
-    # *after* calling nick2nuh; we don't want to have prefixes in the username part.
-    M51.MatrixClient.State.room_members(state, room_id)
-    |> Enum.map(fn {user_id, _member} ->
-      nuh = nick2nuh(user_id)
-      # M51.Irc.Command does not escape " " in trailing
-      String.replace(nuh, " ", "\\s") <> " "
-    end)
-    |> Enum.sort()
-    |> M51.Irc.WordWrap.join_tokens(512 - overhead)
-    |> Enum.map(fn line ->
-      line = line |> String.trim_trailing()
+      # note for later: if we ever implement prefixes, make sure to add them
+      # *after* calling nick2nuh; we don't want to have prefixes in the username part.
+      M51.MatrixClient.State.room_members(state, room_id)
+      |> Enum.map(fn {user_id, _member} ->
+        nuh = nick2nuh(user_id)
+        # M51.Irc.Command does not escape " " in trailing
+        String.replace(nuh, " ", "\\s") <> " "
+      end)
+      |> Enum.sort()
+      |> M51.Irc.WordWrap.join_tokens(512 - overhead)
+      |> Enum.map(fn line ->
+        line = line |> String.trim_trailing()
 
-      if line != "" do
-        # RPL_NAMREPLY
-        send_numeric.("353", ["=", channel, line])
-      end
-    end)
-    |> Enum.filter(fn line -> line != nil end)
+        if line != "" do
+          # RPL_NAMREPLY
+          send_numeric.("353", ["=", channel, line])
+        end
+      end)
+      |> Enum.filter(fn line -> line != nil end)
 
-    # RPL_ENDOFNAMES
-    send_numeric.("366", [channel, "End of /NAMES list"])
+      # RPL_ENDOFNAMES
+      send_numeric.("366", [channel, "End of /NAMES list"])
+    end
   end
 
   defp close_renamed_channel(

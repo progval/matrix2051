@@ -519,6 +519,65 @@ defmodule M51.MatrixClient.PollerTest do
     end
   end)
 
+  test "new room with draft/no-implicit-names" do
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
+     :no_implicit_names,
+    ])
+
+    state_events1 = [
+      %{
+        "content" => %{"alias" => "#test1:example.org"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "state_key" => "",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    state_events2 = [
+      %{
+        "content" => %{"alias" => "#test2:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "state_key" => "",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    M51.MatrixClient.Poller.handle_events(self(), true, %{
+      "rooms" => %{
+        "join" => %{
+          "!testid1:example.org" => %{"state" => %{"events" => state_events1}}
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test1:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test1:example.org :No topic is set\r\n")
+
+    assert_last_line()
+
+    # Need to send more messages from the poller to make sure there really isn't any
+    # message left
+
+    M51.MatrixClient.Poller.handle_events(self(), true, %{
+      "rooms" => %{
+        "join" => %{
+          "!testid2:example.org" => %{"state" => %{"events" => state_events2}}
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test2:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test2:example.org :No topic is set\r\n")
+
+    assert_last_line()
+  end
+
   test "invalid room renaming" do
     M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :channel_rename,

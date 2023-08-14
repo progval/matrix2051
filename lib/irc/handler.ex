@@ -75,6 +75,9 @@ defmodule M51.IrcConn.Handler do
     # https://github.com/progval/ircv3-specifications/blob/redaction/extensions/message-redaction.md
     "draft/message-redaction" => {:message_redaction, nil},
 
+    # https://github.com/ircv3/ircv3-specifications/pull/527
+    "draft/no-implicit-names" => {:no_implicit_names, nil},
+
     # https://ircv3.net/specs/extensions/sasl-3.1
     "sasl" => {:sasl, "PLAIN"},
 
