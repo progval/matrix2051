@@ -325,7 +325,7 @@ defmodule M51.MatrixClient.Client do
 
           case M51.Matrix.RawClient.put(raw_client, path, body) do
             {:ok, %{"event_id" => event_id}} -> {:ok, event_id}
-            {:error, error} -> {:error, error}
+            {:error, nil, error} -> {:error, error}
           end
       end
 
@@ -354,7 +354,7 @@ defmodule M51.MatrixClient.Client do
 
           case M51.Matrix.RawClient.get(raw_client, path) do
             {:ok, events} -> {:ok, events}
-            {:error, error} -> {:error, error}
+            {:error, nil, error} -> {:error, error}
           end
       end
 
@@ -383,7 +383,7 @@ defmodule M51.MatrixClient.Client do
 
           case M51.Matrix.RawClient.get(raw_client, path) do
             {:ok, events} -> {:ok, events}
-            {:error, error} -> {:error, error}
+            {:error, nil, error} -> {:error, error}
           end
       end
 
