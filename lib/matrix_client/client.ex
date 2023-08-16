@@ -102,7 +102,10 @@ defmodule M51.MatrixClient.Client do
                 body =
                   Jason.encode!(%{
                     "type" => "m.login.password",
-                    "user" => local_name,
+                    "identifier" => %{
+                      "type" => "m.id.user",
+                      "user" => local_name
+                    },
                     "password" => password
                   })
 

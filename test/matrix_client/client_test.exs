@@ -51,7 +51,10 @@ defmodule M51.MatrixClient.ClientTest do
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
-               "user" => "user",
+               "identifier" => %{
+                 "type" => "m.id.user",
+                 "user" => "user"
+               },
                "password" => "p4ssw0rd"
              }
 
@@ -152,7 +155,10 @@ defmodule M51.MatrixClient.ClientTest do
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
-               "user" => "user",
+               "identifier" => %{
+                 "type" => "m.id.user",
+                 "user" => "user"
+               },
                "password" => "p4ssw0rd"
              }
 
@@ -231,7 +237,10 @@ defmodule M51.MatrixClient.ClientTest do
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
-               "user" => "user",
+               "identifier" => %{
+                 "type" => "m.id.user",
+                 "user" => "user"
+               },
                "password" => "p4ssw0rd"
              }
 
@@ -350,7 +359,10 @@ defmodule M51.MatrixClient.ClientTest do
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
-               "user" => "user",
+               "identifier" => %{
+                 "type" => "m.id.user",
+                 "user" => "user"
+               },
                "password" => "p4ssw0rd"
              }
 
