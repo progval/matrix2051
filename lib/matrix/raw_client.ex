@@ -24,7 +24,7 @@ defmodule M51.Matrix.RawClient do
 
   def get(client, path, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
-    options = options |> Keyword.put_new(:timeout, 20000)
+    options = options |> Keyword.put_new(:timeout, 60000)
 
     url = client.base_url <> path
 
@@ -47,7 +47,7 @@ defmodule M51.Matrix.RawClient do
 
   def post(client, path, body, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
-    options = options |> Keyword.put_new(:timeout, 20000)
+    options = options |> Keyword.put_new(:timeout, 60000)
 
     url = client.base_url <> path
 
@@ -71,7 +71,7 @@ defmodule M51.Matrix.RawClient do
 
   def put(client, path, body, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
-    options = options |> Keyword.put_new(:timeout, 20000)
+    options = options |> Keyword.put_new(:timeout, 60000)
 
     url = client.base_url <> path
 
