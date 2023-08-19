@@ -604,6 +604,7 @@ defmodule M51.IrcConn.Handler do
       "CASEMAPPING=rfc3454",
       "CLIENTTAGDENY=*,-draft/react,-draft/reply",
       "CHANLIMIT=",
+      "CHANMODES=b,,,i",
       "CHANTYPES=#!",
       "CHATHISTORY=100",
       "MAXTARGETS=1",
