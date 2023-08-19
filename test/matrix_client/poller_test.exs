@@ -521,7 +521,7 @@ defmodule M51.MatrixClient.PollerTest do
 
   test "new room with draft/no-implicit-names" do
     M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
-     :no_implicit_names,
+      :no_implicit_names
     ])
 
     state_events1 = [
