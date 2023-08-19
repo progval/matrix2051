@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021-2022  Valentin Lorentz
+# Copyright (C) 2021-2023  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -251,6 +251,8 @@ defmodule M51.Irc.Command do
 
   """
   def downgrade(command, capabilities) do
+    original_tags = command.tags
+
     # downgrade echo-message
     command =
       if Enum.member?(capabilities, :echo_message) do
@@ -317,6 +319,47 @@ defmodule M51.Irc.Command do
             command
           else
             nil
+          end
+
+        %{command: "REDACT"} ->
+          if Enum.member?(capabilities, :message_redaction) do
+            command
+          else
+            sender = Map.get(original_tags, "account")
+
+            display_name =
+              case Map.get(original_tags, "+draft/display-name", nil) do
+                dn when is_binary(dn) -> " (#{dn})"
+                _ -> ""
+              end
+
+            tags = Map.drop(command.tags, ["+draft/display-name", "account"])
+
+            command =
+              case command do
+                %{params: [channel, msgid, reason]} ->
+                  %M51.Irc.Command{
+                    tags: Map.put(tags, "+draft/reply", msgid),
+                    source: "server.",
+                    command: "NOTICE",
+                    params: [channel, "#{sender}#{display_name} deleted an event: #{reason}"]
+                  }
+
+                %{params: [channel, msgid]} ->
+                  %M51.Irc.Command{
+                    tags: Map.put(tags, "+draft/reply", msgid),
+                    source: "server.",
+                    command: "NOTICE",
+                    params: [channel, "#{sender}#{display_name} deleted an event"]
+                  }
+
+                _ ->
+                  # shouldn't happen
+                  nil
+              end
+
+            # run downgrade() recursively in order to drop the new tags if necessary
+            downgrade(command, capabilities)
           end
 
         %{command: "TAGMSG"} ->

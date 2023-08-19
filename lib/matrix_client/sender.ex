@@ -22,6 +22,8 @@ defmodule M51.MatrixClient.Sender do
   """
   use Task, restart: :permanent
 
+  require Logger
+
   # totals 4 minutes, as the backoff of each attempt is 2^(number of attempts so far)
   @max_attempts 7
 
@@ -56,13 +58,11 @@ defmodule M51.MatrixClient.Sender do
 
       raw_client ->
         path =
-          "/_matrix/client/r0/rooms/#{urlquote(room_id)}/send/#{urlquote(event_type)}/#{
-            urlquote(transaction_id)
-          }"
+          "/_matrix/client/r0/rooms/#{urlquote(room_id)}/send/#{urlquote(event_type)}/#{urlquote(transaction_id)}"
 
         body = Jason.encode!(event)
 
-        IO.inspect(body, label: "sending")
+        Logger.debug("Sending event: #{body}")
 
         case M51.Matrix.RawClient.put(raw_client, path, body) do
           {:ok, _body} ->
@@ -70,7 +70,7 @@ defmodule M51.MatrixClient.Sender do
 
           {:error, _status_code, reason} ->
             if nb_attempts < @max_attempts do
-              IO.inspect(reason, label: "error while sending event, retrying")
+              Logger.warn("Error while sending event, retrying: #{Kernel.inspect(reason)}")
               backoff_delay = :math.pow(2, nb_attempts)
               Process.sleep(round(backoff_delay * 1000))
 
@@ -83,7 +83,7 @@ defmodule M51.MatrixClient.Sender do
                 nb_attempts + 1
               )
             else
-              IO.inspect(reason, label: "error while sending event, giving up")
+              Logger.warn("Error while sending event, giving up: #{Kernel.inspect(reason)}")
               state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
               channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
 

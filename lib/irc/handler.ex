@@ -72,11 +72,23 @@ defmodule M51.IrcConn.Handler do
     # https://ircv3.net/specs/extensions/multiline
     "draft/multiline" => {:multiline, "max-bytes=#{@multiline_max_bytes}"},
 
+    # https://github.com/progval/ircv3-specifications/blob/redaction/extensions/message-redaction.md
+    "draft/message-redaction" => {:message_redaction, nil},
+
+    # https://github.com/ircv3/ircv3-specifications/pull/527
+    "draft/no-implicit-names" => {:no_implicit_names, nil},
+
     # https://ircv3.net/specs/extensions/sasl-3.1
     "sasl" => {:sasl, "PLAIN"},
 
+    # https://github.com/ircv3/ircv3-specifications/pull/520
+    "draft/sasl-ir" => {:sasl_ir, nil},
+
     # https://ircv3.net/specs/extensions/server-time
     "server-time" => {:server_time, nil},
+
+    # https://ircv3.net/specs/extensions/standard-replies
+    "standard-replies" => {:standard_replies, nil},
 
     # https://ircv3.net/specs/extensions/userhost-in-names
     # not really useful; but kiwiirc/irc-framework interprets "foo:example.org"
@@ -398,9 +410,15 @@ defmodule M51.IrcConn.Handler do
 
         nil
 
-      {"AUTHENTICATE", ["PLAIN" | _]} ->
+      {"AUTHENTICATE", ["PLAIN"]} ->
         send.(%M51.Irc.Command{command: "AUTHENTICATE", params: ["+"]})
         nil
+
+      {"AUTHENTICATE", ["PLAIN" | params]} ->
+        # SASL-IR: https://github.com/ircv3/ircv3-specifications/pull/520
+        # Call this function recursively without the mechanism, to be handled
+        # by the next case below
+        handle_connreg(sup_pid, %{command | params: params}, nick)
 
       {"AUTHENTICATE", [param | _]} ->
         # this catches both invalid mechs and actual PLAIN message.
@@ -599,7 +617,7 @@ defmodule M51.IrcConn.Handler do
       "CLIENTTAGDENY=*,-draft/react,-draft/reply",
       "CHANLIMIT=",
       "CHANTYPES=#!",
-      "CHATHISTORY=1000",
+      "CHATHISTORY=100",
       "MAXTARGETS=1",
       # https://github.com/ircv3/ircv3-specifications/pull/510
       "MSGREFTYPES=msgid",
@@ -901,6 +919,27 @@ defmodule M51.IrcConn.Handler do
         end
 
       {"TAGMSG", _} ->
+        send_needmoreparams.()
+
+      {"REDACT", [channel, targetmsgid, reason | _]} ->
+        send_redact(
+          sup_pid,
+          channel,
+          Map.get(command.tags, "label"),
+          targetmsgid,
+          reason
+        )
+
+      {"REDACT", [channel, targetmsgid | _]} ->
+        send_redact(
+          sup_pid,
+          channel,
+          Map.get(command.tags, "label"),
+          targetmsgid,
+          nil
+        )
+
+      {"REDACT", _} ->
         send_needmoreparams.()
 
       {"CHATHISTORY", ["TARGETS", _ts1, _ts2, _limit | _]} ->
@@ -1370,6 +1409,61 @@ defmodule M51.IrcConn.Handler do
           source: "server.",
           command: "NOTICE",
           params: [channel, "Error while sending message: " <> Kernel.inspect(error)]
+        })
+    end
+  end
+
+  defp send_redact(sup_pid, channel, label, targetmsgid, reason) do
+    writer = M51.IrcConn.Supervisor.writer(sup_pid)
+    matrix_client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
+    matrix_state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
+    send = fn cmd -> M51.IrcConn.Writer.write_command(writer, cmd) end
+
+    # If the client provided a label, use it as txnId on Matrix's side.
+    # This way we can parse it when receiving the echo from Matrix's event
+    # stream instead of storing state.
+    # Otherwise, generate a random transaction id.
+
+    nicklist =
+      case M51.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+        {_room_id, room} -> room.members |> Map.keys()
+        nil -> []
+      end
+
+    reason =
+      case reason do
+        nil ->
+          nil
+
+        reason ->
+          {reason, _formatted_reason} = M51.Format.irc2matrix(reason, nicklist)
+          reason
+      end
+
+    result =
+      M51.MatrixClient.Client.send_redact(
+        matrix_client,
+        channel,
+        label,
+        targetmsgid,
+        reason
+      )
+
+    case result do
+      {:ok, _event_id} ->
+        nil
+
+      {:error, error} ->
+        send.(%M51.Irc.Command{
+          source: "server.",
+          command: "FAIL",
+          params: [
+            "REDACT",
+            "UNKNOWN_ERROR",
+            channel,
+            targetmsgid,
+            "Error while redacting message: " <> Kernel.inspect(error)
+          ]
         })
     end
   end

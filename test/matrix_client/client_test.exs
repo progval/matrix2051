@@ -51,7 +51,10 @@ defmodule M51.MatrixClient.ClientTest do
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
-               "user" => "user",
+               "identifier" => %{
+                 "type" => "m.id.user",
+                 "user" => "user"
+               },
                "password" => "p4ssw0rd"
              }
 
@@ -84,12 +87,13 @@ defmodule M51.MatrixClient.ClientTest do
     |> expect(:get, fn url ->
       assert url == "https://example.org/.well-known/matrix/client"
 
-      {:ok, %HTTPoison.Response{
-        status_code: 404,
-        body: """
-          Error 404
-        """
-      }}
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 404,
+         body: """
+           Error 404
+         """
+       }}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://example.org/_matrix/client/r0/login"
@@ -122,12 +126,13 @@ defmodule M51.MatrixClient.ClientTest do
     |> expect(:get, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
 
-      {:ok, %HTTPoison.Response{
-        status_code: 404,
-        body: """
-          Error 404
-        """
-      }}
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 404,
+         body: """
+           Error 404
+         """
+       }}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
@@ -150,7 +155,10 @@ defmodule M51.MatrixClient.ClientTest do
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
-               "user" => "user",
+               "identifier" => %{
+                 "type" => "m.id.user",
+                 "user" => "user"
+               },
                "password" => "p4ssw0rd"
              }
 
@@ -193,16 +201,17 @@ defmodule M51.MatrixClient.ClientTest do
   test "connection with well-known", %{sup_pid: sup_pid} do
     MockHTTPoison
     |> expect(:get, fn _url ->
-      {:ok, %HTTPoison.Response{
-        status_code: 200,
-        body: """
-          {
-            "m.homeserver": {
-              "base_url": "https://matrix.example.com"
-            }
-          }
-        """
-      }}
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 200,
+         body: """
+           {
+             "m.homeserver": {
+               "base_url": "https://matrix.example.com"
+             }
+           }
+         """
+       }}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.com/_matrix/client/r0/login"
@@ -228,7 +237,10 @@ defmodule M51.MatrixClient.ClientTest do
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
-               "user" => "user",
+               "identifier" => %{
+                 "type" => "m.id.user",
+                 "user" => "user"
+               },
                "password" => "p4ssw0rd"
              }
 
@@ -273,12 +285,13 @@ defmodule M51.MatrixClient.ClientTest do
     |> expect(:get, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
 
-      {:ok, %HTTPoison.Response{
-        status_code: 404,
-        body: """
-          Error 404
-        """
-      }}
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 404,
+         body: """
+           Error 404
+         """
+       }}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
@@ -317,12 +330,13 @@ defmodule M51.MatrixClient.ClientTest do
     |> expect(:get, fn url ->
       assert url == "https://matrix.example.org/.well-known/matrix/client"
 
-      {:ok, %HTTPoison.Response{
-        status_code: 404,
-        body: """
-          Error 404
-        """
-      }}
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 404,
+         body: """
+           Error 404
+         """
+       }}
     end)
     |> expect(:get!, fn url ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
@@ -345,7 +359,10 @@ defmodule M51.MatrixClient.ClientTest do
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
-               "user" => "user",
+               "identifier" => %{
+                 "type" => "m.id.user",
+                 "user" => "user"
+               },
                "password" => "p4ssw0rd"
              }
 

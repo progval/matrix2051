@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021-2022  Valentin Lorentz
+# Copyright (C) 2021-2023  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -518,6 +518,65 @@ defmodule M51.MatrixClient.PollerTest do
       assert_last_line()
     end
   end)
+
+  test "new room with draft/no-implicit-names" do
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :no_implicit_names
+    ])
+
+    state_events1 = [
+      %{
+        "content" => %{"alias" => "#test1:example.org"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "state_key" => "",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    state_events2 = [
+      %{
+        "content" => %{"alias" => "#test2:example.org"},
+        "event_id" => "$event2",
+        "origin_server_ts" => 1_632_644_251_623,
+        "sender" => "@nick:example.org",
+        "state_key" => "",
+        "type" => "m.room.canonical_alias",
+        "unsigned" => %{}
+      }
+    ]
+
+    M51.MatrixClient.Poller.handle_events(self(), true, %{
+      "rooms" => %{
+        "join" => %{
+          "!testid1:example.org" => %{"state" => %{"events" => state_events1}}
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test1:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test1:example.org :No topic is set\r\n")
+
+    assert_last_line()
+
+    # Need to send more messages from the poller to make sure there really isn't any
+    # message left
+
+    M51.MatrixClient.Poller.handle_events(self(), true, %{
+      "rooms" => %{
+        "join" => %{
+          "!testid2:example.org" => %{"state" => %{"events" => state_events2}}
+        }
+      }
+    })
+
+    assert_line(":mynick:example.com!mynick@example.com JOIN :#test2:example.org\r\n")
+    assert_line(":server. 331 mynick:example.com #test2:example.org :No topic is set\r\n")
+
+    assert_last_line()
+  end
 
   test "invalid room renaming" do
     M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
@@ -1149,20 +1208,22 @@ defmodule M51.MatrixClient.PollerTest do
         |> expect(:get, 0, fn url ->
           assert url == "https://matrix.org/.well-known/matrix/client"
 
-          {:ok, %HTTPoison.Response{
-            status_code: 200,
-            body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
-          }}
+          {:ok,
+           %HTTPoison.Response{
+             status_code: 200,
+             body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
+           }}
         end)
       else
         MockHTTPoison
         |> expect(:get, 5, fn url ->
           assert url == "https://matrix.org/.well-known/matrix/client"
 
-          {:ok, %HTTPoison.Response{
-            status_code: 200,
-            body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
-          }}
+          {:ok,
+           %HTTPoison.Response{
+             status_code: 200,
+             body: ~s({"m.homeserver": {"base_url": "https://matrix-client.matrix.org"}})
+           }}
         end)
       end
 
@@ -2286,7 +2347,7 @@ defmodule M51.MatrixClient.PollerTest do
     })
 
     assert_line(":nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n")
-    # m.room.redaction not implemented yet, so it's just ignored
+    # We'll probably see the m.room.redaction message later, so we can simply ignore this one.
     assert_line(
       ":nick:example.org!nick@example.org PRIVMSG #test:example.org :second message\r\n"
     )
@@ -2295,6 +2356,71 @@ defmodule M51.MatrixClient.PollerTest do
   end
 
   test "message redaction" do
+    M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
+      :multiline,
+      :message_tags,
+      :message_redaction
+    ])
+
+    joined_room()
+
+    timeline_events = [
+      %{
+        "content" => %{"body" => "first message", "msgtype" => "m.text"},
+        "event_id" => "$event1",
+        "origin_server_ts" => 1_632_946_233_579,
+        "sender" => "@nick:example.org",
+        "type" => "m.room.message",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{},
+        "event_id" => "$event2",
+        "redacts" => "$event1",
+        "origin_server_ts" => 1_633_808_172_505,
+        "sender" => "@admin:example.org",
+        "type" => "m.room.redaction",
+        "unsigned" => %{}
+      },
+      %{
+        "content" => %{
+          "reason" => "Redacting again!"
+        },
+        "event_id" => "$event3",
+        "redacts" => "$event1",
+        "origin_server_ts" => 1_633_808_172_505,
+        "sender" => "@admin:example.org",
+        "type" => "m.room.redaction",
+        "unsigned" => %{}
+      }
+    ]
+
+    M51.MatrixClient.Poller.handle_events(self(), false, %{
+      "rooms" => %{
+        "join" => %{
+          "!testid:example.org" => %{
+            "timeline" => %{"events" => timeline_events}
+          }
+        }
+      }
+    })
+
+    assert_line(
+      "@msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #test:example.org :first message\r\n"
+    )
+
+    assert_line(
+      "@msgid=$event2 :admin:example.org!admin@example.org REDACT #test:example.org :$event1\r\n"
+    )
+
+    assert_line(
+      "@msgid=$event3 :admin:example.org!admin@example.org REDACT #test:example.org $event1 :Redacting again!\r\n"
+    )
+
+    assert_last_line()
+  end
+
+  test "message redaction fallback" do
     M51.IrcConn.State.add_capabilities(:process_ircconn_state, [
       :multiline,
       :message_tags

@@ -1,5 +1,5 @@
 ##
-# Copyright (C) 2021-2022  Valentin Lorentz
+# Copyright (C) 2021-2023  Valentin Lorentz
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License version 3,
@@ -19,6 +19,17 @@ defmodule M51.MatrixClient.Poller do
     Queries the homeserver for new events; including the initial sync.
   """
   use Task, restart: :permanent
+
+  require Logger
+
+  # Poller reconnection logic:
+  #  - Initial (re-)connection is always made immediately.
+  #  - After that, min delay is added, multiplied by factor on every fail, up to max.
+  #  - When connection succeeds, delay is reset.
+  # min/max delays are set in milliseconds here.
+  @connect_delay_min 1_000
+  @connect_delay_max 60_000
+  @connect_delay_factor 1.6
 
   def start_link(args) do
     Task.start_link(__MODULE__, :poll, [args])
@@ -61,7 +72,7 @@ defmodule M51.MatrixClient.Poller do
     end
   end
 
-  defp poll_one(sup_pid, since, raw_client) do
+  defp poll_one(sup_pid, since, raw_client, delay \\ nil, reconnect_reason \\ nil) do
     query = %{
       # Completely arbitrary value. Just make sure it's lower than recv_timeout below
       "timeout" => "600000"
@@ -75,18 +86,30 @@ defmodule M51.MatrixClient.Poller do
     # Need to be larger than the timeout above (both in milliseconds)
     options = [recv_timeout: 1_000_000]
 
+    delay =
+      if delay do
+        Logger.warn(
+          "Server connection error [#{reconnect_reason}], retrying after #{round(delay / 1000)}s"
+        )
+
+        Process.sleep(delay)
+        round(min(delay * @connect_delay_factor, @connect_delay_max))
+      else
+        @connect_delay_min
+      end
+
     case M51.Matrix.RawClient.get(raw_client, path, [], options) do
       {:ok, events} ->
         handle_events(sup_pid, is_backlog, events)
         events["next_batch"]
 
       {:error, code, _} when code >= 500 and code < 600 ->
-        # server error, try again
-        poll_one(sup_pid, since, raw_client)
+        # server request processing error, try again
+        poll_one(sup_pid, since, raw_client, delay, "http-server-error")
 
-      {:error, nil, :closed} ->
-        # server closed connection, likely due to timeout, retry
-        poll_one(sup_pid, since, raw_client)
+      {:error, nil, reason} ->
+        # network connection failure, try again
+        poll_one(sup_pid, since, raw_client, delay, reason)
     end
   end
 
@@ -449,6 +472,7 @@ defmodule M51.MatrixClient.Poller do
       _ ->
         send.(%M51.Irc.Command{
           tags: %{"account" => sender},
+          source: "server.",
           command: "NOTICE",
           params: [channel, "Unexpected m.room.member event: " <> Kernel.inspect(event)]
         })
@@ -861,38 +885,41 @@ defmodule M51.MatrixClient.Poller do
     member = M51.MatrixClient.State.room_member(state, room_id, sender)
     send = make_send_function(sup_pid, event, write)
 
-    reason =
-      case event["content"] do
-        %{"reason" => reason} when is_binary(reason) -> ": #{reason}"
-        _ -> ""
-      end
+    tags = %{"account" => sender}
 
     # TODO: dedup this with m.reaction handler
-    display_name =
+    tags =
       case member do
         %M51.Matrix.RoomMember{display_name: display_name} when display_name != nil ->
-          " (#{display_name})"
+          Map.put(tags, "+draft/display-name", display_name)
 
         _ ->
-          ""
+          tags
       end
 
-    tags =
-      case event do
-        %{"redacts" => redacts_id}
-        when is_binary(redacts_id) ->
-          %{"+draft/reply" => redacts_id}
+    case event do
+      %{"redacts" => redacts_id} when is_binary(redacts_id) ->
+        case event["content"] do
+          %{"reason" => reason} when is_binary(reason) ->
+            send.(%M51.Irc.Command{
+              tags: tags,
+              source: nick2nuh(sender),
+              command: "REDACT",
+              params: [channel, redacts_id, reason]
+            })
 
-        _ ->
-          %{}
-      end
+          _ ->
+            send.(%M51.Irc.Command{
+              tags: tags,
+              source: nick2nuh(sender),
+              command: "REDACT",
+              params: [channel, redacts_id]
+            })
+        end
 
-    send.(%M51.Irc.Command{
-      tags: tags,
-      source: "server.",
-      command: "NOTICE",
-      params: [channel, "#{sender}#{display_name} deleted an event#{reason}"]
-    })
+      _ ->
+        nil
+    end
   end
 
   def handle_event(
@@ -1021,7 +1048,12 @@ defmodule M51.MatrixClient.Poller do
              "m.room.bridging",
              "m.room.retention",
              "m.room.pinned_events",
+             "net.nordeck.barcamp.session_grid",
+             "net.nordeck.barcamp.topic",
+             "net.nordeck.barcamp.topic_submission",
              "org.matrix.room.preview_urls",
+             "org.matrix.msc3381.poll.start",
+             "org.matrix.msc3381.poll.response",
              "io.element.widgets.layout",
              "im.ponies.room_emotes",
              "uk.half-shot.spanner",
@@ -1188,6 +1220,7 @@ defmodule M51.MatrixClient.Poller do
     state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
     nick = M51.IrcConn.State.nick(irc_state)
     channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
+    capabilities = M51.IrcConn.State.capabilities(irc_state)
     send_join = make_send_function(sup_pid, event, write)
     send_nonjoin = make_send_function(sup_pid, nil, write)
 
@@ -1233,31 +1266,34 @@ defmodule M51.MatrixClient.Poller do
         end
     end
 
-    # send RPL_NAMREPLY
-    overhead = make_numeric.("353", ["=", channel, ""]) |> M51.Irc.Command.format() |> byte_size()
+    if !Enum.member?(capabilities, :no_implicit_names) do
+      # send RPL_NAMREPLY
+      overhead =
+        make_numeric.("353", ["=", channel, ""]) |> M51.Irc.Command.format() |> byte_size()
 
-    # note for later: if we ever implement prefixes, make sure to add them
-    # *after* calling nick2nuh; we don't want to have prefixes in the username part.
-    M51.MatrixClient.State.room_members(state, room_id)
-    |> Enum.map(fn {user_id, _member} ->
-      nuh = nick2nuh(user_id)
-      # M51.Irc.Command does not escape " " in trailing
-      String.replace(nuh, " ", "\\s") <> " "
-    end)
-    |> Enum.sort()
-    |> M51.Irc.WordWrap.join_tokens(512 - overhead)
-    |> Enum.map(fn line ->
-      line = line |> String.trim_trailing()
+      # note for later: if we ever implement prefixes, make sure to add them
+      # *after* calling nick2nuh; we don't want to have prefixes in the username part.
+      M51.MatrixClient.State.room_members(state, room_id)
+      |> Enum.map(fn {user_id, _member} ->
+        nuh = nick2nuh(user_id)
+        # M51.Irc.Command does not escape " " in trailing
+        String.replace(nuh, " ", "\\s") <> " "
+      end)
+      |> Enum.sort()
+      |> M51.Irc.WordWrap.join_tokens(512 - overhead)
+      |> Enum.map(fn line ->
+        line = line |> String.trim_trailing()
 
-      if line != "" do
-        # RPL_NAMREPLY
-        send_numeric.("353", ["=", channel, line])
-      end
-    end)
-    |> Enum.filter(fn line -> line != nil end)
+        if line != "" do
+          # RPL_NAMREPLY
+          send_numeric.("353", ["=", channel, line])
+        end
+      end)
+      |> Enum.filter(fn line -> line != nil end)
 
-    # RPL_ENDOFNAMES
-    send_numeric.("366", [channel, "End of /NAMES list"])
+      # RPL_ENDOFNAMES
+      send_numeric.("366", [channel, "End of /NAMES list"])
+    end
   end
 
   defp close_renamed_channel(
