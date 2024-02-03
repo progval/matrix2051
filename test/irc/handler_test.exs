@@ -20,7 +20,7 @@ defmodule M51.IrcConn.HandlerTest do
 
   @cap_ls_302 ":server. CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/message-redaction draft/multiline=max-bytes=8192 draft/no-implicit-names draft/sasl-ir echo-message extended-join labeled-response message-tags sasl=PLAIN server-time soju.im/account-required standard-replies userhost-in-names\r\n"
   @cap_ls ":server. CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/message-redaction draft/multiline draft/no-implicit-names draft/sasl-ir echo-message extended-join labeled-response message-tags sasl server-time soju.im/account-required standard-replies userhost-in-names\r\n"
-  @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANMODES=b,,,i CHANTYPES=#! CHATHISTORY=100 MAXTARGETS=1 MSGREFTYPES=msgid PREFIX= TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
+  @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANMODES=b,,,i CHANTYPES=#! CHATHISTORY=100 LINELEN=8192 MAXTARGETS=1 MSGREFTYPES=msgid PREFIX= TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
     start_supervised!({MockMatrixClient, {self()}})

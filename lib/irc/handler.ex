@@ -607,6 +607,8 @@ defmodule M51.IrcConn.Handler do
       "CHANMODES=b,,,i",
       "CHANTYPES=#!",
       "CHATHISTORY=100",
+      # Matrix limit is 64k for the whole event, so this is fairly conservative.
+      "LINELEN=#{@multiline_max_bytes}",
       "MAXTARGETS=1",
       # https://github.com/ircv3/ircv3-specifications/pull/510
       "MSGREFTYPES=msgid",
