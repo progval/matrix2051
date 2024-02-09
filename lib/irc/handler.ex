@@ -1102,51 +1102,61 @@ defmodule M51.IrcConn.Handler do
             [_server, target | _] -> target
           end
 
-        [local_name, hostname] = String.split(target, ":", parts: 2)
-
-        [member: memberships] = M51.MatrixClient.State.user(matrix_state, target)
-
-        # TODO: pick the most common display name instead
-        gecos = target
-
-        overhead = make_numeric.("353", [target, ""]) |> M51.Irc.Command.format() |> byte_size()
-
-        first_commands = [
-          # RPL_WHOISUSER "<nick> <username> <host> * :<realname>"
-          make_numeric.("311", [target, local_name, hostname, "*", gecos])
-        ]
-
-        channel_commands =
-          memberships
-          |> Map.keys()
-          |> Enum.map(fn room_id ->
-            M51.MatrixClient.State.room_irc_channel(matrix_state, room_id)
-          end)
-          |> Enum.sort()
-          |> M51.Irc.WordWrap.join_tokens(512 - overhead)
-          |> Enum.map(fn line ->
-            line = line |> String.trim_trailing()
-
-            if line != "" do
-              # RPL_WHOISCHANNELS "<nick> :[prefix]<channel>{ [prefix]<channel>}"
-              make_numeric.("319", [target, line])
+        case String.split(target, ":", parts: 2) do
+          [_] ->
+            # return ERR_NOSUCHNICK
+            if target == "" || String.contains?(target, " ") do
+              send_numeric.("401", ["*", "No such nick"])
+            else
+              send_numeric.("401", [target, "No such nick"])
             end
-          end)
-          |> Enum.filter(fn line -> line != nil end)
 
-        last_commands = [
-          # RPL_WHOISSERVER "<nick> <server> :<server info>"
-          make_numeric.("312", [target, hostname, hostname]),
-          # RPL_WHOISACCOUNT "<nick> <account> :is logged in as"
-          make_numeric.("330", [target, target, "is logged in as"]),
-          # RPL_ENDOFWHOIS
-          make_numeric.("318", [target, "End of WHOIS"])
-        ]
+          [local_name, hostname] ->
+            [member: memberships] = M51.MatrixClient.State.user(matrix_state, target)
 
-        send_batch.(
-          Enum.concat([first_commands, channel_commands, last_commands]),
-          "labeled-response"
-        )
+            # TODO: pick the most common display name instead
+            gecos = target
+
+            overhead =
+              make_numeric.("353", [target, ""]) |> M51.Irc.Command.format() |> byte_size()
+
+            first_commands = [
+              # RPL_WHOISUSER "<nick> <username> <host> * :<realname>"
+              make_numeric.("311", [target, local_name, hostname, "*", gecos])
+            ]
+
+            channel_commands =
+              memberships
+              |> Map.keys()
+              |> Enum.map(fn room_id ->
+                M51.MatrixClient.State.room_irc_channel(matrix_state, room_id)
+              end)
+              |> Enum.sort()
+              |> M51.Irc.WordWrap.join_tokens(512 - overhead)
+              |> Enum.map(fn line ->
+                line = line |> String.trim_trailing()
+
+                if line != "" do
+                  # RPL_WHOISCHANNELS "<nick> :[prefix]<channel>{ [prefix]<channel>}"
+                  make_numeric.("319", [target, line])
+                end
+              end)
+              |> Enum.filter(fn line -> line != nil end)
+
+            last_commands = [
+              # RPL_WHOISSERVER "<nick> <server> :<server info>"
+              make_numeric.("312", [target, hostname, hostname]),
+              # RPL_WHOISACCOUNT "<nick> <account> :is logged in as"
+              make_numeric.("330", [target, target, "is logged in as"]),
+              # RPL_ENDOFWHOIS
+              make_numeric.("318", [target, "End of WHOIS"])
+            ]
+
+            send_batch.(
+              Enum.concat([first_commands, channel_commands, last_commands]),
+              "labeled-response"
+            )
+        end
 
       {"BATCH", [first_param | params]} ->
         {first_char, reference_tag} = String.split_at(first_param, 1)

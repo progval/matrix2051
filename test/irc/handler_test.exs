@@ -828,7 +828,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line("BATCH :-#{batch_id}\r\n")
   end
 
-  test "WHOIS", %{handler: handler} do
+  test "WHOIS unknown user", %{handler: handler} do
     do_connection_registration(handler)
 
     send(handler, cmd("@label=l1 WHOIS unknown_user:example.com"))
@@ -853,6 +853,18 @@ defmodule M51.IrcConn.HandlerTest do
     )
 
     assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
+  test "WHOIS non-MXID", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=l1 WHOIS not_enough_colons"))
+
+    assert_line("@label=l1 :server. 401 foo:example.org not_enough_colons :No such nick\r\n")
+
+    send(handler, cmd("@label=l1 WHOIS :with spaces"))
+
+    assert_line("@label=l1 :server. 401 foo:example.org * :No such nick\r\n")
   end
 
   test "MODE on user", %{handler: handler} do
