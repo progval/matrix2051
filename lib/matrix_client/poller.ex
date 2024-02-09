@@ -1157,6 +1157,9 @@ defmodule M51.MatrixClient.Poller do
   end
 
   # Sends self JOIN, RPL_TOPIC/RPL_NOTOPIC, RPL_NAMREPLY
+  #
+  # Returns whether the announce was actually sent (ie. if the channel has a canonical
+  # alias, or was allowed to be sent without a canonical alias)
   defp send_channel_welcome(
          sup_pid,
          room_id,
@@ -1172,15 +1175,20 @@ defmodule M51.MatrixClient.Poller do
 
     supports_channel_rename = Enum.member?(capabilities, :channel_rename)
 
-    if old_canonical_alias == nil || !supports_channel_rename do
-      announce_new_channel(
-        M51.IrcConn.Supervisor,
-        sup_pid,
-        room_id,
-        write,
-        event
-      )
-    end
+    announced_new_channel =
+      if old_canonical_alias == nil || !supports_channel_rename do
+        announce_new_channel(
+          M51.IrcConn.Supervisor,
+          sup_pid,
+          room_id,
+          write,
+          event
+        )
+
+        true
+      else
+        false
+      end
 
     if old_canonical_alias != nil do
       if supports_channel_rename do
@@ -1197,6 +1205,8 @@ defmodule M51.MatrixClient.Poller do
           command: "RENAME",
           params: [old_canonical_alias, new_canonical_alias, "Canonical alias changed"]
         })
+
+        true
       else
         close_renamed_channel(
           sup_pid,
@@ -1205,6 +1215,8 @@ defmodule M51.MatrixClient.Poller do
           canonical_alias_sender,
           old_canonical_alias
         )
+
+        announced_new_channel
       end
     end
   end
