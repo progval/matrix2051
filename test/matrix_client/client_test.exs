@@ -22,6 +22,8 @@ defmodule M51.MatrixClient.ClientTest do
   setup :set_mox_from_context
   setup :verify_on_exit!
 
+  @timeout 65000
+
   setup do
     start_supervised!({M51.MatrixClient.State, {self()}})
 
@@ -36,8 +38,10 @@ defmodule M51.MatrixClient.ClientTest do
       assert url == "https://matrix.example.org/.well-known/matrix/client"
       {:ok, %HTTPoison.Response{status_code: 404, body: "Error 404"}}
     end)
-    |> expect(:get!, fn url ->
+    |> expect(:get!, fn url, headers, options ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout]
 
       %HTTPoison.Response{
         status_code: 200,
@@ -46,8 +50,10 @@ defmodule M51.MatrixClient.ClientTest do
         """
       }
     end)
-    |> expect(:post!, fn url, body ->
+    |> expect(:post!, fn url, body, headers, options ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout]
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
@@ -95,8 +101,10 @@ defmodule M51.MatrixClient.ClientTest do
          """
        }}
     end)
-    |> expect(:get!, fn url ->
+    |> expect(:get!, fn url, headers, options ->
       assert url == "https://example.org/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout]
 
       %HTTPoison.Response{
         status_code: 404,
@@ -134,8 +142,10 @@ defmodule M51.MatrixClient.ClientTest do
          """
        }}
     end)
-    |> expect(:get!, fn url ->
+    |> expect(:get!, fn url, headers, options ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout]
 
       %HTTPoison.Response{
         status_code: 200,
@@ -150,8 +160,10 @@ defmodule M51.MatrixClient.ClientTest do
         """
       }
     end)
-    |> expect(:post!, fn url, body ->
+    |> expect(:post!, fn url, body, headers, options ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout]
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
@@ -213,8 +225,10 @@ defmodule M51.MatrixClient.ClientTest do
          """
        }}
     end)
-    |> expect(:get!, fn url ->
+    |> expect(:get!, fn url, headers, options ->
       assert url == "https://matrix.example.com/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout]
 
       %HTTPoison.Response{
         status_code: 200,
@@ -232,8 +246,10 @@ defmodule M51.MatrixClient.ClientTest do
         """
       }
     end)
-    |> expect(:post!, fn url, body ->
+    |> expect(:post!, fn url, body, headers, options ->
       assert url == "https://matrix.example.com/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout]
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
@@ -293,8 +309,10 @@ defmodule M51.MatrixClient.ClientTest do
          """
        }}
     end)
-    |> expect(:get!, fn url ->
+    |> expect(:get!, fn url, headers, options ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout]
 
       %HTTPoison.Response{
         status_code: 200,
@@ -338,8 +356,10 @@ defmodule M51.MatrixClient.ClientTest do
          """
        }}
     end)
-    |> expect(:get!, fn url ->
+    |> expect(:get!, fn url, headers, options ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout]
 
       %HTTPoison.Response{
         status_code: 200,
@@ -354,8 +374,10 @@ defmodule M51.MatrixClient.ClientTest do
         """
       }
     end)
-    |> expect(:post!, fn url, body ->
+    |> expect(:post!, fn url, body, headers, options ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout]
 
       assert Jason.decode!(body) == %{
                "type" => "m.login.password",
