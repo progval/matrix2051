@@ -33,6 +33,7 @@ defmodule M51.IrcConn.Handler do
   # 8kB should be a reasonable limit to remain under the allowed 65kB even
   # with large signatures and many escapes.
   @multiline_max_bytes 8192
+  def multiline_max_bytes, do: @multiline_max_bytes
 
   # set of capabilities that we will show in CAP LS and accept with ACK;
   # along with their value (shown in CAP LS 302)
