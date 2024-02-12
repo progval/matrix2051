@@ -449,6 +449,26 @@ defmodule M51.IrcConn.HandlerTest do
     Logger.add_backend(:console)
   end
 
+  test "post-registration CAP LS", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("CAP LS 302"))
+    assert_line(@cap_ls_302)
+
+    send(handler, cmd("CAP LS"))
+    assert_line(@cap_ls)
+  end
+
+  test "post-registration CAP LIST", %{handler: handler} do
+    caps_requested = ["draft/multiline", "extended-join", "message-tags", "server-time"]
+    caps_expected = Enum.join(["batch", "labeled-response", "sasl"] ++ caps_requested, " ")
+
+    do_connection_registration(handler, caps_requested)
+
+    send(handler, cmd("CAP LIST"))
+    assert_line(":server. CAP * LIST :" <> caps_expected <> "\r\n")
+  end
+
   test "labeled response", %{handler: handler} do
     do_connection_registration(handler)
 

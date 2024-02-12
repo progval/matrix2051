@@ -105,6 +105,10 @@ defmodule M51.IrcConn.Handler do
 
   @capabilities_ls Map.merge(@capabilities, @informative_capabilities)
 
+  @capability_names @capabilities
+    |> Enum.map(fn {name, {atom, _}} -> {atom, name} end)
+    |> Map.new()
+
   @valid_batch_types ["draft/multiline"]
 
   @doc """
@@ -301,6 +305,22 @@ defmodule M51.IrcConn.Handler do
     end
   end
 
+  defp cap_ls(is_302, send) do
+    caps = @capabilities_ls
+      |> Map.to_list()
+      |> Enum.sort_by(fn {k, _v} -> k end)
+      |> Enum.map(fn {k, {_, v}} ->
+        cond do
+          is_nil(v) -> k
+          !is_302 -> k
+          true -> k <> "=" <> v
+        end
+      end)
+      |> Enum.join(" ")
+
+      send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
+  end
+
   # Handles a connection registration command, ie. only NICK/USER/CAP/AUTHENTICATE.
   # Returns nil, {:nick, new_nick}, {:user, new_gecos}, {:authenticate, user_id},
   # :got_cap_ls, or :got_cap_end.
@@ -341,30 +361,11 @@ defmodule M51.IrcConn.Handler do
         nil
 
       {"CAP", ["LS", "302"]} ->
-        caps =
-          @capabilities_ls
-          |> Map.to_list()
-          |> Enum.sort_by(fn {k, _v} -> k end)
-          |> Enum.map(fn {k, {_, v}} ->
-            case v do
-              nil -> k
-              _ -> k <> "=" <> v
-            end
-          end)
-          |> Enum.join(" ")
-
-        send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
+        cap_ls(true, send)
         :got_cap_ls
 
       {"CAP", ["LS" | _]} ->
-        caps =
-          @capabilities_ls
-          |> Map.to_list()
-          |> Enum.sort_by(fn {k, {_, _v}} -> k end)
-          |> Enum.map(fn {k, _v} -> k end)
-          |> Enum.join(" ")
-
-        send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
+        cap_ls(false, send)
         :got_cap_ls
 
       {"CAP", ["LIST" | _]} ->
@@ -789,11 +790,28 @@ defmodule M51.IrcConn.Handler do
       {"USER", _} ->
         nil
 
+      {"CAP", ["LS", "302"]} ->
+        cap_ls(true, send)
+
+      {"CAP", ["LS" | _]} ->
+        cap_ls(false, send)
+
       {"CAP", ["LIST" | _]} ->
-        send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LIST", "sasl"]})
+        caps =
+          M51.IrcConn.State.capabilities(state)
+          |> Enum.map(fn cap -> @capability_names[cap] end)
+          |> Enum.filter(fn cap -> !is_nil(cap) end)
+          |> Enum.join(" ")
+
+        send.(%M51.Irc.Command{
+          source: "server.",
+          command: "CAP",
+          params: ["*", "LIST", caps]
+        })
 
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD
+        # TODO: support CAP REQ to turn caps on and off post-registration.
         send_numeric.("410", [subcommand, "Invalid CAP subcommand"])
 
       {"CAP", []} ->
