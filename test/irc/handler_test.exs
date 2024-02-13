@@ -20,7 +20,7 @@ defmodule M51.IrcConn.HandlerTest do
 
   @cap_ls_302 ":server. CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/message-redaction draft/multiline=max-bytes=8192 draft/no-implicit-names draft/sasl-ir echo-message extended-join labeled-response message-tags sasl=PLAIN server-time soju.im/account-required standard-replies userhost-in-names\r\n"
   @cap_ls ":server. CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/message-redaction draft/multiline draft/no-implicit-names draft/sasl-ir echo-message extended-join labeled-response message-tags sasl server-time soju.im/account-required standard-replies userhost-in-names\r\n"
-  @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANTYPES=#! CHATHISTORY=100 MAXTARGETS=1 MSGREFTYPES=msgid PREFIX= TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
+  @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANMODES=b,,,i CHANTYPES=#! CHATHISTORY=100 LINELEN=8192 MAXTARGETS=1 MSGREFTYPES=msgid PREFIX= TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
 
   setup do
     start_supervised!({MockMatrixClient, {self()}})
@@ -449,6 +449,26 @@ defmodule M51.IrcConn.HandlerTest do
     Logger.add_backend(:console)
   end
 
+  test "post-registration CAP LS", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("CAP LS 302"))
+    assert_line(@cap_ls_302)
+
+    send(handler, cmd("CAP LS"))
+    assert_line(@cap_ls)
+  end
+
+  test "post-registration CAP LIST", %{handler: handler} do
+    caps_requested = ["draft/multiline", "extended-join", "message-tags", "server-time"]
+    caps_expected = Enum.join(["batch", "labeled-response", "sasl"] ++ caps_requested, " ")
+
+    do_connection_registration(handler, caps_requested)
+
+    send(handler, cmd("CAP LIST"))
+    assert_line(":server. CAP * LIST :" <> caps_expected <> "\r\n")
+  end
+
   test "labeled response", %{handler: handler} do
     do_connection_registration(handler)
 
@@ -828,7 +848,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert_line("BATCH :-#{batch_id}\r\n")
   end
 
-  test "WHOIS", %{handler: handler} do
+  test "WHOIS unknown user", %{handler: handler} do
     do_connection_registration(handler)
 
     send(handler, cmd("@label=l1 WHOIS unknown_user:example.com"))
@@ -853,6 +873,18 @@ defmodule M51.IrcConn.HandlerTest do
     )
 
     assert_line("BATCH :-#{batch_id}\r\n")
+  end
+
+  test "WHOIS non-MXID", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=l1 WHOIS not_enough_colons"))
+
+    assert_line("@label=l1 :server. 401 foo:example.org not_enough_colons :No such nick\r\n")
+
+    send(handler, cmd("@label=l1 WHOIS :with spaces"))
+
+    assert_line("@label=l1 :server. 401 foo:example.org * :No such nick\r\n")
   end
 
   test "MODE on user", %{handler: handler} do

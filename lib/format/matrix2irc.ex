@@ -109,19 +109,14 @@ defmodule M51.Format.Matrix2Irc do
         transform_children(children, state)
 
       _ ->
-        fg = String.trim_leading(fg || "000000", "#")
-        bg = String.trim_leading(bg || "FFFFFF", "#")
+        fg = fg && String.trim_leading(fg, "#")
+        bg = bg && String.trim_leading(bg, "#")
 
-        restored_colors =
-          case state.color do
-            # reset
-            {nil, nil} -> "\x0399,99"
-            {fg, bg} -> "\x04#{fg},#{bg}"
-          end
+        restored_colors = get_color_code(state.color)
 
         state = %M51.Format.Matrix2Irc.State{state | color: {fg, bg}}
 
-        ~s(\x04#{fg},#{bg}) <>
+        get_color_code({fg, bg}) <>
           transform_children(children, state) <> restored_colors
     end
   end
@@ -141,6 +136,17 @@ defmodule M51.Format.Matrix2Irc do
       end
 
     transform_children(children, state, char)
+  end
+
+  def get_color_code({fg, bg}) do
+    case {fg, bg} do
+      # reset
+      {nil, nil} -> "\x0399,99"
+      {fg, nil} -> "\x04#{fg}"
+      # set both fg and bg, then reset fg
+      {nil, bg} -> "\x04000000,#{bg}\x0399"
+      {fg, bg} -> "\x04#{fg},#{bg}"
+    end
   end
 
   defp transform_children(children, state, char \\ "") do

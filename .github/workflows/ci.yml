@@ -8,13 +8,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - otp: '20'  # for some reason, erlef/setup-beam@v1 fails on 19
+          - otp: '21'  # :parse_trans does not support OTP 20 anymore
             elixir: '1.7.4'
             os: 'ubuntu-20.04'
           - otp: '22'
             elixir: '1.7.4'
             os: 'ubuntu-20.04'
-          - otp: '20'
+          - otp: '21'
             elixir: '1.9'
             os: 'ubuntu-20.04'
           - otp: '22'

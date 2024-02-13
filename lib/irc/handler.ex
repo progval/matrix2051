@@ -33,6 +33,7 @@ defmodule M51.IrcConn.Handler do
   # 8kB should be a reasonable limit to remain under the allowed 65kB even
   # with large signatures and many escapes.
   @multiline_max_bytes 8192
+  def multiline_max_bytes, do: @multiline_max_bytes
 
   # set of capabilities that we will show in CAP LS and accept with ACK;
   # along with their value (shown in CAP LS 302)
@@ -103,6 +104,10 @@ defmodule M51.IrcConn.Handler do
   }
 
   @capabilities_ls Map.merge(@capabilities, @informative_capabilities)
+
+  @capability_names @capabilities
+    |> Enum.map(fn {name, {atom, _}} -> {atom, name} end)
+    |> Map.new()
 
   @valid_batch_types ["draft/multiline"]
 
@@ -299,6 +304,22 @@ defmodule M51.IrcConn.Handler do
     end
   end
 
+  defp cap_ls(is_302, send) do
+    caps = @capabilities_ls
+      |> Map.to_list()
+      |> Enum.sort_by(fn {k, _v} -> k end)
+      |> Enum.map(fn {k, {_, v}} ->
+        cond do
+          is_nil(v) -> k
+          !is_302 -> k
+          true -> k <> "=" <> v
+        end
+      end)
+      |> Enum.join(" ")
+
+      send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
+  end
+
   # Handles a connection registration command, ie. only NICK/USER/CAP/AUTHENTICATE.
   # Returns nil, {:nick, new_nick}, {:user, new_gecos}, {:authenticate, user_id},
   # :got_cap_ls, or :got_cap_end.
@@ -341,30 +362,11 @@ defmodule M51.IrcConn.Handler do
         nil
 
       {"CAP", ["LS", "302"]} ->
-        caps =
-          @capabilities_ls
-          |> Map.to_list()
-          |> Enum.sort_by(fn {k, _v} -> k end)
-          |> Enum.map(fn {k, {_, v}} ->
-            case v do
-              nil -> k
-              _ -> k <> "=" <> v
-            end
-          end)
-          |> Enum.join(" ")
-
-        send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
+        cap_ls(true, send)
         :got_cap_ls
 
       {"CAP", ["LS" | _]} ->
-        caps =
-          @capabilities_ls
-          |> Map.to_list()
-          |> Enum.sort_by(fn {k, {_, _v}} -> k end)
-          |> Enum.map(fn {k, _v} -> k end)
-          |> Enum.join(" ")
-
-        send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
+        cap_ls(false, send)
         :got_cap_ls
 
       {"CAP", ["LIST" | _]} ->
@@ -616,8 +618,11 @@ defmodule M51.IrcConn.Handler do
       "CASEMAPPING=rfc3454",
       "CLIENTTAGDENY=*,-draft/react,-draft/reply",
       "CHANLIMIT=",
+      "CHANMODES=b,,,i",
       "CHANTYPES=#!",
       "CHATHISTORY=100",
+      # Matrix limit is 64k for the whole event, so this is fairly conservative.
+      "LINELEN=#{@multiline_max_bytes}",
       "MAXTARGETS=1",
       # https://github.com/ircv3/ircv3-specifications/pull/510
       "MSGREFTYPES=msgid",
@@ -797,11 +802,28 @@ defmodule M51.IrcConn.Handler do
       {"USER", _} ->
         nil
 
+      {"CAP", ["LS", "302"]} ->
+        cap_ls(true, send)
+
+      {"CAP", ["LS" | _]} ->
+        cap_ls(false, send)
+
       {"CAP", ["LIST" | _]} ->
-        send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LIST", "sasl"]})
+        caps =
+          M51.IrcConn.State.capabilities(state)
+          |> Enum.map(fn cap -> @capability_names[cap] end)
+          |> Enum.filter(fn cap -> !is_nil(cap) end)
+          |> Enum.join(" ")
+
+        send.(%M51.Irc.Command{
+          source: "server.",
+          command: "CAP",
+          params: ["*", "LIST", caps]
+        })
 
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD
+        # TODO: support CAP REQ to turn caps on and off post-registration.
         send_numeric.("410", [subcommand, "Invalid CAP subcommand"])
 
       {"CAP", []} ->
@@ -1113,51 +1135,61 @@ defmodule M51.IrcConn.Handler do
             [_server, target | _] -> target
           end
 
-        [local_name, hostname] = String.split(target, ":", parts: 2)
-
-        [member: memberships] = M51.MatrixClient.State.user(matrix_state, target)
-
-        # TODO: pick the most common display name instead
-        gecos = target
-
-        overhead = make_numeric.("353", [target, ""]) |> M51.Irc.Command.format() |> byte_size()
-
-        first_commands = [
-          # RPL_WHOISUSER "<nick> <username> <host> * :<realname>"
-          make_numeric.("311", [target, local_name, hostname, "*", gecos])
-        ]
-
-        channel_commands =
-          memberships
-          |> Map.keys()
-          |> Enum.map(fn room_id ->
-            M51.MatrixClient.State.room_irc_channel(matrix_state, room_id)
-          end)
-          |> Enum.sort()
-          |> M51.Irc.WordWrap.join_tokens(512 - overhead)
-          |> Enum.map(fn line ->
-            line = line |> String.trim_trailing()
-
-            if line != "" do
-              # RPL_WHOISCHANNELS "<nick> :[prefix]<channel>{ [prefix]<channel>}"
-              make_numeric.("319", [target, line])
+        case String.split(target, ":", parts: 2) do
+          [_] ->
+            # return ERR_NOSUCHNICK
+            if target == "" || String.contains?(target, " ") do
+              send_numeric.("401", ["*", "No such nick"])
+            else
+              send_numeric.("401", [target, "No such nick"])
             end
-          end)
-          |> Enum.filter(fn line -> line != nil end)
 
-        last_commands = [
-          # RPL_WHOISSERVER "<nick> <server> :<server info>"
-          make_numeric.("312", [target, hostname, hostname]),
-          # RPL_WHOISACCOUNT "<nick> <account> :is logged in as"
-          make_numeric.("330", [target, target, "is logged in as"]),
-          # RPL_ENDOFWHOIS
-          make_numeric.("318", [target, "End of WHOIS"])
-        ]
+          [local_name, hostname] ->
+            [member: memberships] = M51.MatrixClient.State.user(matrix_state, target)
 
-        send_batch.(
-          Enum.concat([first_commands, channel_commands, last_commands]),
-          "labeled-response"
-        )
+            # TODO: pick the most common display name instead
+            gecos = target
+
+            overhead =
+              make_numeric.("353", [target, ""]) |> M51.Irc.Command.format() |> byte_size()
+
+            first_commands = [
+              # RPL_WHOISUSER "<nick> <username> <host> * :<realname>"
+              make_numeric.("311", [target, local_name, hostname, "*", gecos])
+            ]
+
+            channel_commands =
+              memberships
+              |> Map.keys()
+              |> Enum.map(fn room_id ->
+                M51.MatrixClient.State.room_irc_channel(matrix_state, room_id)
+              end)
+              |> Enum.sort()
+              |> M51.Irc.WordWrap.join_tokens(512 - overhead)
+              |> Enum.map(fn line ->
+                line = line |> String.trim_trailing()
+
+                if line != "" do
+                  # RPL_WHOISCHANNELS "<nick> :[prefix]<channel>{ [prefix]<channel>}"
+                  make_numeric.("319", [target, line])
+                end
+              end)
+              |> Enum.filter(fn line -> line != nil end)
+
+            last_commands = [
+              # RPL_WHOISSERVER "<nick> <server> :<server info>"
+              make_numeric.("312", [target, hostname, hostname]),
+              # RPL_WHOISACCOUNT "<nick> <account> :is logged in as"
+              make_numeric.("330", [target, target, "is logged in as"]),
+              # RPL_ENDOFWHOIS
+              make_numeric.("318", [target, "End of WHOIS"])
+            ]
+
+            send_batch.(
+              Enum.concat([first_commands, channel_commands, last_commands]),
+              "labeled-response"
+            )
+        end
 
       {"BATCH", [first_param | params]} ->
         {first_char, reference_tag} = String.split_at(first_param, 1)
