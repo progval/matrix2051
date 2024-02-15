@@ -762,7 +762,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert line == "@label=l2 BATCH +#{batch_id} :labeled-response\r\n"
 
     assert_line(
-      "@batch=#{batch_id} :server. 352 foo:example.org #existing_room:example.org user1 example.org * user1:example.org H :0 user1:example.org\r\n"
+      "@batch=#{batch_id} :server. 352 foo:example.org #existing_room:example.org user1 example.org * user1:example.org H :0 user one\r\n"
     )
 
     assert_line(
@@ -788,7 +788,7 @@ defmodule M51.IrcConn.HandlerTest do
     send(handler, cmd("WHO #existing_room:example.org"))
 
     assert_line(
-      ":server. 352 foo:example.org #existing_room:example.org user1 example.org * user1:example.org H :0 user1:example.org\r\n"
+      ":server. 352 foo:example.org #existing_room:example.org user1 example.org * user1:example.org H :0 user one\r\n"
     )
 
     assert_line(
@@ -826,7 +826,7 @@ defmodule M51.IrcConn.HandlerTest do
     assert line == "@label=l1 BATCH +#{batch_id} :labeled-response\r\n"
 
     assert_line(
-      "@batch=#{batch_id} :server. 311 foo:example.org user1:example.org user1 example.org * :user1:example.org\r\n"
+      "@batch=#{batch_id} :server. 311 foo:example.org user1:example.org user1 example.org * :user one\r\n"
     )
 
     assert_line(
