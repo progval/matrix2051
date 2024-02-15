@@ -95,7 +95,8 @@ defmodule M51.MatrixClient.State do
       room = Map.get(state.rooms, room_id, @emptyroom)
 
       if Map.has_key?(room.members, userid) do
-        {true, state}
+        # User may have changed their display-name, so update the member list
+        {true, update_in(state.rooms[room_id].members[userid], fn _ -> member end)}
       else
         room = %{room | members: Map.put(room.members, userid, member)}
         {false, %{state | rooms: Map.put(state.rooms, room_id, room)}}
