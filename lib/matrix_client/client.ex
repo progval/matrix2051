@@ -78,7 +78,7 @@ defmodule M51.MatrixClient.Client do
         # Check the server supports password login
         url = base_url <> "/_matrix/client/r0/login"
         Logger.debug("(raw) GET #{url}")
-        response = httpoison.get!(url, [], timeout: @timeout)
+        response = httpoison.get!(url, [], timeout: @timeout, recv_timeout: @timeout)
         Logger.debug(Kernel.inspect(response))
 
         case response do
@@ -111,7 +111,7 @@ defmodule M51.MatrixClient.Client do
 
                 url = base_url <> "/_matrix/client/r0/login"
                 Logger.debug("(raw) POST #{url} " <> Kernel.inspect(body))
-                response = httpoison.post!(url, body, [], timeout: @timeout)
+                response = httpoison.post!(url, body, [], timeout: @timeout, recv_timeout: @timeout)
                 Logger.debug(Kernel.inspect(response))
 
                 case response do
