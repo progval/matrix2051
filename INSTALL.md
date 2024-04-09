@@ -69,7 +69,7 @@ image can be built with either [podman](https://podman.io/) or
 To build it:
 
 ```
-podman build -t matrix2051 .
+podman build -t matrix2051 --file dist/Containerfile .
 ```
 
 To run it:
