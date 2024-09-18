@@ -52,7 +52,7 @@ defmodule M51.MixProject do
   defp deps do
     [
       # only using :mochiweb_html
-      {:mochiweb, "~> 2.22"},
+      {:mochiweb, "~> 3.2.2"},
       {:jason, "~> 1.2"},
       {:httpoison, "~> 1.7"},
       {:mox, "~> 1.0.0", only: :test}
