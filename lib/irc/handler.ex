@@ -619,6 +619,11 @@ defmodule M51.IrcConn.Handler do
       "UTF8ONLY",
       "are supported by this server"
     ])
+    send_numeric.("005", [
+      # https://codeberg.org/emersion/soju/src/branch/master/doc/ext/saferate.md
+      "soju.im/SAFERATE",
+      "are supported by this server"
+    ])
 
     # RPL_MOTDSTART
     send_numeric.("375", ["- Message of the day"])
