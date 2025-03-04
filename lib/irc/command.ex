@@ -90,7 +90,7 @@ defmodule M51.Irc.Command do
   end
 
   def parse_tag(s) do
-    captures = Regex.named_captures(~r/^(?<key>[a-zA-Z0-9\/+-]+)(=(?<value>.*))?$/U, s)
+    captures = Regex.named_captures(~r/^(?<key>[a-zA-Z0-9\/+.-]+)(=(?<value>.*))?$/U, s)
     %{"key" => key, "value" => value} = captures
 
     {key,

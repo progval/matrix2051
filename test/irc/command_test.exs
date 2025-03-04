@@ -92,6 +92,16 @@ defmodule M51.Irc.CommandTest do
               }}
   end
 
+  test "parse message tags with no value and vendored key" do
+    assert M51.Irc.Command.parse("@msgid=foo;+example.org/tag TAGMSG #chan\r\n") ==
+             {:ok,
+              %M51.Irc.Command{
+                tags: %{"msgid" => "foo", "+example.org/tag" => ""},
+                command: "TAGMSG",
+                params: ["#chan"]
+              }}
+  end
+
   test "downgrade noop" do
     assert M51.Irc.Command.downgrade(
              %M51.Irc.Command{
