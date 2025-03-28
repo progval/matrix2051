@@ -818,6 +818,11 @@ defmodule M51.IrcConn.Handler do
         # TODO: support CAP REQ to turn caps on and off post-registration.
         send_numeric.("410", ["REQ", "CAP REQ is not supported after CAP END"])
 
+      {"CAP", ["END" | _]} ->
+        # "If the client is already registered, this command MUST be ignored by the server."
+        # -- https://ircv3.net/specs/extensions/capability-negotiation#the-cap-end-subcommand
+        nil
+
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD
         send_numeric.("410", [subcommand, "Invalid CAP subcommand"])
