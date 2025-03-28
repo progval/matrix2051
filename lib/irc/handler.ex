@@ -814,9 +814,12 @@ defmodule M51.IrcConn.Handler do
           params: ["*", "LIST", caps]
         })
 
+      {"CAP", ["REQ" | _]} ->
+        # TODO: support CAP REQ to turn caps on and off post-registration.
+        send_numeric.("410", ["REQ", "CAP REQ is not supported after CAP END"])
+
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD
-        # TODO: support CAP REQ to turn caps on and off post-registration.
         send_numeric.("410", [subcommand, "Invalid CAP subcommand"])
 
       {"CAP", []} ->
