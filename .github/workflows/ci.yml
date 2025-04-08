@@ -8,29 +8,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - otp: '21'  # :parse_trans does not support OTP 20 anymore
-            elixir: '1.7.4'
-            os: 'ubuntu-20.04'
-          - otp: '22'
-            elixir: '1.7.4'
-            os: 'ubuntu-20.04'
-          - otp: '21'
-            elixir: '1.9'
-            os: 'ubuntu-20.04'
-          - otp: '22'
-            elixir: '1.9'
-            os: 'ubuntu-20.04'
-          - otp: '21'
-            elixir: '1.11'
-            os: 'ubuntu-20.04'
           - otp: '24'
             elixir: '1.11'
             os: 'ubuntu-22.04'
-          - otp: '22'
-            elixir: '1.13'
-            os: 'ubuntu-20.04'
           - otp: '24'
             elixir: '1.13'
+            os: 'ubuntu-22.04'
+          - otp: '24'
+            elixir: '1.14'
+            os: 'ubuntu-22.04'
+          - otp: '27'
+            elixir: '1.18'
             os: 'ubuntu-22.04'
     steps:
       - uses: actions/checkout@v2
