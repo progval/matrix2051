@@ -111,7 +111,13 @@ defmodule M51.MatrixClient.Client do
 
                 url = base_url <> "/_matrix/client/r0/login"
                 Logger.debug("(raw) POST #{url} " <> Kernel.inspect(body))
-                response = httpoison.post!(url, body, [], timeout: @timeout, recv_timeout: @timeout)
+
+                response =
+                  httpoison.post!(url, body, [{"content-type", "application/json"}],
+                    timeout: @timeout,
+                    recv_timeout: @timeout
+                  )
+
                 Logger.debug(Kernel.inspect(response))
 
                 case response do

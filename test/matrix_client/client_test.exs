@@ -52,7 +52,7 @@ defmodule M51.MatrixClient.ClientTest do
     end)
     |> expect(:post!, fn url, body, headers, options ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
-      assert headers == []
+      assert headers == [{"content-type", "application/json"}]
       assert options == [timeout: @timeout, recv_timeout: @timeout]
 
       assert Jason.decode!(body) == %{
@@ -162,7 +162,7 @@ defmodule M51.MatrixClient.ClientTest do
     end)
     |> expect(:post!, fn url, body, headers, options ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
-      assert headers == []
+      assert headers == [{"content-type", "application/json"}]
       assert options == [timeout: @timeout, recv_timeout: @timeout]
 
       assert Jason.decode!(body) == %{
@@ -248,7 +248,7 @@ defmodule M51.MatrixClient.ClientTest do
     end)
     |> expect(:post!, fn url, body, headers, options ->
       assert url == "https://matrix.example.com/_matrix/client/r0/login"
-      assert headers == []
+      assert headers == [{"content-type", "application/json"}]
       assert options == [timeout: @timeout, recv_timeout: @timeout]
 
       assert Jason.decode!(body) == %{
@@ -376,7 +376,7 @@ defmodule M51.MatrixClient.ClientTest do
     end)
     |> expect(:post!, fn url, body, headers, options ->
       assert url == "https://matrix.example.org/_matrix/client/r0/login"
-      assert headers == []
+      assert headers == [{"content-type", "application/json"}]
       assert options == [timeout: @timeout, recv_timeout: @timeout]
 
       assert Jason.decode!(body) == %{
