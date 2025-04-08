@@ -106,8 +106,8 @@ defmodule M51.IrcConn.Handler do
   @capabilities_ls Map.merge(@capabilities, @informative_capabilities)
 
   @capability_names @capabilities
-    |> Enum.map(fn {name, {atom, _}} -> {atom, name} end)
-    |> Map.new()
+                    |> Enum.map(fn {name, {atom, _}} -> {atom, name} end)
+                    |> Map.new()
 
   @valid_batch_types ["draft/multiline"]
 
@@ -306,7 +306,8 @@ defmodule M51.IrcConn.Handler do
   end
 
   defp cap_ls(is_302, send) do
-    caps = @capabilities_ls
+    caps =
+      @capabilities_ls
       |> Map.to_list()
       |> Enum.sort_by(fn {k, _v} -> k end)
       |> Enum.map(fn {k, {_, v}} ->
@@ -318,7 +319,7 @@ defmodule M51.IrcConn.Handler do
       end)
       |> Enum.join(" ")
 
-      send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
+    send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
   end
 
   # Handles a connection registration command, ie. only NICK/USER/CAP/AUTHENTICATE.
@@ -619,6 +620,7 @@ defmodule M51.IrcConn.Handler do
       "UTF8ONLY",
       "are supported by this server"
     ])
+
     send_numeric.("005", [
       # https://codeberg.org/emersion/soju/src/branch/master/doc/ext/saferate.md
       "soju.im/SAFERATE",
