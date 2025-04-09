@@ -24,7 +24,7 @@ defmodule M51.Matrix.RawClient do
 
   def get(client, path, headers \\ [], options \\ []) do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
-    options = options |> Keyword.put_new(:timeout, 60000)
+    options = options |> Keyword.put_new(:timeout, 120000)
 
     url = client.base_url <> path
 
