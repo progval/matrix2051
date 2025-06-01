@@ -497,10 +497,19 @@ defmodule M51.MatrixClient.Client do
 
     case httpoison.get(wellknown_url) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
-        data = Jason.decode!(body)
-        base_url = data["m.homeserver"]["base_url"]
-        Logger.debug("Well-known request for #{wellknown_url} yielded #{base_url}")
-        base_url
+        case Jason.decode(body) do
+          {:ok, data} ->
+            base_url = data["m.homeserver"]["base_url"]
+            Logger.debug("Well-known request for #{wellknown_url} yielded #{base_url}")
+            base_url
+
+          {:err, res} ->
+            Logger.error(
+              "Well-known request for #{wellknown_url} returned invalid JSON (#{Kernel.inspect(res)})."
+            )
+
+            raise res
+        end
 
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         base_url = "https://" <> hostname
