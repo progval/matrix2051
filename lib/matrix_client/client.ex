@@ -38,7 +38,7 @@ defmodule M51.MatrixClient.Client do
 
   # timeout used for all requests sent to a homeserver.
   # It should be slightly larger than M51.Matrix.RawClient's timeout,
-  @timeout 125000
+  @timeout 125_000
 
   def start_link(opts) do
     {sup_pid, _extra_args} = opts

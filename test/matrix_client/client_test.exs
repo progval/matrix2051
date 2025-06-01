@@ -22,7 +22,7 @@ defmodule M51.MatrixClient.ClientTest do
   setup :set_mox_from_context
   setup :verify_on_exit!
 
-  @timeout 125000
+  @timeout 125_000
 
   setup do
     start_supervised!({M51.MatrixClient.State, {self()}})
