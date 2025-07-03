@@ -66,14 +66,37 @@ Alternatively a Containerfile is provided as well for convenience. The
 image can be built with either [podman](https://podman.io/) or
 [docker](https://www.docker.com/).
 
+First you will need to clone the repo and cd into it. 
+You will need to copy the Containerfile to the root of the project folder too:
+
+```
+git clone https://github.com/progval/matrix2051.git
+cd matrix2051
+cp dist/Containerfile Dockerfile
+```
+
+## Podman
 To build it:
 
 ```
-podman build -t matrix2051 --file dist/Containerfile .
+podman build -t matrix2051 --file Containerfile .
 ```
 
 To run it:
 
 ```
 podman run --publish 2051:2051 --interactive matrix2051
+```
+
+## Docker
+To build it:
+
+```
+docker build -t matrix2051 .
+```
+
+To run it:
+
+```
+docker run -p 2051:2051 -it matrix2051
 ```
