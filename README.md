@@ -78,10 +78,17 @@ Two notes on this screenshot:
   * no SSL/TLS
   * SASL username: your full matrix ID (`user:homeserver.example.org`)
   * SASL password: your matrix password
+  * (Optional / advanced configuration) If you cannot use homeserver URL discovery, configure `homeserver-url=https://homeserver.example.org` as your IRC client's GECOS/"real name"
 
 See below for extra instructions to work with web clients.
 
 See `INSTALL.md` for a more production-oriented guide.
+
+## End-to-end encryption
+
+Matrix2051 does not support Matrix's end-to-end encryption (E2EE), but can optionally be used with [Pantalaimon](https://github.com/matrix-org/pantalaimon).
+
+To do so, setup Pantalaimon locally, and configure `homeserverurl=http://localhost:8009` as your IRC client's GECOS/"real name".
 
 ## Architecture
 
