@@ -41,12 +41,14 @@ defmodule M51.IrcServer do
 
   defp accept(port, retries_left \\ 10) do
     opts = [
-      :binary, :inet6,
+      :binary,
+      :inet6,
       packet: :line,
       active: false,
       reuseaddr: true,
-      buffer: M51.IrcConn.Handler.multiline_max_bytes * 2
+      buffer: M51.IrcConn.Handler.multiline_max_bytes() * 2
     ]
+
     case :gen_tcp.listen(port, opts) do
       {:ok, server_sock} ->
         Logger.info("Listening on port #{port}")

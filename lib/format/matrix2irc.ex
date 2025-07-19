@@ -33,6 +33,10 @@ defmodule M51.Format.Matrix2Irc do
     end
   end
 
+  def transform({:comment, _comment}, _state) do
+    ""
+  end
+
   def transform({"a", attributes, children}, state) do
     case attributes |> Map.new() |> Map.get("href") do
       nil ->

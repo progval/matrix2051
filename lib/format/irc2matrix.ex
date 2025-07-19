@@ -346,10 +346,10 @@ defmodule M51.Format.Irc2Matrix do
           :italic
 
         "\x1e" ->
-          :underlined
+          :stroke
 
         "\x1f" ->
-          :stroke
+          :underlined
 
         <<0x03, a, b, ?,, c, d>> ->
           {:color, color2hex((a - ?0) * 10 + (b - ?0)), color2hex((c - ?0) * 10 + (d - ?0))}

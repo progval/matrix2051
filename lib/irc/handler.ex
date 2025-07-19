@@ -106,8 +106,8 @@ defmodule M51.IrcConn.Handler do
   @capabilities_ls Map.merge(@capabilities, @informative_capabilities)
 
   @capability_names @capabilities
-    |> Enum.map(fn {name, {atom, _}} -> {atom, name} end)
-    |> Map.new()
+                    |> Enum.map(fn {name, {atom, _}} -> {atom, name} end)
+                    |> Map.new()
 
   @valid_batch_types ["draft/multiline"]
 
@@ -261,7 +261,7 @@ defmodule M51.IrcConn.Handler do
     state = M51.IrcConn.Supervisor.state(sup_pid)
     capabilities = M51.IrcConn.State.capabilities(state)
 
-    fn commands, batch_type ->
+    fn commands, batch_type, batch_args ->
       case Map.get(command.tags, "label") do
         nil ->
           # no label, don't use a batch.
@@ -282,7 +282,7 @@ defmodule M51.IrcConn.Handler do
           open_batch = %M51.Irc.Command{
             tags: %{"label" => label},
             command: "BATCH",
-            params: ["+" <> batch_id, batch_type]
+            params: ["+" <> batch_id, batch_type | batch_args]
           }
 
           close_batch = %M51.Irc.Command{command: "BATCH", params: ["-" <> batch_id]}
@@ -305,7 +305,8 @@ defmodule M51.IrcConn.Handler do
   end
 
   defp cap_ls(is_302, send) do
-    caps = @capabilities_ls
+    caps =
+      @capabilities_ls
       |> Map.to_list()
       |> Enum.sort_by(fn {k, _v} -> k end)
       |> Enum.map(fn {k, {_, v}} ->
@@ -317,7 +318,7 @@ defmodule M51.IrcConn.Handler do
       end)
       |> Enum.join(" ")
 
-      send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
+    send.(%M51.Irc.Command{source: "server.", command: "CAP", params: ["*", "LS", caps]})
   end
 
   # Handles a connection registration command, ie. only NICK/USER/CAP/AUTHENTICATE.
@@ -634,6 +635,12 @@ defmodule M51.IrcConn.Handler do
       "are supported by this server"
     ])
 
+    send_numeric.("005", [
+      # https://codeberg.org/emersion/soju/src/branch/master/doc/ext/saferate.md
+      "soju.im/SAFERATE",
+      "are supported by this server"
+    ])
+
     # RPL_MOTDSTART
     send_numeric.("375", ["- Message of the day"])
     # RPL_MOTD
@@ -823,9 +830,17 @@ defmodule M51.IrcConn.Handler do
           params: ["*", "LIST", caps]
         })
 
+      {"CAP", ["REQ" | _]} ->
+        # TODO: support CAP REQ to turn caps on and off post-registration.
+        send_numeric.("410", ["REQ", "CAP REQ is not supported after CAP END"])
+
+      {"CAP", ["END" | _]} ->
+        # "If the client is already registered, this command MUST be ignored by the server."
+        # -- https://ircv3.net/specs/extensions/capability-negotiation#the-cap-end-subcommand
+        nil
+
       {"CAP", [subcommand | _]} ->
         # ERR_INVALIDCAPCMD
-        # TODO: support CAP REQ to turn caps on and off post-registration.
         send_numeric.("410", [subcommand, "Invalid CAP subcommand"])
 
       {"CAP", []} ->
@@ -969,7 +984,7 @@ defmodule M51.IrcConn.Handler do
       {"CHATHISTORY", ["TARGETS", _ts1, _ts2, _limit | _]} ->
         # This is mainly used for PMs, and we don't support those yet; so there
         # is little point in storing state to actually implement it
-        send_batch.([], "draft/chathistory-targets")
+        send_batch.([], "draft/chathistory-targets", [])
 
       {"CHATHISTORY", ["TARGETS" | _]} ->
         send_needmoreparams.()
@@ -979,7 +994,7 @@ defmodule M51.IrcConn.Handler do
 
         case M51.MatrixClient.ChatHistory.after_(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
-            send_batch.(messages, "chathistory")
+            send_batch.(messages, "chathistory", [target])
 
           {:error, message} ->
             send.(%M51.Irc.Command{
@@ -993,7 +1008,7 @@ defmodule M51.IrcConn.Handler do
 
         case M51.MatrixClient.ChatHistory.around(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
-            send_batch.(messages, "chathistory")
+            send_batch.(messages, "chathistory", [target])
 
           {:error, message} ->
             send.(%M51.Irc.Command{
@@ -1007,7 +1022,7 @@ defmodule M51.IrcConn.Handler do
 
         case M51.MatrixClient.ChatHistory.before(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
-            send_batch.(messages, "chathistory")
+            send_batch.(messages, "chathistory", [target])
 
           {:error, message} ->
             send.(%M51.Irc.Command{
@@ -1032,7 +1047,7 @@ defmodule M51.IrcConn.Handler do
 
         case M51.MatrixClient.ChatHistory.latest(sup_pid, target, limit) do
           {:ok, messages} ->
-            send_batch.(messages, "chathistory")
+            send_batch.(messages, "chathistory", [target])
 
           {:error, message} ->
             send.(%M51.Irc.Command{
@@ -1105,7 +1120,7 @@ defmodule M51.IrcConn.Handler do
               # RPL_ENDOFWHO
               last_command = make_numeric.("315", [target, "End of WHO list"])
 
-              send_batch.(Stream.concat(commands, [last_command]), "labeled-response")
+              send_batch.(Stream.concat(commands, [last_command]), "labeled-response", [])
             end
           )
         else
@@ -1120,7 +1135,8 @@ defmodule M51.IrcConn.Handler do
               make_numeric.("352", ["*", local_name, hostname, "*", target, "H", "0 " <> gecos]),
               make_numeric.("315", [target, "End of WHO list"])
             ],
-            "labeled-response"
+            "labeled-response",
+            []
           )
         end
 
@@ -1189,7 +1205,8 @@ defmodule M51.IrcConn.Handler do
 
             send_batch.(
               Enum.concat([first_commands, channel_commands, last_commands]),
-              "labeled-response"
+              "labeled-response",
+              []
             )
         end
 

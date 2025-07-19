@@ -20,7 +20,8 @@ defmodule M51.IrcConn.HandlerTest do
 
   @cap_ls_302 ":server. CAP * LS :account-tag batch draft/account-registration=before-connect draft/channel-rename draft/chathistory draft/message-redaction draft/multiline=max-bytes=8192 draft/no-implicit-names draft/sasl-ir echo-message extended-join labeled-response message-tags sasl=PLAIN server-time soju.im/account-required standard-replies userhost-in-names\r\n"
   @cap_ls ":server. CAP * LS :account-tag batch draft/account-registration draft/channel-rename draft/chathistory draft/message-redaction draft/multiline draft/no-implicit-names draft/sasl-ir echo-message extended-join labeled-response message-tags sasl server-time soju.im/account-required standard-replies userhost-in-names\r\n"
-  @isupport "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANMODES=b,,,i CHANTYPES=#! CHATHISTORY=100 LINELEN=8192 MAXTARGETS=1 MSGREFTYPES=msgid PREFIX= TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
+  @isupport1 "CASEMAPPING=rfc3454 CLIENTTAGDENY=*,-draft/react,-draft/reply CHANLIMIT= CHANMODES=b,,,i CHANTYPES=#! CHATHISTORY=100 LINELEN=8192 MAXTARGETS=1 MSGREFTYPES=msgid PREFIX= TARGMAX=JOIN:1,PART:1 UTF8ONLY :are supported by this server\r\n"
+  @isupport2 "soju.im/SAFERATE :are supported by this server\r\n"
 
   setup do
     start_supervised!({MockMatrixClient, {self()}})
@@ -66,7 +67,8 @@ defmodule M51.IrcConn.HandlerTest do
 
   def assert_welcome(nick) do
     assert_line(":server. 001 #{nick} :Welcome to this Matrix bouncer.\r\n")
-    assert_line(":server. 005 #{nick} #{@isupport}")
+    assert_line(":server. 005 #{nick} #{@isupport1}")
+    assert_line(":server. 005 #{nick} #{@isupport2}")
     assert_line(":server. 375 #{nick} :- Message of the day\r\n")
     assert_line(":server. 372 #{nick} :Welcome to Matrix2051, a Matrix bouncer.\r\n")
     assert_line(":server. 372 #{nick} :\r\n")
@@ -938,7 +940,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l1 CHATHISTORY AROUND #chan msgid=$event3 5"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l1 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #chan :first message\r\n"
@@ -964,7 +966,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l2 CHATHISTORY AROUND #chan msgid=$event3 4"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l2 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #chan :first message\r\n"
@@ -986,7 +988,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l3 CHATHISTORY AROUND #chan msgid=$event3 3"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l3 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l3 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
@@ -1004,7 +1006,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l4 CHATHISTORY AROUND #chan msgid=$event3 2"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l4 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l4 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
@@ -1018,7 +1020,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l5 CHATHISTORY AROUND #chan msgid=$event3 1"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l5 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l5 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event3 :nick:example.org!nick@example.org PRIVMSG #chan :third message\r\n"
@@ -1032,7 +1034,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l1 CHATHISTORY BEFORE #chan msgid=$event3 2"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l1 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event1 :nick:example.org!nick@example.org PRIVMSG #chan :first message\r\n"
@@ -1046,7 +1048,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l2 CHATHISTORY BEFORE #chan msgid=$event3 1"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l2 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event2 :nick:example.org!nick@example.org PRIVMSG #chan :second message\r\n"
@@ -1060,7 +1062,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l2 CHATHISTORY LATEST #chan * 1"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l2 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event5 :nick:example.org!nick@example.org PRIVMSG #chan :fifth message\r\n"
@@ -1070,7 +1072,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l1 CHATHISTORY LATEST #chan * 2"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l1 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event4 :nick:example.org!nick@example.org PRIVMSG #chan :fourth message\r\n"
@@ -1088,7 +1090,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l1 CHATHISTORY AFTER #chan msgid=$event3 2"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l1 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l1 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event4 :nick:example.org!nick@example.org PRIVMSG #chan :fourth message\r\n"
@@ -1102,7 +1104,7 @@ defmodule M51.IrcConn.HandlerTest do
 
     send(handler, cmd("@label=l2 CHATHISTORY AFTER #chan msgid=$event3 1"))
     {batch_id, line} = assert_open_batch()
-    assert line == "@label=l2 BATCH +#{batch_id} :chathistory\r\n"
+    assert line == "@label=l2 BATCH +#{batch_id} chathistory :#chan\r\n"
 
     assert_line(
       "@batch=#{batch_id};msgid=$event4 :nick:example.org!nick@example.org PRIVMSG #chan :fourth message\r\n"

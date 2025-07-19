@@ -38,7 +38,7 @@ defmodule M51.MatrixClient.Client do
 
   # timeout used for all requests sent to a homeserver.
   # It should be slightly larger than M51.Matrix.RawClient's timeout,
-  @timeout 65000
+  @timeout 125_000
 
   def start_link(opts) do
     {sup_pid, _extra_args} = opts
@@ -78,7 +78,7 @@ defmodule M51.MatrixClient.Client do
         # Check the server supports password login
         url = base_url <> "/_matrix/client/r0/login"
         Logger.debug("(raw) GET #{url}")
-        response = httpoison.get!(url, [], timeout: @timeout)
+        response = httpoison.get!(url, [], timeout: @timeout, recv_timeout: @timeout)
         Logger.debug(Kernel.inspect(response))
 
         case response do
@@ -111,7 +111,13 @@ defmodule M51.MatrixClient.Client do
 
                 url = base_url <> "/_matrix/client/r0/login"
                 Logger.debug("(raw) POST #{url} " <> Kernel.inspect(body))
-                response = httpoison.post!(url, body, [], timeout: @timeout)
+
+                response =
+                  httpoison.post!(url, body, [{"content-type", "application/json"}],
+                    timeout: @timeout,
+                    recv_timeout: @timeout
+                  )
+
                 Logger.debug(Kernel.inspect(response))
 
                 case response do
@@ -329,6 +335,7 @@ defmodule M51.MatrixClient.Client do
           case M51.Matrix.RawClient.put(raw_client, path, body) do
             {:ok, %{"event_id" => event_id}} -> {:ok, event_id}
             {:error, nil, error} -> {:error, error}
+            {:error, http_code, error} -> {:error, "Error #{http_code}: #{error}"}
           end
       end
 
@@ -358,6 +365,7 @@ defmodule M51.MatrixClient.Client do
           case M51.Matrix.RawClient.get(raw_client, path) do
             {:ok, events} -> {:ok, events}
             {:error, nil, error} -> {:error, error}
+            {:error, http_code, error} -> {:error, "Error #{http_code}: #{error}"}
           end
       end
 
@@ -387,6 +395,7 @@ defmodule M51.MatrixClient.Client do
           case M51.Matrix.RawClient.get(raw_client, path) do
             {:ok, events} -> {:ok, events}
             {:error, nil, error} -> {:error, error}
+            {:error, http_code, error} -> {:error, "Error #{http_code}: #{error}"}
           end
       end
 
@@ -488,10 +497,19 @@ defmodule M51.MatrixClient.Client do
 
     case httpoison.get(wellknown_url) do
       {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
-        data = Jason.decode!(body)
-        base_url = data["m.homeserver"]["base_url"]
-        Logger.debug("Well-known request for #{wellknown_url} yielded #{base_url}")
-        base_url
+        case Jason.decode(body) do
+          {:ok, data} ->
+            base_url = data["m.homeserver"]["base_url"]
+            Logger.debug("Well-known request for #{wellknown_url} yielded #{base_url}")
+            base_url
+
+          {:err, res} ->
+            Logger.error(
+              "Well-known request for #{wellknown_url} returned invalid JSON (#{Kernel.inspect(res)})."
+            )
+
+            raise res
+        end
 
       {:ok, %HTTPoison.Response{status_code: 404}} ->
         base_url = "https://" <> hostname
