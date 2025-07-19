@@ -446,7 +446,7 @@ defmodule M51.IrcConn.Handler do
                         # this was only meant to be used with Pantalaimon
                         proxy =
                           case Regex.named_captures(
-                                 ~R((plaintextproxy|homeserver-url)=(?<url>https?://\S*\)),
+                                 ~R((plaintextproxy|homeserver-url\)=(?<url>https?://\S*\)),
                                  M51.IrcConn.State.gecos(state)  || ""
                                ) do
                             nil -> nil
