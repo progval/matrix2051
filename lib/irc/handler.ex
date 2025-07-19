@@ -262,7 +262,7 @@ defmodule M51.IrcConn.Handler do
     state = M51.IrcConn.Supervisor.state(sup_pid)
     capabilities = M51.IrcConn.State.capabilities(state)
 
-    fn commands, batch_type ->
+    fn commands, batch_type, batch_args ->
       case Map.get(command.tags, "label") do
         nil ->
           # no label, don't use a batch.
@@ -283,7 +283,7 @@ defmodule M51.IrcConn.Handler do
           open_batch = %M51.Irc.Command{
             tags: %{"label" => label},
             command: "BATCH",
-            params: ["+" <> batch_id, batch_type]
+            params: ["+" <> batch_id, batch_type | batch_args]
           }
 
           close_batch = %M51.Irc.Command{command: "BATCH", params: ["-" <> batch_id]}
@@ -970,7 +970,7 @@ defmodule M51.IrcConn.Handler do
       {"CHATHISTORY", ["TARGETS", _ts1, _ts2, _limit | _]} ->
         # This is mainly used for PMs, and we don't support those yet; so there
         # is little point in storing state to actually implement it
-        send_batch.([], "draft/chathistory-targets")
+        send_batch.([], "draft/chathistory-targets", [])
 
       {"CHATHISTORY", ["TARGETS" | _]} ->
         send_needmoreparams.()
@@ -980,7 +980,7 @@ defmodule M51.IrcConn.Handler do
 
         case M51.MatrixClient.ChatHistory.after_(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
-            send_batch.(messages, "chathistory")
+            send_batch.(messages, "chathistory", [target])
 
           {:error, message} ->
             send.(%M51.Irc.Command{
@@ -994,7 +994,7 @@ defmodule M51.IrcConn.Handler do
 
         case M51.MatrixClient.ChatHistory.around(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
-            send_batch.(messages, "chathistory")
+            send_batch.(messages, "chathistory", [target])
 
           {:error, message} ->
             send.(%M51.Irc.Command{
@@ -1008,7 +1008,7 @@ defmodule M51.IrcConn.Handler do
 
         case M51.MatrixClient.ChatHistory.before(sup_pid, target, anchor, limit) do
           {:ok, messages} ->
-            send_batch.(messages, "chathistory")
+            send_batch.(messages, "chathistory", [target])
 
           {:error, message} ->
             send.(%M51.Irc.Command{
@@ -1033,7 +1033,7 @@ defmodule M51.IrcConn.Handler do
 
         case M51.MatrixClient.ChatHistory.latest(sup_pid, target, limit) do
           {:ok, messages} ->
-            send_batch.(messages, "chathistory")
+            send_batch.(messages, "chathistory", [target])
 
           {:error, message} ->
             send.(%M51.Irc.Command{
@@ -1106,7 +1106,7 @@ defmodule M51.IrcConn.Handler do
               # RPL_ENDOFWHO
               last_command = make_numeric.("315", [target, "End of WHO list"])
 
-              send_batch.(Stream.concat(commands, [last_command]), "labeled-response")
+              send_batch.(Stream.concat(commands, [last_command]), "labeled-response", [])
             end
           )
         else
@@ -1121,7 +1121,8 @@ defmodule M51.IrcConn.Handler do
               make_numeric.("352", ["*", local_name, hostname, "*", target, "H", "0 " <> gecos]),
               make_numeric.("315", [target, "End of WHO list"])
             ],
-            "labeled-response"
+            "labeled-response",
+            []
           )
         end
 
@@ -1190,7 +1191,8 @@ defmodule M51.IrcConn.Handler do
 
             send_batch.(
               Enum.concat([first_commands, channel_commands, last_commands]),
-              "labeled-response"
+              "labeled-response",
+              []
             )
         end
 
