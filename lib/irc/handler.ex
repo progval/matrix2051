@@ -441,9 +441,11 @@ defmodule M51.IrcConn.Handler do
                       {:ok, {local_name, hostname}} ->
                         user_id = authcid
 
+                        # Keep deprecated alias "plaintextproxy" that was used back when
+                        # this was only meant to be used with Pantalaimon
                         proxy =
                           case Regex.named_captures(
-                                 ~R(plaintextproxy=(?<url>https?://\S*\)),
+                                 ~R((plaintextproxy|homeserver-url)=(?<url>https?://\S*\)),
                                  M51.IrcConn.State.gecos(state)  || ""
                                ) do
                             nil -> nil
