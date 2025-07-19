@@ -335,4 +335,8 @@ defmodule M51.FormatTest do
     assert M51.Format.matrix2irc("join <a href=\"https://matrix.to/#/%23\">oh no</a>") ==
              "join oh no <https://matrix.to/#/%23\>"
   end
+
+  test "HTML comment" do
+    assert M51.Format.matrix2irc("foo <!-- bar --> baz") == "foo  baz"
+  end
 end
