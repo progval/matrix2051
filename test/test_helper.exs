@@ -185,6 +185,8 @@ defmodule MockMatrixClient do
       case limit do
         0 ->
           %{
+            "start" => "start0",
+            "end" => "end0",
             "events_before" => [],
             "event" => event3,
             "events_after" => []
@@ -192,6 +194,8 @@ defmodule MockMatrixClient do
 
         1 ->
           %{
+            "start" => "start1",
+            "end" => "end1",
             "events_before" => [event2],
             "event" => event3,
             "events_after" => []
@@ -199,6 +203,8 @@ defmodule MockMatrixClient do
 
         2 ->
           %{
+            "start" => "start2",
+            "end" => "end2",
             "events_before" => [event2],
             "event" => event3,
             "events_after" => [event4]
@@ -207,6 +213,7 @@ defmodule MockMatrixClient do
         3 ->
           %{
             # reverse-chronological order, as per the spec
+            "start" => "start3",
             "events_before" => [event2, event1],
             "event" => event3,
             "events_after" => [event4]
@@ -222,6 +229,23 @@ defmodule MockMatrixClient do
       end
 
     {:reply, {:ok, reply}, state}
+  end
+
+  @impl true
+  def handle_call({:get_events_from_cursor, _channel, direction, cursor, _limit}, _from, state) do
+    event = %{
+      "content" => %{
+        "body" => "event in direction #{direction} from #{cursor}",
+        "msgtype" => "m.text"
+      },
+      "event_id" => "$event",
+      "origin_server_ts" => 1_632_946_233_579,
+      "sender" => "@nick:example.org",
+      "type" => "m.room.message",
+      "unsigned" => %{}
+    }
+    events = %{"state" => [], "chunk" => [event], "start" => "startcursor", "end" => "endcursor"}
+    {:reply, {:ok, events}, state}
   end
 
   @impl true
@@ -274,7 +298,9 @@ defmodule MockMatrixClient do
       # "For dir=b events will be in reverse-chronological order"
       |> Enum.reverse()
 
-    {:reply, {:ok, %{"state" => [], "chunk" => events}}, state}
+    {:reply,
+     {:ok, %{"state" => [], "chunk" => events, "from" => "fromcursor", "to" => "tocursor"}},
+     state}
   end
 
   :w
