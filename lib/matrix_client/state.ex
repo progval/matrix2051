@@ -95,7 +95,8 @@ defmodule M51.MatrixClient.State do
       room = Map.get(state.rooms, room_id, @emptyroom)
 
       if Map.has_key?(room.members, userid) do
-        {true, state}
+        # User may have changed their display-name, so update the member list
+        {true, update_in(state.rooms[room_id].members[userid], fn _ -> member end)}
       else
         room = %{room | members: Map.put(room.members, userid, member)}
         {false, %{state | rooms: Map.put(state.rooms, room_id, room)}}
@@ -120,18 +121,32 @@ defmodule M51.MatrixClient.State do
   end
 
   @doc """
-    Returns [member: %{room_id => %M51.Matrix.RoomMember{...}}]
+    Returns the user's current display name. This is the same across all rooms
+    they're in, but not guaranteed to be unique vs. other users.
+
+    If the user has no known display name (i.e. membership set is empty), just
+    returns the userid.
   """
-  def user(pid, user_id) do
+  def user_display_name(pid, user_id) do
     Agent.get(pid, fn state ->
-      [
-        member:
-          state.rooms
-          |> Map.to_list()
-          |> Enum.map(fn {room_id, room} -> {room_id, Map.get(room.members, user_id)} end)
-          |> Enum.filter(fn {_room_id, member} -> member != nil end)
-          |> Map.new()
-      ]
+      state.rooms
+        |> Stream.filter(fn {_room_id, room} -> Map.has_key?(room.members, user_id) end)
+        |> Stream.map(fn {_room_id, room} -> room.members[user_id].display_name end)
+        # Matrix display names are per-user, so we just pick an arbitrary channel
+        # that they're in and fish it out of the userlist.
+        # TODO: store a user_id to user info map separately from the channels?
+        |> Enum.at(0, user_id)
+    end)
+  end
+
+  @doc """
+    Returns a list of room_ids that the user is a member in.
+  """
+  def user_memberships(pid, user_id) do
+    Agent.get(pid, fn state ->
+      state.rooms
+      |> Enum.filter(fn {_room_id, room} -> Map.has_key?(room.members, user_id) end)
+      |> Enum.map(fn {room_id, _room} -> room_id end)
     end)
   end
 

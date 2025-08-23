@@ -1101,10 +1101,9 @@ defmodule M51.IrcConn.Handler do
             fn _room_id, room ->
               commands =
                 room.members
-                |> Stream.map(fn {user_id, _member} ->
+                |> Stream.map(fn {user_id, member} ->
                   [local_name, hostname] = String.split(user_id, ":", parts: 2)
-                  # TODO: pick the most common display name of the user instead
-                  gecos = user_id
+                  gecos = member.display_name || user_id
                   # RPL_WHOREPLY
                   make_numeric.("352", [
                     target,
@@ -1126,9 +1125,9 @@ defmodule M51.IrcConn.Handler do
         else
           # target is a nick
           [local_name, hostname] = String.split(target, ":", parts: 2)
+          display_name = M51.MatrixClient.State.user_display_name(matrix_state, target)
 
-          # TODO: pick the most common display name instead
-          gecos = target
+          gecos = display_name
 
           send_batch.(
             [
@@ -1163,10 +1162,10 @@ defmodule M51.IrcConn.Handler do
             end
 
           [local_name, hostname] ->
-            [member: memberships] = M51.MatrixClient.State.user(matrix_state, target)
+            memberships = M51.MatrixClient.State.user_memberships(matrix_state, target)
+            display_name = M51.MatrixClient.State.user_display_name(matrix_state, target)
 
-            # TODO: pick the most common display name instead
-            gecos = target
+            gecos = display_name
 
             overhead =
               make_numeric.("353", [target, ""]) |> M51.Irc.Command.format() |> byte_size()
@@ -1178,7 +1177,6 @@ defmodule M51.IrcConn.Handler do
 
             channel_commands =
               memberships
-              |> Map.keys()
               |> Enum.map(fn room_id ->
                 M51.MatrixClient.State.room_irc_channel(matrix_state, room_id)
               end)
