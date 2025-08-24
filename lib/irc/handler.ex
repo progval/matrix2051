@@ -1285,6 +1285,10 @@ defmodule M51.IrcConn.Handler do
       {"BATCH", _} ->
         send_needmoreparams.()
 
+      {"AWAY", _} ->
+        send_ack.()
+        nil
+
       _ ->
         send_numeric.("421", [command.command, "Unknown command"])
     end
