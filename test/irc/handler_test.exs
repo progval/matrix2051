@@ -1128,4 +1128,14 @@ defmodule M51.IrcConn.HandlerTest do
 
     assert_message({:send_redact, "#existing_room:example.org", nil, "$event1", "spam"})
   end
+
+  test "sending AWAY", %{handler: handler} do
+    do_connection_registration(handler)
+
+    send(handler, cmd("@label=abcd AWAY :foo"))
+    assert_line("@label=abcd ACK\r\n")
+
+    send(handler, cmd("@label=abcd AWAY"))
+    assert_line("@label=abcd ACK\r\n")
+  end
 end
