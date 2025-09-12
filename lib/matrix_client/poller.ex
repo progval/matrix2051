@@ -88,7 +88,7 @@ defmodule M51.MatrixClient.Poller do
 
     delay =
       if delay do
-        Logger.warn(
+        Logger.warning(
           "Server connection error [#{reconnect_reason}], retrying after #{round(delay / 1000)}s"
         )
 

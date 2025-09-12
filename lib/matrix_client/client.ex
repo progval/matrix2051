@@ -525,7 +525,7 @@ defmodule M51.MatrixClient.Client do
         # The next call will probably fail, but this spares error handling in this one.
         base_url = "https://" <> hostname
 
-        Logger.warn(
+        Logger.warning(
           "Well-known request for #{wellknown_url} returned #{Kernel.inspect(res)}. " <>
             "Falling back to #{base_url}"
         )
@@ -536,7 +536,7 @@ defmodule M51.MatrixClient.Client do
         # Treat this in the same way as HTTP error codes above - perm error and fallback
         base_url = "https://" <> hostname
 
-        Logger.warn(
+        Logger.warning(
           "Well-known request for #{wellknown_url} failed" <>
             " with connection error [#{err}]. Falling back to #{base_url}"
         )

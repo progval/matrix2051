@@ -70,7 +70,7 @@ defmodule M51.MatrixClient.Sender do
 
           {:error, _status_code, reason} ->
             if nb_attempts < @max_attempts do
-              Logger.warn("Error while sending event, retrying: #{Kernel.inspect(reason)}")
+              Logger.warning("Error while sending event, retrying: #{Kernel.inspect(reason)}")
               backoff_delay = :math.pow(2, nb_attempts)
               Process.sleep(round(backoff_delay * 1000))
 
@@ -83,7 +83,7 @@ defmodule M51.MatrixClient.Sender do
                 nb_attempts + 1
               )
             else
-              Logger.warn("Error while sending event, giving up: #{Kernel.inspect(reason)}")
+              Logger.warning("Error while sending event, giving up: #{Kernel.inspect(reason)}")
               state = M51.IrcConn.Supervisor.matrix_state(sup_pid)
               channel = M51.MatrixClient.State.room_irc_channel(state, room_id)
 

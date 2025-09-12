@@ -188,7 +188,8 @@ defmodule M51.MatrixClient.ClientTest do
 
     client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
-    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd", nil}) == {:ok}
+    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd", nil}) ==
+             {:ok}
 
     assert GenServer.call(client, {:dump_state}) ==
              %M51.MatrixClient.Client{
@@ -274,7 +275,8 @@ defmodule M51.MatrixClient.ClientTest do
 
     client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
 
-    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd", nil}) == {:ok}
+    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd", nil}) ==
+             {:ok}
 
     assert GenServer.call(client, {:dump_state}) ==
              %M51.MatrixClient.Client{
