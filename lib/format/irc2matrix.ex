@@ -238,7 +238,7 @@ defmodule M51.Format.Irc2Matrix do
   def tokenize(text) do
     text
     |> String.to_charlist()
-    |> do_tokenize([''])
+    |> do_tokenize([~c""])
     |> Enum.reverse()
     |> Stream.map(fn token -> token |> Enum.reverse() |> to_string() end)
   end
@@ -249,7 +249,7 @@ defmodule M51.Format.Irc2Matrix do
 
   defp do_tokenize([c | tail], acc) when <<c>> in @chars do
     # new token
-    do_tokenize(tail, ['' | [[c] | acc]])
+    do_tokenize(tail, [~c"" | [[c] | acc]])
   end
 
   defp do_tokenize([0x03 | tail], acc) do
@@ -287,7 +287,7 @@ defmodule M51.Format.Irc2Matrix do
           {tail, []}
       end
 
-    do_tokenize(tail, ['' | [Enum.reverse([0x03 | normalized_color]) | acc]])
+    do_tokenize(tail, [~c"" | [Enum.reverse([0x03 | normalized_color]) | acc]])
   end
 
   defp do_tokenize([0x04 | tail], acc) do
@@ -314,7 +314,7 @@ defmodule M51.Format.Irc2Matrix do
           {tail, []}
       end
 
-    do_tokenize(tail, ['' | [Enum.reverse([0x04 | normalized_color]) | acc]])
+    do_tokenize(tail, [~c"" | [Enum.reverse([0x04 | normalized_color]) | acc]])
   end
 
   defp do_tokenize([c | tail], [head | acc]) do

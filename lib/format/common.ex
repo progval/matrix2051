@@ -112,9 +112,9 @@ defmodule M51.Format do
       |> :mochiweb_html.to_html()
       |> IO.iodata_to_binary()
 
-    html = Regex.replace(~R(<html>(.*\)</html>), html, fn _, content -> content end)
+    html = Regex.replace(~r(<html>(.*\)</html>), html, fn _, content -> content end)
     # more compact
-    html = Regex.replace(~R(<br />), html, fn _ -> "<br/>" end)
+    html = Regex.replace(~r(<br />), html, fn _ -> "<br/>" end)
 
     {plain_text, html}
   end

@@ -28,7 +28,7 @@ defmodule M51.Application do
   @impl true
   def start(_type, args) do
     if Enum.member?(System.argv(), "--debug") do
-      Logger.warn("Starting in debug mode")
+      Logger.warning("Starting in debug mode")
       Logger.configure(level: :debug)
     else
       Logger.configure(level: :info)
