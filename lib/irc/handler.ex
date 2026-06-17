@@ -44,6 +44,10 @@ defmodule M51.IrcConn.Handler do
     # https://ircv3.net/specs/extensions/account-tag.html
     "account-tag" => {:account_tag, nil},
 
+    # https://ircv3.net/specs/extensions/away-notify
+    # we don't currently support AWAY at all; so advertising this capability means that clients don't need to unnecessarily poll to update away statuses.
+    "away-notify" => {:away_notify, nil},
+
     # https://ircv3.net/specs/extensions/batch
     "batch" => {:batch, nil},
 
