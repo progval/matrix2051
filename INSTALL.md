@@ -77,3 +77,17 @@ To run it:
 ```
 podman run --publish 2051:2051 --interactive matrix2051
 ```
+
+Alternatively, with docker to build it:
+
+```
+cd /path/to/matrix2051
+cp dist/Containerfile Dockerfile
+docker build -t matrix2051 .
+```
+
+To run it:
+
+```
+docker run -p 2051:2051 -it matrix2051
+```
