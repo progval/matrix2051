@@ -21,6 +21,5 @@ jobs:
               uses: docker/build-push-action@v7
               with:
                   push: true
-                  context: .
-                  file: dist/Containerfile
+                  file: ./dist/Containerfile
                   tags: ghcr.io/progval/matrix2051:latest
