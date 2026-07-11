@@ -2,7 +2,7 @@ FROM docker.io/alpine:3.24
 
 ENV MIX_ENV=prod
 
-RUN apk add --update --no-cache elixir
+RUN apk add --update --no-cache elixir ca-certificates
 
 WORKDIR /app
 
