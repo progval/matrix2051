@@ -76,7 +76,7 @@ defmodule M51.MatrixClient.Client do
         base_url = proxy || get_base_url(hostname)
 
         # Check the server supports password login
-        url = base_url <> "/_matrix/client/r0/login"
+        url = M51.Matrix.Utils.urlmerge(base_url, "/_matrix/client/r0/login")
         Logger.debug("(raw) GET #{url}")
         response = httpoison.get!(url, [], timeout: @timeout, recv_timeout: @timeout)
         Logger.debug(Kernel.inspect(response))
@@ -109,7 +109,7 @@ defmodule M51.MatrixClient.Client do
                     "password" => password
                   })
 
-                url = base_url <> "/_matrix/client/r0/login"
+                url = M51.Matrix.Utils.urlmerge(base_url, "/_matrix/client/r0/login")
                 Logger.debug("(raw) POST #{url} " <> Kernel.inspect(body))
 
                 response =
@@ -191,7 +191,7 @@ defmodule M51.MatrixClient.Client do
             "password" => password
           })
 
-        case httpoison.post!(base_url <> "/_matrix/client/r0/register", body) do
+        case httpoison.post!(M51.Matrix.Utils.urlmerge(base_url, "/_matrix/client/r0/register"), body) do
           %HTTPoison.Response{status_code: 200, body: body} ->
             data = Jason.decode!(body)
 

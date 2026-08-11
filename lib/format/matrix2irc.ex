@@ -200,10 +200,10 @@ defmodule M51.Format.Matrix2Irc do
 
         case filename do
           nil ->
-            "#{base_url}/_matrix/media/r0/download/#{urlquote(host)}#{path}"
+            M51.Matrix.Utils.urlmerge(base_url, "/_matrix/media/r0/download/#{urlquote(host)}#{path}")
 
           _ ->
-            "#{base_url}/_matrix/media/r0/download/#{urlquote(host)}#{path}/#{urlquote(filename)}"
+            M51.Matrix.Utils.urlmerge(base_url, "/_matrix/media/r0/download/#{urlquote(host)}#{path}/#{urlquote(filename)}")
         end
 
       _ ->

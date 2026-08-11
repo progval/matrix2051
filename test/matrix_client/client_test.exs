@@ -298,6 +298,93 @@ defmodule M51.MatrixClient.ClientTest do
     end
   end
 
+  test "connection with well-known and an unusual base URL", %{sup_pid: sup_pid} do
+    MockHTTPoison
+    |> expect(:get, fn _url ->
+      {:ok,
+       %HTTPoison.Response{
+         status_code: 200,
+         body: """
+           {
+             "m.homeserver": {
+               "base_url": "https://matrix.example.com/"
+             }
+           }
+         """
+       }}
+    end)
+    |> expect(:get!, fn url, headers, options ->
+      assert url == "https://matrix.example.com/_matrix/client/r0/login"
+      assert headers == []
+      assert options == [timeout: @timeout, recv_timeout: @timeout]
+
+      %HTTPoison.Response{
+        status_code: 200,
+        body: """
+          {
+              "flows": [
+                  {
+                      "type": "m.login.token"
+                  },
+                  {
+                      "type": "m.login.password"
+                  }
+              ]
+          }
+        """
+      }
+    end)
+    |> expect(:post!, fn url, body, headers, options ->
+      assert url == "https://matrix.example.com/_matrix/client/r0/login"
+      assert headers == [{"content-type", "application/json"}]
+      assert options == [timeout: @timeout, recv_timeout: @timeout]
+
+      assert Jason.decode!(body) == %{
+               "type" => "m.login.password",
+               "identifier" => %{
+                 "type" => "m.id.user",
+                 "user" => "user"
+               },
+               "password" => "p4ssw0rd"
+             }
+
+      %HTTPoison.Response{
+        status_code: 200,
+        body: """
+          {
+              "access_token": "t0ken",
+              "home_server": "matrix.example.org",
+              "user_id": "@user:matrix.example.org"
+          }
+        """
+      }
+    end)
+
+    client = start_supervised!({M51.MatrixClient.Client, {sup_pid, [httpoison: MockHTTPoison]}})
+
+    assert GenServer.call(client, {:connect, "user", "matrix.example.org", "p4ssw0rd", nil}) ==
+             {:ok}
+
+    assert GenServer.call(client, {:dump_state}) ==
+             %M51.MatrixClient.Client{
+               state: :connected,
+               irc_pid: sup_pid,
+               raw_client: %M51.Matrix.RawClient{
+                 base_url: "https://matrix.example.com/",
+                 access_token: "t0ken",
+                 httpoison: MockHTTPoison
+               },
+               local_name: "user",
+               hostname: "matrix.example.org"
+             }
+
+    assert M51.MatrixClient.Client.user_id(client) == "user:matrix.example.org"
+
+    receive do
+      msg -> assert msg == :connected
+    end
+  end
+
   test "connection without password flow", %{sup_pid: sup_pid} do
     MockHTTPoison
     |> expect(:get, fn url ->
