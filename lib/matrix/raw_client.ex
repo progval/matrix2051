@@ -26,7 +26,7 @@ defmodule M51.Matrix.RawClient do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
     options = options |> Keyword.put_new(:timeout, 120_000)
 
-    url = client.base_url <> path
+    url = M51.Matrix.Utils.urlmerge(client.base_url, path)
 
     Logger.debug("GET #{url}")
 
@@ -49,7 +49,7 @@ defmodule M51.Matrix.RawClient do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
     options = options |> Keyword.put_new(:timeout, 60000)
 
-    url = client.base_url <> path
+    url = M51.Matrix.Utils.urlmerge(client.base_url, path)
 
     Logger.debug("POST #{url} " <> Kernel.inspect(body))
 
@@ -73,7 +73,7 @@ defmodule M51.Matrix.RawClient do
     headers = [Authorization: "Bearer " <> client.access_token] ++ headers
     options = options |> Keyword.put_new(:timeout, 60000)
 
-    url = client.base_url <> path
+    url = M51.Matrix.Utils.urlmerge(client.base_url, path)
 
     Logger.debug("POST #{url} " <> Kernel.inspect(body))
 

@@ -18,4 +18,8 @@ defmodule M51.Matrix.Utils do
   def urlquote(s) do
     URI.encode(s, &URI.char_unreserved?/1)
   end
+
+  def urlmerge(base, path) do
+    URI.merge(base, path) |> URI.to_string()
+  end
 end
