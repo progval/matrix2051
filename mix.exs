@@ -56,7 +56,7 @@ defmodule M51.MixProject do
       {:jason, "~> 1.2"},
       {:httpoison, "~> 3.0"},
       {:mox, "~> 1.0.0", only: :test},
-      {:logger_backends, "~> 1.0.0"}
+      {:logger_backends, "~> 1.0.0", only: :test}
     ]
   end
 end
