@@ -250,6 +250,7 @@ defmodule M51.Irc.Command do
            }
 
   """
+  @spec downgrade(%M51.Irc.Command{}, [atom()]) :: %M51.Irc.Command{}
   def downgrade(command, capabilities) do
     original_tags = command.tags
 
@@ -268,9 +269,9 @@ defmodule M51.Irc.Command do
 
     # downgrade tags
     command =
-      if command == nil do
-        command
-      else
+      case command do
+        nil -> nil
+      %M51.Irc.Command{} = command ->
         tags =
           command.tags
           |> Map.to_list()

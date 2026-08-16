@@ -392,7 +392,7 @@ defmodule M51.IrcConn.HandlerTest do
     send(handler, cmd("NICK foo:example.org"))
 
     # cause an error
-    Logger.remove_backend(:console)
+    LoggerBackends.remove(LoggerBackends.Console)
     send(handler, %M51.Irc.Command{tags: %{"label" => "abcd"}, command: "PING", params: [:foo]})
 
     receive do
@@ -405,7 +405,7 @@ defmodule M51.IrcConn.HandlerTest do
                )
     end
 
-    Logger.add_backend(:console)
+    LoggerBackends.add(LoggerBackends.Console)
 
     # make sure everything proceeds normally afterward
 
@@ -434,7 +434,7 @@ defmodule M51.IrcConn.HandlerTest do
   test "unknown errors after registration", %{handler: handler} do
     do_connection_registration(handler)
 
-    Logger.remove_backend(:console)
+    LoggerBackends.remove(LoggerBackends.Console)
 
     send(handler, %M51.Irc.Command{tags: %{"label" => "abcd"}, command: "PING", params: [:foo]})
 
@@ -448,7 +448,7 @@ defmodule M51.IrcConn.HandlerTest do
                )
     end
 
-    Logger.add_backend(:console)
+    LoggerBackends.add(LoggerBackends.Console)
   end
 
   test "post-registration CAP LS", %{handler: handler} do
