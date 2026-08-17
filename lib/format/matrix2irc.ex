@@ -103,7 +103,7 @@ defmodule M51.Format.Matrix2Irc do
     "* " <> transform_children(children, state) <> "\n"
   end
 
-  def transform({tag, attributes, children}, state) when tag in ["font", "span"] do
+  def transform({tag, attributes, children}, %M51.Format.Matrix2Irc.State{} = state) when tag in ["font", "span"] do
     attributes = Map.new(attributes)
     fg = Map.get(attributes, "data-mx-color")
     bg = Map.get(attributes, "data-mx-bg-color")
@@ -129,7 +129,7 @@ defmodule M51.Format.Matrix2Irc do
     ""
   end
 
-  def transform({tag, _, children}, state) do
+  def transform({tag, _, children}, %M51.Format.Matrix2Irc.State{} = state) do
     char = Map.get(@simple_tags, tag, "")
     children = paragraph_to_newline(children, [])
 

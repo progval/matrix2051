@@ -243,7 +243,7 @@ defmodule M51.IrcConn.Handler do
     state = M51.IrcConn.Supervisor.state(sup_pid)
     capabilities = M51.IrcConn.State.capabilities(state)
 
-    fn cmd ->
+    fn %M51.Irc.Command{} = cmd ->
       tags =
         case Map.get(command.tags, "label") do
           nil -> cmd.tags
@@ -517,12 +517,14 @@ defmodule M51.IrcConn.Handler do
       {"REGISTER", ["*", email, password | _]} ->
         case nick do
           nil ->
-            send.("FAIL", [
-              "REGISTER",
-              "NEED_NICK",
-              "*",
-              "You must have a nickname set before registering"
-            ])
+            send.(%M51.Irc.Command{
+              command: "FAIL",
+              params: [
+               "REGISTER",
+               "NEED_NICK",
+               "*",
+               "You must have a nickname set before registering"
+            ]})
 
             nil
 

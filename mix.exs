@@ -52,10 +52,19 @@ defmodule M51.MixProject do
   defp deps do
     [
       # only using :mochiweb_html
-      {:mochiweb, "~> 3.2.2"},
+      {:mochiweb, "~> 3.5.0"},
       {:jason, "~> 1.2"},
-      {:httpoison, "~> 1.7"},
-      {:mox, "~> 1.0.0", only: :test}
+      conditional_http(),
+      {:mox, "~> 1.0.0", only: :test},
     ]
   end
+  defp conditional_http do
+  otp = :erlang.system_info(:otp_release) |> to_string() |> String.to_integer()
+  
+  if otp >= 26 do
+    {:httpoison, "~> 3.0"}
+  else
+    {:httpoison, "~> 1.8"}
+  end
+end
 end
