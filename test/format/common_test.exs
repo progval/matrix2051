@@ -205,12 +205,12 @@ defmodule M51.FormatTest do
     end)
 
     # can log "failed with connection error [connrefused]" warning
-    LoggerBackends.remove(LoggerBackends.Console)
-
+    original_level = Logger.level()
+    Logger.configure(level: :error)
     assert M51.Format.matrix2irc(~s(<img src="mxc://example.org/foo" />)) ==
              "https://example.org/_matrix/media/r0/download/example.org/foo"
 
-    LoggerBackends.add(LoggerBackends.Console)
+    Logger.configure(level: original_level)
   end
 
   test "IRC link to Matrix" do
