@@ -373,6 +373,36 @@ defmodule M51.MatrixClient.Client do
   end
 
   @impl true
+  def handle_call({:get_events_from_cursor, channel, dir, cursor, limit}, _from, state) do
+    %M51.MatrixClient.Client{
+      state: :connected,
+      irc_pid: irc_pid,
+      raw_client: raw_client
+    } = state
+
+    matrix_state = M51.IrcConn.Supervisor.matrix_state(irc_pid)
+
+    reply =
+      case M51.MatrixClient.State.room_from_irc_channel(matrix_state, channel) do
+        nil ->
+          {:error, {:room_not_found, channel}}
+
+        {room_id, _room} ->
+          path =
+            "/_matrix/client/v3/rooms/#{urlquote(room_id)}/messages?" <>
+              URI.encode_query(%{"limit" => limit, "dir" => dir, "from" => cursor})
+
+          case M51.Matrix.RawClient.get(raw_client, path) do
+            {:ok, events} -> {:ok, events}
+            {:error, error} -> {:error, error}
+            {:error, nil, error} -> {:error, error}
+          end
+      end
+
+    {:reply, reply, state}
+  end
+
+  @impl true
   def handle_call({:get_latest_events, channel, limit}, _from, state) do
     %M51.MatrixClient.Client{
       state: :connected,
@@ -624,6 +654,16 @@ defmodule M51.MatrixClient.Client do
   """
   def get_event_context(pid, channel, event_id, limit) do
     GenServer.call(pid, {:get_event_context, channel, event_id, limit}, @timeout)
+  end
+
+  @doc """
+    Returns a page of events just before/after those returned by a previous call
+    to get_event_context/4 or get_events_from_cursor/5
+
+    https://matrix.org/docs/spec/client_server/r0.6.1#id131
+  """
+  def get_events_from_cursor(pid, channel, dir, cursor, limit) do
+    GenServer.call(pid, {:get_events_from_cursor, channel, dir, cursor, limit}, @timeout)
   end
 
   @doc """

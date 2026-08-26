@@ -22,16 +22,36 @@ defmodule M51.MatrixClient.ChatHistory do
   def after_(sup_pid, room_id, anchor, limit) do
     client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
 
-    case parse_anchor(anchor) do
-      {:ok, event_id} ->
+    case parse_anchor(anchor, true) do
+      {:ok, :msgid, event_id} ->
         case M51.MatrixClient.Client.get_event_context(
                client,
                room_id,
                event_id,
                limit * 2
              ) do
-          {:ok, events} -> {:ok, process_events(sup_pid, room_id, events["events_after"])}
-          {:error, message} -> {:error, Kernel.inspect(message)}
+          {:ok, events} ->
+            {:ok,
+             process_events(sup_pid, room_id, events["events_after"], Map.get(events, "end"), nil)}
+
+          {:error, message} ->
+            {:error, Kernel.inspect(message)}
+        end
+
+      {:ok, :cursor, cursor} ->
+        case M51.MatrixClient.Client.get_events_from_cursor(
+               client,
+               room_id,
+               "f",
+               cursor,
+               limit
+             ) do
+          {:ok, events} ->
+            {:ok,
+             process_events(sup_pid, room_id, events["chunk"], Map.get(events, "end"), nil)}
+
+          {:error, message} ->
+            {:error, Kernel.inspect(message)}
         end
 
       {:error, message} ->
@@ -42,9 +62,9 @@ defmodule M51.MatrixClient.ChatHistory do
   def around(sup_pid, room_id, anchor, limit) do
     client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
 
-    case parse_anchor(anchor) do
-      {:ok, event_id} ->
-        case M51.MatrixClient.Client.get_event_context(client, room_id, event_id, limit) do
+    case parse_anchor(anchor, false) do
+      {:ok, :msgid, event_id} ->
+        case M51.MatrixClient.Client.get_event_context(client, room_id, event_id, limit - 1) do
           {:ok, events} ->
             # TODO: if there aren't enough events after (resp. before), allow more
             # events before (resp. after) than half the limit.
@@ -53,9 +73,16 @@ defmodule M51.MatrixClient.ChatHistory do
 
             events_before = events["events_before"] |> Enum.slice(0, nb_before) |> Enum.reverse()
             events_after = events["events_after"] |> Enum.slice(0, nb_after)
-            events = Enum.concat([events_before, [events["event"]], events_after])
+            events_list = Enum.concat([events_before, [events["event"]], events_after])
 
-            {:ok, process_events(sup_pid, room_id, events)}
+            {:ok,
+             process_events(
+               sup_pid,
+               room_id,
+               events_list,
+               Map.get(events, "end"),
+               Map.get(events, "start")
+             )}
 
           {:error, message} ->
             {:error, Kernel.inspect(message)}
@@ -69,8 +96,8 @@ defmodule M51.MatrixClient.ChatHistory do
   def before(sup_pid, room_id, anchor, limit) do
     client = M51.IrcConn.Supervisor.matrix_client(sup_pid)
 
-    case parse_anchor(anchor) do
-      {:ok, event_id} ->
+    case parse_anchor(anchor, true) do
+      {:ok, :msgid, event_id} ->
         case M51.MatrixClient.Client.get_event_context(
                client,
                room_id,
@@ -78,7 +105,36 @@ defmodule M51.MatrixClient.ChatHistory do
                limit * 2
              ) do
           {:ok, events} ->
-            {:ok, process_events(sup_pid, room_id, Enum.reverse(events["events_before"]))}
+            {:ok,
+             process_events(
+               sup_pid,
+               room_id,
+               Enum.reverse(events["events_before"]),
+               Map.get(events, "start"),
+               nil
+             )}
+
+          {:error, message} ->
+            {:error, Kernel.inspect(message)}
+        end
+
+      {:ok, :cursor, cursor} ->
+        case M51.MatrixClient.Client.get_events_from_cursor(
+               client,
+               room_id,
+               "b",
+               cursor,
+               limit
+             ) do
+          {:ok, events} ->
+            {:ok,
+             process_events(
+               sup_pid,
+               room_id,
+               Enum.reverse(events["chunk"]),
+               Map.get(events, "end"),
+               nil
+             )}
 
           {:error, message} ->
             {:error, Kernel.inspect(message)}
@@ -98,28 +154,41 @@ defmodule M51.MatrixClient.ChatHistory do
            limit
          ) do
       {:ok, events} ->
-        {:ok, process_events(sup_pid, room_id, Enum.reverse(events["chunk"]))}
+        {:ok,
+         process_events(
+           sup_pid,
+           room_id,
+           Enum.reverse(events["chunk"]),
+           Map.get(events, "end"),
+           nil
+         )}
 
       {:error, message} ->
         {:error, Kernel.inspect(message)}
     end
   end
 
-  defp parse_anchor(anchor) do
+  defp parse_anchor(anchor, allow_cursor) do
     case String.split(anchor, "=", parts: 2) do
       ["msgid", msgid] ->
-        {:ok, msgid}
+        {:ok, :msgid, msgid}
+
+      ["cursor", cursor] when allow_cursor ->
+        {:ok, :cursor, cursor}
+
+      ["cursor", _] ->
+        {:error, "Invalid anchor: '#{anchor}', it should start with 'msgid='."}
 
       ["timestamp", _] ->
         {:error,
          "CHATHISTORY with timestamps is not supported. See https://github.com/progval/matrix2051/issues/1"}
 
       _ ->
-        {:error, "Invalid anchor: '#{anchor}', it should start with 'msgid='."}
+        {:error, "Invalid anchor: '#{anchor}', it should start with 'msgid=' or 'cursor='."}
     end
   end
 
-  defp process_events(sup_pid, room_id, events) do
+  defp process_events(sup_pid, room_id, events, next, prev) do
     pid = self()
     write = fn cmd -> send(pid, {:command, cmd}) end
 
@@ -154,12 +223,45 @@ defmodule M51.MatrixClient.ChatHistory do
     |> Task.await()
 
     # Collect all commands
-    Stream.unfold(nil, fn _ ->
-      receive do
-        {:command, cmd} -> {cmd, nil}
-        {:finished_processing} -> nil
-      end
-    end)
-    |> Enum.to_list()
+    batch_content =
+      Stream.unfold(nil, fn _ ->
+        receive do
+          {:command, cmd} -> {cmd, nil}
+          {:finished_processing} -> nil
+        end
+      end)
+      |> Enum.to_list()
+
+    # Prepend cursors, if any
+    case {next, prev} do
+      {nil, nil} ->
+        batch_content
+
+      {next, nil} ->
+        cursors = %M51.Irc.Command{
+          command: "CHATHISTORY",
+          params: ["CURSORS", room_id, next]
+        }
+
+        [cursors | batch_content]
+
+      {nil, prev} ->
+        # what do we do here?
+        # https://github.com/ircv3/ircv3-specifications/pull/525/files#r1214764104
+        cursors = %M51.Irc.Command{
+          command: "CHATHISTORY",
+          params: ["CURSORS", room_id, "*", prev]
+        }
+
+        [cursors | batch_content]
+
+      {next, prev} ->
+        cursors = %M51.Irc.Command{
+          command: "CHATHISTORY",
+          params: ["CURSORS", room_id, next, prev]
+        }
+
+        [cursors | batch_content]
+    end
   end
 end
